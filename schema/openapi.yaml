@@ -17,7 +17,8 @@ paths:
       responses:
         '200':
           description: OK
-		# TODO: specify error codes
+        '503':
+          description: Service Unavailable
 
   /{upload_id}:
     get:
@@ -33,7 +34,17 @@ paths:
 
   /{upload_id}/{format}:
     get:
-      operationId: getCompilationInfo
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'resources/CompilationProduct.json'
+        '303': 
+          description: Redirect to getTaskStatus for the compilation.
+        '404': 
+          description: No compilation has been requested.
     post:
       operationId: requestCompilation
       requestBody:
@@ -42,6 +53,10 @@ paths:
           application/json:
             schema:
               $ref: 'resources/requestCompilation.json'
+      responses:
+        '202': 
+          description: Accepted for compilation. Location header defines URL.
+          # TODO: Figure out how to properly spec Location header
 
   /{upload_id}/{format}/log:
     get:
@@ -54,3 +69,12 @@ paths:
   /task/{uuid}:
     get:
       operationId: getTaskStatus
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'resources/CompilationProduct.json'
+				'301':
+          description: Redirect to /{upload_id}/{format}
