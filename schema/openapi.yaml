@@ -62,9 +62,9 @@ paths:
             application/json:
               schema:
                 $ref: 'resources/CompilationProduct.json'
-        '303': 
+        '303':
           description: Redirect to getTaskStatus for the compilation.
-        '404': 
+        '404':
           description: No compilation has been requested.
     post:
       operationId: requestCompilation
@@ -75,11 +75,13 @@ paths:
             schema:
               $ref: 'resources/requestCompilation.json'
       responses:
-        '202': 
+        '202':
           description: Accepted for compilation.
           headers:
             Location:
               description: The URL for the compilation task.
+              schema:
+                type: string
 
   /{upload_id}/{format}/log:
     parameters:
@@ -100,7 +102,7 @@ paths:
       responses:
         '200':
           description: OK
-  
+
   /{upload_id}/{format}/product:
     parameters:
     - name: upload_id
@@ -143,3 +145,5 @@ paths:
           headers:
             Location:
               description: The URL for the successfully completed object.
+              schema:
+                type: string

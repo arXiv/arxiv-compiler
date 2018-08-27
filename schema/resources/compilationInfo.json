@@ -12,9 +12,7 @@
     "products": {
       "additionalProperties": {
         "type": "string",
-        "properties": {
-          "$ref" : "CompilationProduct.json"       
-        }
+        "$ref" : "CompilationProduct.json"       
       }
     }
   }
