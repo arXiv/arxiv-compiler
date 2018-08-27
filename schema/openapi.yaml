@@ -21,6 +21,13 @@ paths:
           description: Service Unavailable
 
   /{upload_id}:
+    parameters:
+    - name: upload_id
+      in: path
+      description: The upload workspace ID.
+      required: true
+      schema:
+        type: integer
     get:
       operationId: getCompilationInfo
       description: Return information about all compilations requested for the upload workspace.
@@ -28,12 +35,25 @@ paths:
         '200':
           description: OK
           content:
-            application/json:
+            application/json: {}
               schema:
                 $ref: 'resources/compilationInfo.json'
 
 
   /{upload_id}/{format}:
+    parameters:
+    - name: upload_id
+      in: path
+      description: The upload workspace ID.
+      required: true
+      schema:
+        type: integer
+    - name: format
+      in: path
+      description: The compilation output format.
+      required: true
+      schema:
+        type: string
     get:
       responses:
         '200':
@@ -62,6 +82,19 @@ paths:
               description: The URL for the compilation task.
 
   /{upload_id}/{format}/log:
+    parameters:
+    - name: upload_id
+      in: path
+      description: The upload workspace ID.
+      required: true
+      schema:
+        type: integer
+    - name: format
+      in: path
+      description: The compilation output format.
+      required: true
+      schema:
+        type: string
     get:
       operationId: getCompilationLog
       responses:
@@ -69,6 +102,19 @@ paths:
           description: OK
   
   /{upload_id}/{format}/product:
+    parameters:
+    - name: upload_id
+      in: path
+      description: The upload workspace ID.
+      required: true
+      schema:
+        type: integer
+    - name: format
+      in: path
+      description: The compilation output format.
+      required: true
+      schema:
+        type: string
     get:
       operationId: getCompilationProduct
       responses:
@@ -76,6 +122,13 @@ paths:
           description: OK
 
   /task/{uuid}:
+    parameters:
+    - name: uuid
+      in: path
+      description: The task's UUID.
+      required: true
+      schema:
+        type: string
     get:
       operationId: getTaskStatus
       responses:
