@@ -17,6 +17,13 @@ components:
       required: true
       schema:
         type: integer
+    format:
+      name: format
+      in: path
+      description: The compilation output format.
+      required: true
+      schema:
+        type: string
 
 paths:
   /status:
@@ -40,7 +47,7 @@ paths:
         '200':
           description: OK
           content:
-            application/json: {}
+            application/json:
               schema:
                 $ref: 'resources/compilationInfo.json'
 
@@ -48,12 +55,7 @@ paths:
   /{upload_id}/{format}:
     parameters:
     - $ref: '#/components/parameters/upload_id'
-    - name: format
-      in: path
-      description: The compilation output format.
-      required: true
-      schema:
-        type: string
+    - $ref: '#/components/parameters/format'
     get:
       responses:
         '200':
@@ -85,18 +87,8 @@ paths:
 
   /{upload_id}/{format}/log:
     parameters:
-    - name: upload_id
-      in: path
-      description: The upload workspace ID.
-      required: true
-      schema:
-        type: integer
-    - name: format
-      in: path
-      description: The compilation output format.
-      required: true
-      schema:
-        type: string
+    - $ref: '#/components/parameters/upload_id'
+    - $ref: '#/components/parameters/format'
     get:
       operationId: getCompilationLog
       responses:
@@ -105,18 +97,8 @@ paths:
 
   /{upload_id}/{format}/product:
     parameters:
-    - name: upload_id
-      in: path
-      description: The upload workspace ID.
-      required: true
-      schema:
-        type: integer
-    - name: format
-      in: path
-      description: The compilation output format.
-      required: true
-      schema:
-        type: string
+    - $ref: '#/components/parameters/upload_id'
+    - $ref: '#/components/parameters/format'
     get:
       operationId: getCompilationProduct
       responses:
