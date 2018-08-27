@@ -64,10 +64,16 @@ paths:
   /{upload_id}/{format}/log:
     get:
       operationId: getCompilationLog
+      responses:
+        '200':
+          description: OK
   
   /{upload_id}/{format}/product:
     get:
       operationId: getCompilationProduct
+      responses:
+        '200':
+          description: OK
 
   /task/{uuid}:
     get:
