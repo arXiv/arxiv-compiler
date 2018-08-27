@@ -1,0 +1,56 @@
+openapi: "3.0.0"
+info:
+  version: "0.1"
+  title: "arXiv Compliler Service"
+  contact:
+    name: "arXiv API Team"
+    email: nextgen@arxiv.org
+  license:
+    name: MIT
+
+paths:
+  /status:
+    get:
+      operationId: getServiceStatus
+      summary: |
+        Get information about the current status of file management service.
+      responses:
+        '200':
+          description: OK
+		# TODO: specify error codes
+
+  /{upload_id}:
+    get:
+      operationId: getCompilationInfo
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'resources/compilationInfo.json'
+
+
+  /{upload_id}/{format}:
+    get:
+      operationId: getCompilationInfo
+    post:
+      operationId: requestCompilation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'resources/requestCompilation.json'
+
+  /{upload_id}/{format}/log:
+    get:
+      operationId: getCompilationLog
+  
+  /{upload_id}/{format}/product:
+    get:
+      operationId: getCompilationProduct
+
+  /task/{uuid}:
+    get:
+      operationId: getTaskStatus
