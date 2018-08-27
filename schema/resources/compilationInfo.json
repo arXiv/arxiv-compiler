@@ -11,31 +11,11 @@
     },
     "products": {
       "additionalProperties": {
-      "type": "string",
-          "properites": {
-            "content": {"type": "string"},
-            "log": {"type": "string"},
-            "status": {
-              "description": "Current status of the upload processing task.",
-              "type": "string",
-              "enum": ["FAILED", "SUCCEEDED", "CANCELLED", "PENDING", "IN_PROGRESS"]
-            },
-            "md5": {
-              "description": "The md5 checksum of the upload bundle at time of compilation.",
-              "type": "string"
-            },
-            "timestamp": {
-              "description": "The date-time of the compilation.",
-              "type": "string",
-              "format": "datetime"
-            }
-          }
+        "type": "string",
+        "properties": {
+          "$ref" : "CompilationProduct.json"       
         }
-      },
-    "timestamp": {
-      "description": "The date-time of the status check.",
-      "type": "string",
-      "format": "datetime"
+      }
     }
   }
 }

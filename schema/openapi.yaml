@@ -23,6 +23,7 @@ paths:
   /{upload_id}:
     get:
       operationId: getCompilationInfo
+      description: Return information about all compilations requested for the upload workspace.
       responses:
         '200':
           description: OK
@@ -77,4 +78,7 @@ paths:
               schema:
                 $ref: 'resources/CompilationProduct.json'
 				'301':
-          description: Redirect to /{upload_id}/{format}
+          description: With the task complete, redirect to the completed object.
+          headers:
+            Location:
+              description: The URL for the successfully completed object.
