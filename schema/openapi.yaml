@@ -8,6 +8,16 @@ info:
   license:
     name: MIT
 
+components:
+  parameters:
+    upload_id:
+      name: upload_id
+      in: path
+      description: The upload workspace ID.
+      required: true
+      schema:
+        type: integer
+
 paths:
   /status:
     get:
@@ -22,12 +32,7 @@ paths:
 
   /{upload_id}:
     parameters:
-    - name: upload_id
-      in: path
-      description: The upload workspace ID.
-      required: true
-      schema:
-        type: integer
+    - $ref: '#/components/parameters/upload_id'
     get:
       operationId: getCompilationInfo
       description: Return information about all compilations requested for the upload workspace.
@@ -42,12 +47,7 @@ paths:
 
   /{upload_id}/{format}:
     parameters:
-    - name: upload_id
-      in: path
-      description: The upload workspace ID.
-      required: true
-      schema:
-        type: integer
+    - $ref: '#/components/parameters/upload_id'
     - name: format
       in: path
       description: The compilation output format.
