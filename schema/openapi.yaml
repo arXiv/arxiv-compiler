@@ -56,8 +56,10 @@ paths:
               $ref: 'resources/requestCompilation.json'
       responses:
         '202': 
-          description: Accepted for compilation. Location header defines URL.
-          # TODO: Figure out how to properly spec Location header
+          description: Accepted for compilation.
+          headers:
+            Location:
+              description: The URL for the compilation task.
 
   /{upload_id}/{format}/log:
     get:
