@@ -79,7 +79,7 @@ paths:
             application/json:
               schema:
                 $ref: 'resources/CompilationProduct.json'
-				'301':
+        '301':
           description: With the task complete, redirect to the completed object.
           headers:
             Location:
