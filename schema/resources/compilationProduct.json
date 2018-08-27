@@ -1,0 +1,47 @@
+{
+  "title": "Compilation Product",
+  "description": "Describes the compilation and outputs for an upload, along with times for the process.",
+  "additionalProperties": false,
+  "required": ["content", "log", "status", "md5", "create_datetime"],
+  "type": "object",
+  "properties": {
+    "content": {
+      "type": "string",
+      "description": "URL of the compiled content"
+    },
+    "log": {
+      "type": "string",
+      "description": "URL of the compilation log"
+    },
+    "status": {
+      "description": "Current status of the compilation task.",
+      "type": "string",
+      "enum": ["FAILED", "SUCCEEDED", "IN_PROGRESS"]
+    },
+    "md5": {
+      "description": "The md5 checksum of the upload bundle at time of compilation.",
+      "type": "string"
+    },
+
+    "compilation_requested": {
+      "description": "The date-time that compilation was requested.",
+      "type": "string",
+      "format": "datetime"
+    },
+    "compilation_start": {
+      "description": "The date-time that compilation started.",
+      "type": "string",
+      "format": "datetime"
+    },
+    "compilation_end": {
+      "description": "The date-time that compilation ended.",
+      "type": "string",
+      "format": "datetime"
+    },
+    "source_updated": {
+      "description": "The date-time when the source package was updated.",
+      "type": "string",
+      "format": "datetime"
+    }
+  }
+}

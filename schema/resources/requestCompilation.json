@@ -1,0 +1,9 @@
+{
+  "title": "Compilation Request",
+  "description": "Describes the compilation request.",
+  "additionalProperties": false,
+  "properties": {
+    "force": {"type": "boolean"},
+    "compiler": {"type": "string"}
+  } 
+}
