@@ -63,7 +63,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'resources/CompilationProduct.json'
+                $ref: 'resources/compilationProduct.json'
         '303':
           description: Redirect to getTaskStatus for the compilation.
         '404':
@@ -121,7 +121,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'resources/CompilationProduct.json'
+                $ref: 'resources/compilationProduct.json'
         '301':
           description: With the task complete, redirect to the completed object.
           headers:
