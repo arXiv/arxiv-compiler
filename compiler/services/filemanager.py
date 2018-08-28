@@ -20,8 +20,6 @@ from requests.packages.urllib3.util.retry import Retry
 from arxiv import status
 from werkzeug.datastructures import FileStorage
 
-from submit.domain import UploadStatus, FileStatus, Error
-
 
 class RequestFailed(IOError):
     """The file management service returned an unexpected status code."""
@@ -108,31 +106,6 @@ class FileManagementService(object):
         self._endpoint = endpoint
         self._session.headers.update(headers)
 
-    def _parse_upload_status(self, data: dict) -> UploadStatus:
-        return UploadStatus(
-            identifier=data['identifier'],
-            checksum=data['checksum'],
-            size=data['size'],
-            file_list=[FileStatus(
-                path=file_data['path'],
-                name=file_data['name'],
-                file_type=file_data['file_type'],
-                added=dateutil.parser.parse(file_data['added']),
-                size=int(file_data['size']),
-                ancillary=bool(file_data['ancillary']),
-                errors=[Error(
-                    type=error_data['type'],
-                    message=error_data['message'],
-                    more_info=error_data['more_info']
-                ) for error_data in file_data['errors']]
-            ) for file_data in data['file_list']],
-            errors=[Error(
-                type=error_data['type'],
-                message=error_data['message'],
-                more_info=error_data['more_info']
-            ) for error_data in data['errors']]
-        )
-
     def _path(self, path: str, query: dict = {}) -> str:
         o = urlparse(self._endpoint)
         path = path.lstrip('/')
@@ -187,30 +160,6 @@ class FileManagementService(object):
     def get_service_status(self) -> dict:
         """Get the status of the file management service."""
         return self.request('get', 'status')
-
-
-    def get_upload_status(self, upload_id: str) -> Tuple[UploadStatus, dict]:
-        """
-        Retrieve metadata about an accepted and processed upload package.
-
-        Parameters
-        ----------
-        upload_id : str
-            Unique long-lived identifier for the upload.
-
-        Returns
-        -------
-        dict
-            A description of the upload package.
-        dict
-            Response headers.
-
-        """
-        data, headers = self.request('get', f'/{upload_id}')
-        upload_status = self._parse_upload_status(data)
-        return upload_status, headers
-
-
 
     def get_upload_content(self, upload_id: str) -> Tuple[Download, dict]:
         """
