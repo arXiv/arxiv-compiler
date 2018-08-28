@@ -3,20 +3,28 @@ import subprocess
 import tarfile
 from tempfile import TemporaryDirectory
 
+from flask import current_app
+from arxiv.base import logging
+
 from compiler.services.filemanager import FileManagementService
 
-ENDPOINT = ''
+logger = logging.getLogger(__name__)
 
-def compile_upload(upload_id: str):
-    fms = FileManagementService(ENDPOINT)
-    _, headers = fms.check_upload_content_exists(upload_id)
-    etag = headers['ETag']
+def compile_upload(upload_id: str, output_format: str='pdf', 
+                   endpoint: Optional[str]=None,
+                   preferred_compiler: Optional[str]=None):
+
+    if endpoint is None:
+        image = current_app.config['COMPILER_ENDPOINT']
+
+    fms = FileManagementService(endpoint)
 
     body, headers = fms.get_upload_content(upload_id)
+    etag = headers['ETag']
 
     with TemporaryDirectory(prefix='arxiv') as source_dir,
          TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=body) as tar:
+        with tarfile.open(fileobj=body, mode='r:gz') as tar:
             tar.extractall(path=source_dir)
 
         compile_source(source_dir, output_dir)
@@ -24,7 +32,7 @@ def compile_upload(upload_id: str):
         # TODO: upload the output somewhere(?)
 
 
-def compile_source(source_dir: str, output_dir: str, image: Optional[str]):
+def compile_source(source_dir: str, output_dir: str, image: Optional[str]=None):
     if image is None:
         image = current_app.config['COMPILER_DOCKER_IMAGE']
 
