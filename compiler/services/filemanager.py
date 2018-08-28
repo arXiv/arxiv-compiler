@@ -139,7 +139,16 @@ class FileManagementService(object):
 
     def request(self, method: str, path: str, expected_code: int = 200, **kw) \
             -> Tuple[dict, dict]:
-        """Perform an HTTP request, and handle any exceptions."""
+        """
+        Perform an HTTP request, and handle any exceptions.
+
+        Returns
+        -------
+        dict
+            Response content.
+        dict
+            Response headers.
+        """
         resp = self._make_request(method, path, expected_code, **kw)
 
         # There should be nothing in a 204 response.
@@ -179,3 +188,21 @@ class FileManagementService(object):
 
         """
         return self.request_file(f'/{upload_id}/content')
+
+    def check_upload_content_exists(self, upload_id: str) -> Tuple[dict, dict]:
+        """
+        Verifies that upload content exists.
+
+        Parameters
+        ------------
+        upload_id: str
+
+        Returns
+        ---------
+        dict
+            Response content.
+        dict
+            Response headers.
+        """
+
+        return self.request('head', f'/{upload_id}/content')
