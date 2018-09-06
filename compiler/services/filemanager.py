@@ -55,6 +55,10 @@ class Oversize(BadRequest):
     """The upload was too large."""
 
 
+class NotFound(BadRequest):
+    """The referenced upload does not exist."""
+
+
 class BadResponse(RequestFailed):
     """The response from the file management service was malformed."""
 
@@ -128,6 +132,8 @@ class FileManagementService(object):
             raise RequestForbidden(f'Forbidden: {resp.content}')
         elif resp.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE:
             raise Oversize(f'Too large: {resp.content}')
+        elif resp.status_code == status.HTTP_404_NOT_FOUND:
+            raise NotFound(f'No such upload workspace: {path}')
         elif resp.status_code >= status.HTTP_400_BAD_REQUEST:
             raise BadRequest(f'Bad request: {resp.content}',
                              data=resp.content)
