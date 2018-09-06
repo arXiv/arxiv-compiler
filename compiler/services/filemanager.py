@@ -11,13 +11,13 @@ A key requirement for this integration is the ability to stream uploads to
 the file management service as they are being received by this UI application.
 """
 from functools import wraps
-from typing import Tuple
+from typing import MutableMapping, Tuple
 import json
 from urllib.parse import urlparse, urlunparse, urlencode
 import dateutil.parser
 
 import requests
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 from werkzeug.datastructures import FileStorage
 
 from arxiv import status
@@ -110,7 +110,7 @@ class FileManagementService(object):
     def _path(self, path: str, query: dict = {}) -> str:
         o = urlparse(self._endpoint)
         path = path.lstrip('/')
-        return urlunparse((
+        return urlunparse(( # type: ignore
             o.scheme, o.netloc, f"{o.path}{path}",
             None, urlencode(query), None
         ))
@@ -142,7 +142,7 @@ class FileManagementService(object):
         return resp
 
     def request(self, method: str, path: str, expected_code: int = 200, **kw) \
-            -> Tuple[dict, dict]:
+            -> Tuple[dict, MutableMapping]:
         """
         Perform an HTTP request, and handle any exceptions.
 
@@ -170,7 +170,7 @@ class FileManagementService(object):
     def get_service_status(self) -> dict:
         """Get the status of the file management service."""
         logger.debug('Get service status')
-        content, headers = self.request('get', 'status')
+        content, headers = self.request('get', 'status') # pylint: disable=unused-variable
         logger.debug('Got status response: %s', content)
         return content
 
@@ -213,7 +213,7 @@ class FileManagementService(object):
 
         """
         logger.debug('Get upload info for: %s', upload_id)
-        response, headers = self.request('head', f'/{upload_id}/content')
+        response, headers = self.request('head', f'/{upload_id}/content') # pylint: disable=unused-variable
         logger.debug('Got response with etag %s', headers['ETag'])
         return SourcePackageInfo(upload_id=upload_id, etag=headers['ETag'])
 

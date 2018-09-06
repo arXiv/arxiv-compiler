@@ -7,14 +7,12 @@ from typing import Optional, Tuple
 from flask import current_app
 from arxiv.base import logging
 
-from compiler.services.filemanager import FileManagementService
+import compiler.services.filemanager as filemanager
 
 logger = logging.getLogger(__name__)
 
 def compile_upload(upload_id: str, output_format: str='pdf', 
-                   fms_endpoint: Optional[str]=None,
-                   preferred_compiler: Optional[str]=None,
-                   output_endpoint: Optional[str]=None):
+                   preferred_compiler: Optional[str]=None):
     """
     Retrieves an upload, submits to the converter service, uploads results.
 
@@ -39,25 +37,13 @@ def compile_upload(upload_id: str, output_format: str='pdf',
     output_endpoint: str
         The API endpoint for uploading compiled files.
     """
-
-    if fms_endpoint is None:
-        fms_endpoint = current_app.config['FMS_ENDPOINT']
-
-    if output_endpoint is None:
-        output_endpoint = current_app.config['OUTPUT_ENDPOINT']
-
-
-    # 1. Retrieve the source package
-    fms = FileManagementService(fms_endpoint)
-
-    body, headers = fms.get_upload_content(upload_id)
-    etag = headers['ETag']
+    source_package = filemanager.get_upload_content(upload_id)
 
     # 2. Generate the compiled files
     # 3. Upload the results to output_endpoint
     with TemporaryDirectory(prefix='arxiv') as source_dir,\
          TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=body, mode='r:gz') as tar: # type: ignore
+        with tarfile.open(fileobj=source_package.stream, mode='r:gz') as tar: # type: ignore
             tar.extractall(path=source_dir)
 
         # 2. Generate the compiled files
@@ -72,7 +58,8 @@ def compile_source(source_dir: str, output_dir: str, image: Optional[str]=None):
     if image is None:
         image = current_app.config['COMPILER_DOCKER_IMAGE']
 
-    run_docker(image)#, volumes=[(source_dir, '/src'), (output_dir '/out')]
+    run_docker(image) # type: ignore
+    #, volumes=[(source_dir, '/src'), (output_dir '/out')]
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
