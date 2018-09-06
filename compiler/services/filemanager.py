@@ -10,15 +10,24 @@ for downstream processing, e.g. compilation.
 A key requirement for this integration is the ability to stream uploads to
 the file management service as they are being received by this UI application.
 """
+from functools import wraps
 from typing import Tuple
 import json
 from urllib.parse import urlparse, urlunparse, urlencode
 import dateutil.parser
+
 import requests
 from requests.packages.urllib3.util.retry import Retry
+from werkzeug.datastructures import FileStorage
 
 from arxiv import status
-from werkzeug.datastructures import FileStorage
+from arxiv.base import logging
+from arxiv.base.globals import get_application_config, get_application_global
+
+from ..domain import SourcePackageInfo, SourcePackage
+from ..util import ResponseStream
+
+logger = logging.getLogger(__name__)
 
 
 class RequestFailed(IOError):
@@ -56,18 +65,6 @@ class ConnectionFailed(IOError):
 
 class SecurityException(ConnectionFailed):
     """Raised when SSL connection fails."""
-
-
-class Download(object):
-    """Wrapper around response content."""
-
-    def __init__(self, response: requests.Response) -> None:
-        """Initialize with a :class:`requests.Response` object."""
-        self._response = response
-
-    def read(self) -> bytes:
-        """Read response content."""
-        return self._response.content
 
 
 class FileManagementService(object):
@@ -118,6 +115,7 @@ class FileManagementService(object):
                       **kw) -> requests.Response:
         try:
             resp = getattr(self._session, method)(self._path(path), **kw)
+            logger.debug('Got response %s', resp)
         except requests.exceptions.SSLError as e:
             raise SecurityException('SSL failed: %s' % e) from e
         except requests.exceptions.ConnectionError as e:
@@ -159,18 +157,18 @@ class FileManagementService(object):
         except json.decoder.JSONDecodeError as e:
             raise BadResponse('Could not decode: {resp.content}') from e
 
-    def request_file(self, path: str, expected_code: int = 200, **kw) \
-            -> Tuple[Download, dict]:
-        """Perform a GET request for a file, and handle any exceptions."""
-        kw.update({'stream': True})
-        resp = self._make_request('get', expected_code, **kw)
-        return Download(resp), resp.headers
+    def set_auth_token(self, token: str) -> None:
+        """Set the authn/z token to use in subsequent requests."""
+        self._session.headers.update({'Authorization': token})
 
     def get_service_status(self) -> dict:
         """Get the status of the file management service."""
-        return self.request('get', 'status')
+        logger.debug('Get service status')
+        content, headers = self.request('get', 'status')
+        logger.debug('Got status response: %s', content)
+        return content
 
-    def get_upload_content(self, upload_id: str) -> Tuple[Download, dict]:
+    def get_upload_content(self, upload_id: str) -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
@@ -181,17 +179,23 @@ class FileManagementService(object):
 
         Returns
         -------
-        :class:`Download`
+        :class:`SourcePackage`
             A ``read() -> bytes``-able wrapper around response content.
-        dict
-            Response headers.
 
         """
-        return self.request_file(f'/{upload_id}/content')
+        logger.debug('Get upload content for: %s', upload_id)
+        response = self._make_request('get', f'/{upload_id}/content',
+                                      status.HTTP_200_OK)
+        logger.debug('Got response with status %s', response.status_code)
+        return SourcePackage(
+            upload_id=upload_id,
+            stream=ResponseStream(response.iter_content(chunk_size=None)),
+            etag=response.headers['ETag']
+        )
 
-    def check_upload_content_exists(self, upload_id: str) -> Tuple[dict, dict]:
+    def get_upload_info(self, upload_id: str) -> SourcePackageInfo:
         """
-        Verifies that upload content exists.
+        Get the current state of the source package/upload workspace.
 
         Parameters
         ------------
@@ -199,10 +203,54 @@ class FileManagementService(object):
 
         Returns
         ---------
-        dict
-            Response content.
-        dict
-            Response headers.
-        """
+        :class:`SourcePackageInfo`
 
-        return self.request('head', f'/{upload_id}/content')
+        """
+        logger.debug('Get upload info for: %s', upload_id)
+        response, headers = self.request('head', f'/{upload_id}/content')
+        logger.debug('Got response with etag %s', headers['ETag'])
+        return SourcePackageInfo(upload_id=upload_id, etag=headers['ETag'])
+
+
+def init_app(app: object = None) -> None:
+    """Set default configuration parameters for an application instance."""
+    config = get_application_config(app)
+    config.setdefault('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
+    config.setdefault('FILE_MANAGER_VERIFY', True)
+
+
+def get_session(app: object = None) -> FileManagementService:
+    """Get a new session with the file management endpoint."""
+    config = get_application_config(app)
+    endpoint = config.get('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
+    verify_cert = config.get('FILE_MANAGER_VERIFY', True)
+    logger.debug('Create FileManagementService with endpoint %s', endpoint)
+    return FileManagementService(endpoint, verify_cert=verify_cert)
+
+
+def current_session() -> FileManagementService:
+    """Get/create :class:`.FileManagementService` for this context."""
+    g = get_application_global()
+    if not g:
+        return get_session()
+    elif 'filemanager' not in g:
+        g.filemanager = get_session()   # type: ignore
+    return g.filemanager    # type: ignore
+
+
+@wraps(FileManagementService.set_auth_token)
+def set_auth_token(token: str) -> None:
+    """See :meth:`FileManagementService.set_auth_token`."""
+    return current_session().set_auth_token(token)
+
+
+@wraps(FileManagementService.get_upload_content)
+def get_upload_content(upload_id: str) -> SourcePackage:
+    """See :meth:`FileManagementService.get_upload_content`."""
+    return current_session().get_upload_content(upload_id)
+
+
+@wraps(FileManagementService.get_upload_info)
+def get_upload_info(upload_id: str) -> SourcePackageInfo:
+    """See :meth:`FileManagementService.upload_package`."""
+    return current_session().get_upload_info(upload_id)
