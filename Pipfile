@@ -11,6 +11,8 @@ requests = "*"
 [dev-packages]
 jsonschema = "*"
 openapi-spec-validator = "*"
+mypy = "*"
+pylint = "*"
 
 [requires]
 python_version = "3.6"
