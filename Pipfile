@@ -4,10 +4,14 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-openapi-spec-validator = "*"
-jsonschema = "*"
+arxiv-base = "*"
+flask = "*"
+requests = "*"
+arxiv-auth = "==0.1.0rc6"
 
 [dev-packages]
+jsonschema = "*"
+openapi-spec-validator = "*"
 
 [requires]
 python_version = "3.6"
