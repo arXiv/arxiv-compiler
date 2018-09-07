@@ -11,6 +11,6 @@ class ResponseStream(object):
         """Set the bytes-producing iterator."""
         self._iterator = iterator
 
-    def read(self) -> bytes:
+    def read(self) -> Iterator:
         """Get bytes from the stream."""
         return self._iterator

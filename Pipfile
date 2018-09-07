@@ -8,10 +8,15 @@ arxiv-base = "*"
 flask = "*"
 requests = "*"
 arxiv-auth = "==0.1.0rc6"
+"boto3" = "*"
+moto = "==1.3.4"
 
 [dev-packages]
 jsonschema = "*"
 openapi-spec-validator = "*"
+"nose2" = "*"
+coveralls = "*"
+coverage = "*"
 
 [requires]
 python_version = "3.6"
