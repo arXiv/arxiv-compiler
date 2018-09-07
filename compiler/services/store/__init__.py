@@ -2,6 +2,17 @@
 Content store for compiled representation of paper.
 
 Uses S3 as the underlying storage facility.
+
+The intended use pattern is that a client (e.g. API controller) can check for
+a compilation using the source ID (e.g. file manager upload_id), the format,
+and the checksum of the source package (as reported by the FM service) before
+taking any IO-intensive actions. See :meth:`StoreSession.get_status`.
+
+Similarly, if a client needs to verify that a compilation product is available
+for a specific source checksum, they would use :meth:`StoreSession.get_status`
+before calling :meth:`StoreSession.retrieve`. For that reason,
+:meth:`StoreSession.retrieve` is agnostic about checksums. This cuts down on
+an extra GET request to S3 every time we want to get a compiled resource.
 """
 import json
 from typing import Tuple, Optional, Dict, Union, List, Any, Mapping
@@ -42,6 +53,10 @@ class StoreSession(object):
         self.endpoint_url = endpoint_url
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
+
+        # Compilation status is cached here, in case we're taking several
+        # status-related actions in one request/execution context. Saves us
+        # GET requests, which saves $$$.
         self._status: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {}
 
         # Only add credentials to the client if they are explicitly set.
