@@ -1,0 +1,37 @@
+{
+  "title": "Compilation status",
+  "description": "Describes the state of compilation products in the store",
+  "additionalProperties": false,
+  "required": ["compilations"],
+  "type": "object",
+  "properties": {
+    "compilations": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "source_checksum": {
+            "description": "Checksum of the source tarball from the file management service.",
+            "type": "string"
+          },
+          "task_id": {
+            "description": "If a task exists for this compilation, the unique task ID.",
+            "oneOf": [
+              {"type": "string"},
+              {"type": "null"}
+            ]
+          },
+          "status": {
+            "description": "The status of the compilation. If `current`, the current file corresponding to the format of this compilation status is the product of this compilation.",
+            "type": "string",
+            "enum": ["current", "in_progress", "failed"]
+          },
+          "format": {
+            "description": "The target format of the compilation.",
+            "type": "string",
+            "enum": ["pdf", "dvi", "ps"]
+          }
+        }
+      }
+    }
+  }
+}

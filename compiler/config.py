@@ -34,3 +34,14 @@ FILE_MANAGER_ENDPOINT = os.environ.get(
     f'/{FILE_MANAGER_PATH}'
 )
 FILE_MANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
+
+# Configuration for object store.
+S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
+S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
+S3_BUCKETS = [
+    ('arxiv', 'arxiv-compiler'),
+    ('submission', 'arxiv-compiler-submission')
+]
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
+AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')

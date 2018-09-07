@@ -194,7 +194,7 @@ class FileManagementService(object):
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
         return SourcePackage(
-            upload_id=upload_id,
+            source_id=upload_id,
             stream=ResponseStream(response.iter_content(chunk_size=None)),
             etag=response.headers['ETag']
         )
@@ -215,7 +215,7 @@ class FileManagementService(object):
         logger.debug('Get upload info for: %s', upload_id)
         response, headers = self.request('head', f'/{upload_id}/content')
         logger.debug('Got response with etag %s', headers['ETag'])
-        return SourcePackageInfo(upload_id=upload_id, etag=headers['ETag'])
+        return SourcePackageInfo(source_id=upload_id, etag=headers['ETag'])
 
 
 def init_app(app: object = None) -> None:

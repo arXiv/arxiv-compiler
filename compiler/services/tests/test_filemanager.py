@@ -26,7 +26,7 @@ class TestGetUploadInfo(TestCase):
         info = filemanager.get_upload_info(upload_id)
         self.assertIsInstance(info, domain.SourcePackageInfo)
         self.assertEqual(info.etag, etag)
-        self.assertEqual(info.upload_id, upload_id)
+        self.assertEqual(info.source_id, upload_id)
 
     @mock.patch(f'{filemanager.__name__}.requests.Session')
     def test_get_upload_info_nonexistant(self, mock_Session):
@@ -66,7 +66,7 @@ class TestGetUpload(TestCase):
         info = filemanager.get_upload_content(upload_id)
         self.assertIsInstance(info, domain.SourcePackage)
         self.assertEqual(info.etag, etag)
-        self.assertEqual(info.upload_id, upload_id)
+        self.assertEqual(info.source_id, upload_id)
         self.assertIsInstance(info.stream, util.ResponseStream)
         self.assertEqual(info.stream.read(), content)
 
