@@ -30,12 +30,8 @@ def compile_upload(upload_id: str, output_format: str='pdf',
     output_format: str
         The desired output format. Default: "pdf". Other potential values:
         "dvi", "html", "ps"
-    fms_endpoint: str
-        The API endpoint for the FileManagementService.
     preferred_compiler: str
         The preferred tex compiler for use with the source package.
-    output_endpoint: str
-        The API endpoint for uploading compiled files.
     """
     source_package = filemanager.get_upload_content(upload_id)
 
