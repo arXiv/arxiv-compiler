@@ -1,6 +1,9 @@
 """Tests for :mod:`compiler.compiler`."""
 
+import importlib_resources
+from tempfile import TemporaryDirectory
 from unittest import TestCase, mock
+
 from arxiv import status
 
 from .. import compiler
@@ -14,9 +17,9 @@ class TestCompileUpload(TestCase):
         """Get info for an upload workspace that exists."""
         etag = 'asdf12345checksum'
         upload_id = '123456'
-        with open('test.tar', 'rb') as testfile:
+        with importlib_resources.open_binary('compiler.tests', 'test.tar') as testfile:
             content = testfile.read()
-        with open('test.pdf', 'rb') as test_outfile:
+        with importlib_resources.open_binary('compiler.tests', 'test.pdf') as test_outfile:
             product_content = test_outfile.read()
 
         mock_content.return_value = domain.SourcePackage(
@@ -26,9 +29,9 @@ class TestCompileUpload(TestCase):
         )
 
     def test_compile_source(self):
-        with open('test.tar', 'rb') as testfile:
+        with importlib_resources.open_binary('compiler.tests', 'test.tar') as testfile:
             content = testfile.read()
-        with open('test.pdf', 'rb') as test_outfile:
+        with importlib_resources.open_binary('compiler.tests', 'test.pdf') as test_outfile:
             product_content = test_outfile.read()
 
         with TemporaryDirectory(prefix='arxiv') as source_dir,\
