@@ -18,10 +18,10 @@ def compile_upload(upload_id: str, output_format: str='pdf',
 
     More or less, the ``main()`` function for compiler. It operates in a
     three-step process:
-    1.  Retrieve the source package for ``upload_id`` from 
-        ``FileManagementService``.
+    1.  Retrieve the source package for ``upload_id`` from the file management
+        service.
     2.  Use the ``preferred_compiler`` to generate ``output_format``.
-    3.  Upload the results to ``output_endpoint``.
+    3.  Upload the results.
 
     Parameters
     ------------
