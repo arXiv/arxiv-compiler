@@ -12,7 +12,7 @@ from .. import domain, util
 class TestCompileUpload(TestCase):
     """:func:`compiler.compile_upload` compiles the upload."""
 
-    @mock.patch(f'{compiler.__name__}.filemanager.get_content_upload_content')
+    @mock.patch(f'{compiler.__name__}.filemanager.get_upload_content')
     def test_get_upload_info(self, mock_content):
         """Get info for an upload workspace that exists."""
         etag = 'asdf12345checksum'
@@ -37,7 +37,7 @@ class TestCompileUpload(TestCase):
         with TemporaryDirectory(prefix='arxiv') as source_dir,\
              TemporaryDirectory(prefix='arxiv') as output_dir:
 
-            product = compiler.compile_source()
+            product = compiler.compile_source(source_dir, output_dir)
             self.assertIsInstance(product, domain.CompilationProduct)
             self.assertEqual(product.stream.read(), product_content)
 
