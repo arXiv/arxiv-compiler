@@ -17,10 +17,9 @@ class TestCompileUpload(TestCase):
         """Get info for an upload workspace that exists."""
         etag = 'asdf12345checksum'
         upload_id = '123456'
-        with importlib_resources.open_binary('compiler.tests', 'test.tar') as testfile:
-            content = testfile.read()
-        with importlib_resources.open_binary('compiler.tests', 'test.pdf') as test_outfile:
-            product_content = test_outfile.read()
+        content = importlib_resources.read_binary('compiler.tests', 'test.tar')
+        product_content = importlib_resources.read_binary('compiler.tests', 'test.pdf')
+            
 
         mock_content.return_value = domain.SourcePackage(
             source_id=upload_id,
@@ -29,10 +28,8 @@ class TestCompileUpload(TestCase):
         )
 
     def test_compile_source(self):
-        with importlib_resources.open_binary('compiler.tests', 'test.tar') as testfile:
-            content = testfile.read()
-        with importlib_resources.open_binary('compiler.tests', 'test.pdf') as test_outfile:
-            product_content = test_outfile.read()
+        content = importlib_resources.read_binary('compiler.tests', 'test.tar')
+        product_content = importlib_resources.read_binary('compiler.tests', 'test.pdf')
 
         with TemporaryDirectory(prefix='arxiv') as source_dir,\
              TemporaryDirectory(prefix='arxiv') as output_dir:
