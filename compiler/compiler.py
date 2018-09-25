@@ -1,3 +1,4 @@
+import os
 import os.path
 import subprocess
 import tarfile
@@ -7,23 +8,23 @@ from typing import Optional, Tuple
 from flask import current_app
 from arxiv.base import logging
 
-from compiler.services.filemanager import FileManagementService
+from .domain import CompilationProduct
+
+import compiler.services.filemanager as filemanager
 
 logger = logging.getLogger(__name__)
 
-def compile_upload(source_id: str, output_format: str='pdf', 
-                   fms_endpoint: Optional[str]=None,
-                   preferred_compiler: Optional[str]=None,
-                   output_endpoint: Optional[str]=None):
+def compile_upload(source_id: str, output_format: str='pdf',
+                   preferred_compiler: Optional[str]=None):
     """
     Retrieves an upload, submits to the converter service, uploads results.
 
     More or less, the ``main()`` function for compiler. It operates in a
     three-step process:
-    1.  Retrieve the source package for ``source_id`` from 
-        ``FileManagementService``.
+    1.  Retrieve the source package for ``source_id`` from the file management
+        service.
     2.  Use the ``preferred_compiler`` to generate ``output_format``.
-    3.  Upload the results to ``output_endpoint``.
+    3.  Upload the results.
 
     Parameters
     ------------
@@ -32,39 +33,30 @@ def compile_upload(source_id: str, output_format: str='pdf',
     output_format: str
         The desired output format. Default: "pdf". Other potential values:
         "dvi", "html", "ps"
-    fms_endpoint: str
-        The API endpoint for the FileManagementService.
     preferred_compiler: str
         The preferred tex compiler for use with the source package.
-    output_endpoint: str
-        The API endpoint for uploading compiled files.
     """
-
-    if fms_endpoint is None:
-        fms_endpoint = current_app.config['FMS_ENDPOINT']
-
-    if output_endpoint is None:
-        output_endpoint = current_app.config['OUTPUT_ENDPOINT']
-
-
-    # 1. Retrieve the source package
-    fms = FileManagementService(fms_endpoint)
-
-    body, headers = fms.get_upload_content(source_id)
-    etag = headers['ETag']
+    source_package = filemanager.get_upload_content(source_id)
 
     # 2. Generate the compiled files
     # 3. Upload the results to output_endpoint
     with TemporaryDirectory(prefix='arxiv') as source_dir,\
          TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=body, mode='r:gz') as tar: # type: ignore
+        with tarfile.open(fileobj=source_package.stream, mode='r:gz') as tar:  # type: ignore
             tar.extractall(path=source_dir)
 
         # 2. Generate the compiled files
         compile_source(source_dir, output_dir)
 
         # 3. Upload the results to output_endpoint
-        # TODO: upload the output somewhere(?)
+        # 3a. gather the candidate products based on output_format
+        products = [f for f in os.listdir(output_dir)
+                        if f.endswith(output_format)]
+
+        if len(products) != 1:
+            raise RuntimeWarning("Multiple compilation products")
+
+        # TODO: 3b. upload the output somewhere(?)
 
 
 
@@ -72,14 +64,14 @@ def compile_source(source_dir: str, output_dir: str, image: Optional[str]=None):
     if image is None:
         image = current_app.config['COMPILER_DOCKER_IMAGE']
 
-    run_docker(image)#, volumes=[(source_dir, '/src'), (output_dir '/out')]
+    run_docker(image, volumes=[(source_dir, '/src'), (output_dir, '/out')])
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
                args: str = '', daemon: bool = False) -> subprocess.CompletedProcess:
     """
     Run a generic docker image.
-    
+
     In our uses, we wish to set the userid to that of running process (getuid)
     by default. Additionally, we do not expose any ports for running services
     making this a rather simple function.
