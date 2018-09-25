@@ -58,6 +58,24 @@ paths:
               schema:
                 $ref: 'resources/compilationInfo.json'
 
+  /:
+    post:
+      operationId: requestCompilation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: 'resources/requestCompilation.json'
+      responses:
+        '202':
+          description: Accepted for compilation.
+          headers:
+            Location:
+              description: The URL for the compilation task.
+              schema:
+                type: string
+
 
   /{source_id}/{checksum}/{format}:
     parameters:
@@ -76,22 +94,7 @@ paths:
           description: Redirect to getTaskStatus for the compilation.
         '404':
           description: No compilation has been requested.
-    post:
-      operationId: requestCompilation
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: 'resources/requestCompilation.json'
-      responses:
-        '202':
-          description: Accepted for compilation.
-          headers:
-            Location:
-              description: The URL for the compilation task.
-              schema:
-                type: string
+
 
   /{source_id}/{checksum}/{format}/log:
     parameters:
