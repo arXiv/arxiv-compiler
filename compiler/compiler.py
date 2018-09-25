@@ -1,3 +1,4 @@
+import os
 import os.path
 import subprocess
 import tarfile
@@ -6,6 +7,8 @@ from typing import Optional, Tuple
 
 from flask import current_app
 from arxiv.base import logging
+
+from .domain import CompilationProduct
 
 import compiler.services.filemanager as filemanager
 
@@ -46,7 +49,14 @@ def compile_upload(upload_id: str, output_format: str='pdf',
         compile_source(source_dir, output_dir)
 
         # 3. Upload the results to output_endpoint
-        # TODO: upload the output somewhere(?)
+        # 3a. gather the candidate products based on output_format
+        products = [f for f in os.listdir(output_dir) 
+                        if f.endswith(output_format)]
+
+        if len(products) != 1:
+            raise RuntimeWarning("Multiple compilation products")
+
+        # TODO: 3b. upload the output somewhere(?)
 
 
 
@@ -54,8 +64,7 @@ def compile_source(source_dir: str, output_dir: str, image: Optional[str]=None):
     if image is None:
         image = current_app.config['COMPILER_DOCKER_IMAGE']
 
-    run_docker(image) # type: ignore
-    #, volumes=[(source_dir, '/src'), (output_dir '/out')]
+    run_docker(image, volumes=[(source_dir, '/src'), (output_dir, '/out')])
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],

@@ -48,18 +48,21 @@ class TestCompileUpload(TestCase):
             if result.returncode:
                 raise RuntimeError(f"Could not compile {DOCKER_IMAGE}: {cmd}")
             
-            # mock the current_app
-            config_dict =  {'COMPILER_DOCKER_IMAGE': DOCKER_IMAGE}
+            # mock the current_app context
             mock_app.return_value = mock.MagicMock(config=mock.MagicMock())
+            config_dict =  {'COMPILER_DOCKER_IMAGE': DOCKER_IMAGE}
             mock_app.config.__getitem__.side_effect = config_dict.__getitem__
 
             # Create temporary directories and attempt to use the test Dockerfile
             with TemporaryDirectory(prefix='arxiv') as source_dir,\
                 TemporaryDirectory(prefix='arxiv') as output_dir:
 
+                # write the pass-through file
                 with open(os.path.join(source_dir, "test.pdf"), 'wb') as outfile:
                     outfile.write(product_content)
 
-                product = compiler.compile_source(source_dir, output_dir)
-                self.assertIsInstance(product, domain.CompilationProduct)
-                self.assertEqual(product.stream.read(), product_content)
+                compiler.compile_source(source_dir, output_dir)
+
+                # verify the pass-through file
+                with open(os.path.join(output_dir, "test.pdf"), 'rb') as outfile:
+                    self.assertEqual(product_content, outfile.read())
