@@ -34,9 +34,6 @@ class CompilationStatus(NamedTuple):
     source_checksum: str
     """Checksum of the source tarball from the file management service."""
 
-    task_id: str
-    """If a task exists for this compilation, the unique task ID."""
-
     status: 'CompilationStatus.Statuses'
     """
     The status of the compilation.
@@ -46,6 +43,9 @@ class CompilationStatus(NamedTuple):
     If :attr:`COMPLETED`, the current file corresponding to the format of this
     compilation status is the product of this compilation.
     """
+
+    task_id: Optional[str] = None
+    """If a task exists for this compilation, the unique task ID."""
 
     @property
     def ext(self) -> str:

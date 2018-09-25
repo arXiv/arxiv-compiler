@@ -3,8 +3,8 @@
 from unittest import TestCase, mock
 from arxiv import status
 
-from .. import filemanager
-from ... import domain, util
+from ... import filemanager
+from .... import domain, util
 
 
 class TestGetUploadInfo(TestCase):
@@ -63,7 +63,7 @@ class TestGetUpload(TestCase):
                 )
             )
         )
-        info = filemanager.get_upload_content(source_id)
+        info = filemanager.get_source_content(source_id)
         self.assertIsInstance(info, domain.SourcePackage)
         self.assertEqual(info.etag, etag)
         self.assertEqual(info.source_id, source_id)
@@ -82,4 +82,4 @@ class TestGetUpload(TestCase):
             )
         )
         with self.assertRaises(filemanager.NotFound):
-            filemanager.get_upload_content(source_id)
+            filemanager.get_source_content(source_id)

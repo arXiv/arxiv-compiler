@@ -37,6 +37,11 @@ class DoesNotExist(RuntimeError):
     """The requested content does not exist."""
 
 
+def hash_content(body: bytes) -> str:
+    """Generate an encoded MD5 hash of a bytes."""
+    return b64encode(md5(body).digest()).decode('utf-8')
+
+
 class StoreSession(object):
     """Represents an object store session."""
 
@@ -78,10 +83,6 @@ class StoreSession(object):
     def _key(self, source_id: str, checksum: str,
              format: CompilationStatus.Formats) -> str:
         return f'{source_id}/{checksum}/{format.value}'
-
-    def _hash(self, body: bytes) -> str:
-        """Generate an encoded MD5 hash of a bytes."""
-        return b64encode(md5(body).digest()).decode('utf-8')
 
     def get_status(self, source_id: str, source_checksum: str,
                    format: CompilationStatus.Formats,
@@ -146,7 +147,7 @@ class StoreSession(object):
             self.client.put_object(
                 Body=body,
                 Bucket=self._get_bucket(bucket),
-                ContentMD5=self._hash(body),
+                ContentMD5=hash_content(body),
                 ContentType='application/json',
                 Key=key
             )
@@ -178,7 +179,7 @@ class StoreSession(object):
             self.client.put_object(
                 Body=body,
                 Bucket=self._get_bucket(bucket),
-                ContentMD5=self._hash(body),
+                ContentMD5=hash_content(body),
                 ContentType=product.status.content_type,
                 Key=key,
             )
@@ -249,7 +250,7 @@ class StoreSession(object):
             self.client.put_object(
                 Body=body,
                 Bucket=self._get_bucket(bucket),
-                ContentMD5=self._hash(body),
+                ContentMD5=hash_content(body),
                 ContentType='text/plain',
                 Key=key,
             )

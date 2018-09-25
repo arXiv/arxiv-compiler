@@ -19,6 +19,7 @@ pylint = "*"
 "nose2" = "*"
 coveralls = "*"
 coverage = "*"
+importlib-resources = "*"
 
 [requires]
 python_version = "3.6"

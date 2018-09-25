@@ -24,8 +24,8 @@ from arxiv import status
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
-from ..domain import SourcePackageInfo, SourcePackage
-from ..util import ResponseStream
+from ...domain import SourcePackageInfo, SourcePackage
+from ...util import ResponseStream
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +174,7 @@ class FileManagementService(object):
         logger.debug('Got status response: %s', content)
         return content
 
-    def get_upload_content(self, source_id: str) -> SourcePackage:
+    def get_source_content(self, source_id: str) -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
@@ -250,10 +250,10 @@ def set_auth_token(token: str) -> None:
     return current_session().set_auth_token(token)
 
 
-@wraps(FileManagementService.get_upload_content)
-def get_upload_content(source_id: str) -> SourcePackage:
-    """See :meth:`FileManagementService.get_upload_content`."""
-    return current_session().get_upload_content(source_id)
+@wraps(FileManagementService.get_source_content)
+def get_source_content(source_id: str) -> SourcePackage:
+    """See :meth:`FileManagementService.get_source_content`."""
+    return current_session().get_source_content(source_id)
 
 
 @wraps(FileManagementService.get_upload_info)
