@@ -28,8 +28,6 @@ class TestRequestCompilation(TestCase):
 
     def test_request_missing_parameter(self):
         """Request for a new compilation with missing parameter."""
-        task_id = 'task1234'
-
         with self.assertRaises(BadRequest):
             controllers.request_compilation(MultiDict({
                 'source_id': 1234,
