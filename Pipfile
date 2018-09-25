@@ -14,9 +14,12 @@ moto = "==1.3.4"
 [dev-packages]
 jsonschema = "*"
 openapi-spec-validator = "*"
+mypy = "*"
+pylint = "*"
 "nose2" = "*"
 coveralls = "*"
 coverage = "*"
+importlib_resources = "*"
 
 [requires]
 python_version = "3.6"
