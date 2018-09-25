@@ -94,11 +94,11 @@ class TestRequestCompilation(TestCase):
 
 
 class TestGetCompilationInfo(TestCase):
-    """Tests for :func:`controllers.get_compilation_info`."""
+    """Tests for :func:`controllers.get_info`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_info_completed(self, mock_store):
+    def test_get_info_completed(self, mock_store):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
@@ -111,7 +111,7 @@ class TestGetCompilationInfo(TestCase):
             task_id=task_id,
             source_checksum=checksum
         )
-        response_data = controllers.get_compilation_info(
+        response_data = controllers.get_info(
             source_id,
             checksum,
             format
@@ -121,7 +121,7 @@ class TestGetCompilationInfo(TestCase):
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_info_in_progress(self, mock_store):
+    def test_get_info_in_progress(self, mock_store):
         """Request for a compilation in progress."""
         task_id = 'task1234'
         source_id = 1234
@@ -134,7 +134,7 @@ class TestGetCompilationInfo(TestCase):
             task_id=task_id,
             source_checksum=checksum
         )
-        response_data = controllers.get_compilation_info(
+        response_data = controllers.get_info(
             source_id,
             checksum,
             format
@@ -145,7 +145,7 @@ class TestGetCompilationInfo(TestCase):
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_info_nonexistant(self, mock_store):
+    def test_get_info_nonexistant(self, mock_store):
         """Request for a nonexistant compilation."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
@@ -154,28 +154,28 @@ class TestGetCompilationInfo(TestCase):
         mock_store.get_status.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_compilation_info(source_id, checksum, format)
+            controllers.get_info(source_id, checksum, format)
 
 
 class TestGetCompilationStatus(TestCase):
-    """Tests for :func:`controllers.get_compilation_status`."""
+    """Tests for :func:`controllers.get_status`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_compilation_status_completed(self, mock_compiler):
+    def test_get_status_completed(self, mock_compiler):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
         format = 'pdf'
-        mock_compiler.get_compilation_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
             format=CompilationStatus.Formats.PDF,
             status=CompilationStatus.Statuses.COMPLETED,
             task_id=task_id,
             source_checksum=checksum
         )
-        response_data = controllers.get_compilation_status(task_id)
+        response_data = controllers.get_status(task_id)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_303_SEE_OTHER)
         self.assertIn(str(source_id), headers['Location'])
@@ -184,29 +184,29 @@ class TestGetCompilationStatus(TestCase):
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_compilation_status_in_progress(self, mock_compiler):
+    def test_get_status_in_progress(self, mock_compiler):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        mock_compiler.get_compilation_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
             format=CompilationStatus.Formats.PDF,
             status=CompilationStatus.Statuses.IN_PROGRESS,
             task_id=task_id,
             source_checksum=checksum
         )
-        response_data = controllers.get_compilation_status(task_id)
+        response_data = controllers.get_status(task_id)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
 
 
 class TestGetCompilationProduct(TestCase):
-    """Tests for :func:`controllers.get_compilation_product`."""
+    """Tests for :func:`controllers.get_product`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_product_completed(self, mock_store):
+    def test_get_product_completed(self, mock_store):
         """Request for a completed compilation product."""
         task_id = 'task1234'
         source_id = 1234
@@ -224,7 +224,7 @@ class TestGetCompilationProduct(TestCase):
                 source_checksum=checksum
             )
         )
-        response_data = controllers.get_compilation_product(
+        response_data = controllers.get_product(
             source_id,
             checksum,
             format
@@ -235,7 +235,7 @@ class TestGetCompilationProduct(TestCase):
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_product_nonexistant(self, mock_store):
+    def test_get_product_nonexistant(self, mock_store):
         """Request for a nonexistant compilation product."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
@@ -244,15 +244,15 @@ class TestGetCompilationProduct(TestCase):
         mock_store.retrieve.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_compilation_product(source_id, checksum, format)
+            controllers.get_product(source_id, checksum, format)
 
 
 class TestGetCompilationLog(TestCase):
-    """Tests for :func:`controllers.get_compilation_log`."""
+    """Tests for :func:`controllers.get_log`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_log_completed(self, mock_store):
+    def test_get_log_completed(self, mock_store):
         """Request log for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
@@ -270,7 +270,7 @@ class TestGetCompilationLog(TestCase):
                 source_checksum=checksum
             )
         )
-        response_data = controllers.get_compilation_log(
+        response_data = controllers.get_log(
             source_id,
             checksum,
             format
@@ -281,7 +281,7 @@ class TestGetCompilationLog(TestCase):
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
-    def test_get_compilation_log_nonexistant(self, mock_store):
+    def test_get_log_nonexistant(self, mock_store):
         """Request for a nonexistant compilation log."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
@@ -290,4 +290,4 @@ class TestGetCompilationLog(TestCase):
         mock_store.retrieve_log.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_compilation_log(source_id, checksum, format)
+            controllers.get_log(source_id, checksum, format)

@@ -32,11 +32,11 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
 
     if not force and info is not None:
         if info.status is CompilationStatus.Statuses.COMPLETED:
-            location = url_for('api.get_compilation_status',
+            location = url_for('api.get_status',
                                source_id=source_id, checksum=checksum,
                                format=format)
         else:
-            location = url_for('api.get_compilation_task',
+            location = url_for('api.get_task',
                                task_id=info.task_id)
         return {}, status.HTTP_303_SEE_OTHER, {'Location': location}
     task_id = compiler.create_compilation_task(
@@ -45,11 +45,11 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
         format,
         preferred_compiler=preferred_compiler
     )
-    location = url_for('api.get_task_status', task_id=task_id)
+    location = url_for('api.get_status', task_id=task_id)
     return {}, status.HTTP_202_ACCEPTED, {'Location': location}
 
 
-def get_compilation_info(source_id: int, checksum: str, format: str) \
+def get_info(source_id: int, checksum: str, format: str) \
         -> ResponseData:
     try:
         info = store.get_status(source_id, checksum, format)
@@ -57,19 +57,19 @@ def get_compilation_info(source_id: int, checksum: str, format: str) \
         raise NotFound('No such compilation') from e
     data = {'status': info.to_dict()}
     if info.status is CompilationStatus.Statuses.IN_PROGRESS:
-        location = url_for('api.get_task_status', task_id=info.task_id)
+        location = url_for('api.get_status', task_id=info.task_id)
         return data, status.HTTP_302_FOUND, {'Location': location}
     return data, status.HTTP_200_OK, {}
 
 
-def get_compilation_status(task_id: str) -> ResponseData:
+def get_status(task_id: str) -> ResponseData:
     try:
-        info = compiler.get_compilation_task(task_id)
+        info = compiler.get_task(task_id)
     except compiler.NoSuchTask as e:
         raise NotFound('No such compilation task') from e
     data = {'status': info.to_dict()}
     if info.status is CompilationStatus.Statuses.COMPLETED:
-        location = url_for('api.get_compilation_info',
+        location = url_for('api.get_info',
                            source_id=info.source_id,
                            checksum=info.source_checksum,
                            format=info.format.value)
@@ -77,7 +77,7 @@ def get_compilation_status(task_id: str) -> ResponseData:
     return data, status.HTTP_200_OK, {}
 
 
-def get_compilation_product(source_id: int, checksum: str, format: str) \
+def get_product(source_id: int, checksum: str, format: str) \
         -> ResponseData:
     try:
         product = store.retrieve(source_id, checksum, format)
@@ -86,7 +86,7 @@ def get_compilation_product(source_id: int, checksum: str, format: str) \
     return product.stream, status.HTTP_200_OK, {'ETag': product.checksum}
 
 
-def get_compilation_log(source_id: int, checksum: str, format: str) \
+def get_log(source_id: int, checksum: str, format: str) \
         -> ResponseData:
     try:
         product = store.retrieve_log(source_id, checksum, format)
