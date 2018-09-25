@@ -4,7 +4,7 @@ Content store for compiled representation of paper.
 Uses S3 as the underlying storage facility.
 
 The intended use pattern is that a client (e.g. API controller) can check for
-a compilation using the source ID (e.g. file manager upload_id), the format,
+a compilation using the source ID (e.g. file manager source_id), the format,
 and the checksum of the source package (as reported by the FM service) before
 taking any IO-intensive actions. See :meth:`StoreSession.get_status`.
 

@@ -83,7 +83,7 @@ class TestStore(TestCase):
             format=domain.CompilationStatus.PS,
             source_checksum='someotherchecksum1234',
             task_id='foo-task-1234-6710',
-            status=domain.CompilationStatus.CURRENT
+            status=domain.CompilationStatus.COMPLETED
         )
         store.set_status(status_ps_alt)
 
@@ -102,7 +102,7 @@ class TestStore(TestCase):
             format=domain.CompilationStatus.PDF,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
-            status=domain.CompilationStatus.CURRENT
+            status=domain.CompilationStatus.COMPLETED
         )
         product = domain.CompilationProduct(stream=content, status=status_pdf)
         store.store(product)

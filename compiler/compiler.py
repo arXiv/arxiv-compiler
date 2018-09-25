@@ -11,7 +11,7 @@ from compiler.services.filemanager import FileManagementService
 
 logger = logging.getLogger(__name__)
 
-def compile_upload(upload_id: str, output_format: str='pdf', 
+def compile_upload(source_id: str, output_format: str='pdf', 
                    fms_endpoint: Optional[str]=None,
                    preferred_compiler: Optional[str]=None,
                    output_endpoint: Optional[str]=None):
@@ -20,14 +20,14 @@ def compile_upload(upload_id: str, output_format: str='pdf',
 
     More or less, the ``main()`` function for compiler. It operates in a
     three-step process:
-    1.  Retrieve the source package for ``upload_id`` from 
+    1.  Retrieve the source package for ``source_id`` from 
         ``FileManagementService``.
     2.  Use the ``preferred_compiler`` to generate ``output_format``.
     3.  Upload the results to ``output_endpoint``.
 
     Parameters
     ------------
-    upload_id: str
+    source_id: str
         Required. The upload to retrieve.
     output_format: str
         The desired output format. Default: "pdf". Other potential values:
@@ -50,7 +50,7 @@ def compile_upload(upload_id: str, output_format: str='pdf',
     # 1. Retrieve the source package
     fms = FileManagementService(fms_endpoint)
 
-    body, headers = fms.get_upload_content(upload_id)
+    body, headers = fms.get_upload_content(source_id)
     etag = headers['ETag']
 
     # 2. Generate the compiled files

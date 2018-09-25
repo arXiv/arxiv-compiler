@@ -14,7 +14,7 @@ class TestGetUploadInfo(TestCase):
     def test_get_upload_info(self, mock_Session):
         """Get info for an upload workspace that exists."""
         etag = 'asdf12345checksum'
-        upload_id = '123456'
+        source_id = '123456'
         mock_Session.return_value = mock.MagicMock(
             head=mock.MagicMock(
                 return_value=mock.MagicMock(
@@ -23,15 +23,15 @@ class TestGetUploadInfo(TestCase):
                 )
             )
         )
-        info = filemanager.get_upload_info(upload_id)
+        info = filemanager.get_upload_info(source_id)
         self.assertIsInstance(info, domain.SourcePackageInfo)
         self.assertEqual(info.etag, etag)
-        self.assertEqual(info.source_id, upload_id)
+        self.assertEqual(info.source_id, source_id)
 
     @mock.patch(f'{filemanager.__name__}.requests.Session')
     def test_get_upload_info_nonexistant(self, mock_Session):
         """Get info for an upload workspace that does not exist."""
-        upload_id = '123456'
+        source_id = '123456'
         mock_Session.return_value = mock.MagicMock(
             head=mock.MagicMock(
                 return_value=mock.MagicMock(
@@ -40,7 +40,7 @@ class TestGetUploadInfo(TestCase):
             )
         )
         with self.assertRaises(filemanager.NotFound):
-            filemanager.get_upload_info(upload_id)
+            filemanager.get_upload_info(source_id)
 
 
 class TestGetUpload(TestCase):
@@ -50,7 +50,7 @@ class TestGetUpload(TestCase):
     def test_get_upload(self, mock_Session):
         """Get upload that exists."""
         etag = 'asdf12345checksum'
-        upload_id = '123456'
+        source_id = '123456'
         content = b'foocontent'
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
@@ -63,17 +63,17 @@ class TestGetUpload(TestCase):
                 )
             )
         )
-        info = filemanager.get_upload_content(upload_id)
+        info = filemanager.get_upload_content(source_id)
         self.assertIsInstance(info, domain.SourcePackage)
         self.assertEqual(info.etag, etag)
-        self.assertEqual(info.source_id, upload_id)
+        self.assertEqual(info.source_id, source_id)
         self.assertIsInstance(info.stream, util.ResponseStream)
         self.assertEqual(info.stream.read(), content)
 
     @mock.patch(f'{filemanager.__name__}.requests.Session')
     def test_get_upload_info_nonexistant(self, mock_Session):
         """Get info for an upload workspace that does not exist."""
-        upload_id = '123456'
+        source_id = '123456'
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
                 return_value=mock.MagicMock(
@@ -82,4 +82,4 @@ class TestGetUpload(TestCase):
             )
         )
         with self.assertRaises(filemanager.NotFound):
-            filemanager.get_upload_content(upload_id)
+            filemanager.get_upload_content(source_id)

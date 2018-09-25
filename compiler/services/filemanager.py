@@ -174,13 +174,13 @@ class FileManagementService(object):
         logger.debug('Got status response: %s', content)
         return content
 
-    def get_upload_content(self, upload_id: str) -> SourcePackage:
+    def get_upload_content(self, source_id: str) -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
         Parameters
         ----------
-        upload_id : str
+        source_id : str
             Unique long-lived identifier for the upload.
 
         Returns
@@ -189,33 +189,33 @@ class FileManagementService(object):
             A ``read() -> bytes``-able wrapper around response content.
 
         """
-        logger.debug('Get upload content for: %s', upload_id)
-        response = self._make_request('get', f'/{upload_id}/content',
+        logger.debug('Get upload content for: %s', source_id)
+        response = self._make_request('get', f'/{source_id}/content',
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
         return SourcePackage(
-            source_id=upload_id,
+            source_id=source_id,
             stream=ResponseStream(response.iter_content(chunk_size=None)),
             etag=response.headers['ETag']
         )
 
-    def get_upload_info(self, upload_id: str) -> SourcePackageInfo:
+    def get_upload_info(self, source_id: str) -> SourcePackageInfo:
         """
         Get the current state of the source package/upload workspace.
 
         Parameters
         ------------
-        upload_id: str
+        source_id: str
 
         Returns
         ---------
         :class:`SourcePackageInfo`
 
         """
-        logger.debug('Get upload info for: %s', upload_id)
-        response, headers = self.request('head', f'/{upload_id}/content')
+        logger.debug('Get upload info for: %s', source_id)
+        response, headers = self.request('head', f'/{source_id}/content')
         logger.debug('Got response with etag %s', headers['ETag'])
-        return SourcePackageInfo(source_id=upload_id, etag=headers['ETag'])
+        return SourcePackageInfo(source_id=source_id, etag=headers['ETag'])
 
 
 def init_app(app: object = None) -> None:
@@ -251,12 +251,12 @@ def set_auth_token(token: str) -> None:
 
 
 @wraps(FileManagementService.get_upload_content)
-def get_upload_content(upload_id: str) -> SourcePackage:
+def get_upload_content(source_id: str) -> SourcePackage:
     """See :meth:`FileManagementService.get_upload_content`."""
-    return current_session().get_upload_content(upload_id)
+    return current_session().get_upload_content(source_id)
 
 
 @wraps(FileManagementService.get_upload_info)
-def get_upload_info(upload_id: str) -> SourcePackageInfo:
+def get_upload_info(source_id: str) -> SourcePackageInfo:
     """See :meth:`FileManagementService.upload_package`."""
-    return current_session().get_upload_info(upload_id)
+    return current_session().get_upload_info(source_id)

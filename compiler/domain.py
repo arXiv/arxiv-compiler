@@ -4,24 +4,27 @@ from typing import NamedTuple, Optional
 import io
 from datetime import datetime
 from .util import ResponseStream
+from enum import Enum
 
 
 class CompilationStatus(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
     # These are intended as fixed class attributes, not slots.
-    PDF = "pdf"   # type: ignore
-    DVI = "dvi"   # type: ignore
-    PS = "ps"   # type: ignore
+    class Formats(Enum):       # type: ignore
+        PDF = "pdf"
+        DVI = "dvi"
+        PS = "ps"
 
-    CURRENT = "current"   # type: ignore
-    IN_PROGRESS = "in_progress"   # type: ignore
-    FAILED = "failed"   # type: ignore
+    class Statuses(Enum):      # type: ignore
+        COMPLETED = "completed"
+        IN_PROGRESS = "in_progress"
+        FAILED = "failed"
 
     # Here are the actual slots/fields.
     source_id: str
 
-    format: str
+    format: 'CompilationStatus.Formats'
     """
     The target format of the compilation.
 
@@ -34,13 +37,13 @@ class CompilationStatus(NamedTuple):
     task_id: str
     """If a task exists for this compilation, the unique task ID."""
 
-    status: str
+    status: 'CompilationStatus.Statuses'
     """
     The status of the compilation.
 
-    One of :attr:`CURRENT`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.
+    One of :attr:`COMPLETED`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.
 
-    If :attr:`CURRENT`, the current file corresponding to the format of this
+    If :attr:`COMPLETED`, the current file corresponding to the format of this
     compilation status is the product of this compilation.
     """
 
@@ -53,10 +56,10 @@ class CompilationStatus(NamedTuple):
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'format': self.format,
+            'format': self.format.value,
             'source_checksum': self.source_checksum,
             'task_id': self.task_id,
-            'status': self.status
+            'status': self.status.value
         }
 
 
