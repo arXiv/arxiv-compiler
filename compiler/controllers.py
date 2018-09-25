@@ -80,7 +80,7 @@ def get_compilation_status(task_id: str) -> ResponseData:
 def get_compilation_product(source_id: int, checksum: str, format: str) \
         -> ResponseData:
     try:
-        product = store.get_product(source_id, checksum, format)
+        product = store.retrieve(source_id, checksum, format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
     return product.stream, status.HTTP_200_OK, {'ETag': product.checksum}
@@ -89,7 +89,7 @@ def get_compilation_product(source_id: int, checksum: str, format: str) \
 def get_compilation_log(source_id: int, checksum: str, format: str) \
         -> ResponseData:
     try:
-        product = store.get_log(source_id, checksum, format)
+        product = store.retrieve_log(source_id, checksum, format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
     return product.stream, status.HTTP_200_OK, {'ETag': product.checksum}

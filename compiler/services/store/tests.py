@@ -14,7 +14,9 @@ mock_app_config = mock.MagicMock(return_value={
     'S3_BUCKETS': [
         ('arxiv', 'arxiv-compiler'),
         ('submission', 'arxiv-compiler-submission')
-    ]
+    ],
+    'AWS_ACCESS_KEY_ID': 'foo_id',
+    'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
 })
 
 
@@ -115,6 +117,30 @@ class TestStore(TestCase):
         returned = store.retrieve('12345', 'abc123checksum',
                                   domain.CompilationStatus.Formats.PDF)
         self.assertEqual(returned.stream.read(), b'somepdfcontent')
+
+        with self.assertRaises(store.DoesNotExist):
+            store.retrieve('12345', 'foocheck',
+                           domain.CompilationStatus.Formats.PS)
+
+    @mock_s3
+    @mock.patch(f'{store.__name__}.get_application_config', mock_app_config)
+    def test_store_retrieve_log(self):
+        """Test storing and retrieving compilation logs."""
+        content = io.BytesIO(b'some log output')
+        store.current_session().create_bucket()
+        status_pdf = domain.CompilationStatus(
+            source_id='12345',
+            format=domain.CompilationStatus.Formats.PDF,
+            source_checksum='abc123checksum',
+            task_id='foo-task-1234-6789',
+            status=domain.CompilationStatus.Statuses.COMPLETED
+        )
+        product = domain.CompilationProduct(stream=content, status=status_pdf)
+        store.store_log(product)
+
+        returned = store.retrieve_log('12345', 'abc123checksum',
+                                      domain.CompilationStatus.Formats.PDF)
+        self.assertEqual(returned.stream.read(), b'some log output')
 
         with self.assertRaises(store.DoesNotExist):
             store.retrieve('12345', 'foocheck',

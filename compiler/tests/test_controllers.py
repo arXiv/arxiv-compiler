@@ -213,7 +213,7 @@ class TestGetCompilationProduct(TestCase):
         checksum = 'asdf12345zxcv'
         format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
-        mock_store.get_product.return_value = CompilationProduct(
+        mock_store.retrieve.return_value = CompilationProduct(
             stream=io.BytesIO(b'foocontent'),
             checksum=product_checksum,
             status=CompilationStatus(
@@ -241,7 +241,7 @@ class TestGetCompilationProduct(TestCase):
         checksum = 'asdf12345zxcv'
         format = 'pdf'
         mock_store.DoesNotExist = store.DoesNotExist
-        mock_store.get_product.side_effect = raise_store_does_not_exist
+        mock_store.retrieve.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
             controllers.get_compilation_product(source_id, checksum, format)
@@ -259,7 +259,7 @@ class TestGetCompilationLog(TestCase):
         checksum = 'asdf12345zxcv'
         format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
-        mock_store.get_log.return_value = CompilationProduct(
+        mock_store.retrieve_log.return_value = CompilationProduct(
             stream=io.BytesIO(b'foolog'),
             checksum=product_checksum,
             status=CompilationStatus(
@@ -287,7 +287,7 @@ class TestGetCompilationLog(TestCase):
         checksum = 'asdf12345zxcv'
         format = 'pdf'
         mock_store.DoesNotExist = store.DoesNotExist
-        mock_store.get_log.side_effect = raise_store_does_not_exist
+        mock_store.retrieve_log.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
             controllers.get_compilation_log(source_id, checksum, format)

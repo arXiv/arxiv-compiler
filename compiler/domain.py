@@ -50,7 +50,20 @@ class CompilationStatus(NamedTuple):
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.format
+        return self.format.value
+
+    def get_ext(format: 'CompilationStatus.Format') -> str:
+        """Get a filename extension for a compilation format."""
+        return format.value
+
+    @property
+    def content_type(self):
+        _ctypes = {
+            CompilationStatus.Formats.PDF: 'application/pdf',
+            CompilationStatus.Formats.DVI: 'application/x-dvi',
+            CompilationStatus.Formats.PS: 'application/postscript'
+        }
+        return _ctypes[self.format]
 
     def to_dict(self) -> dict:
         """Generate a dict representation of this object."""
@@ -69,11 +82,11 @@ class CompilationProduct(NamedTuple):
     stream: io.BytesIO
     """Readable buffer with the product content."""
 
-    checksum: Optional[str] = None
-    """The B64-encoded MD5 hash of the compilation product."""
-
     status: Optional[CompilationStatus] = None
     """Status information about the product."""
+
+    checksum: Optional[str] = None
+    """The B64-encoded MD5 hash of the compilation product."""
 
 
 class SourcePackage(NamedTuple):
