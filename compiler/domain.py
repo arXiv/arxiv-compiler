@@ -4,24 +4,27 @@ from typing import NamedTuple, Optional
 import io
 from datetime import datetime
 from .util import ResponseStream
+from enum import Enum
 
 
 class CompilationStatus(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
     # These are intended as fixed class attributes, not slots.
-    PDF = "pdf"   # type: ignore
-    DVI = "dvi"   # type: ignore
-    PS = "ps"   # type: ignore
+    class Formats(Enum):       # type: ignore
+        PDF = "pdf"
+        DVI = "dvi"
+        PS = "ps"
 
-    CURRENT = "current"   # type: ignore
-    IN_PROGRESS = "in_progress"   # type: ignore
-    FAILED = "failed"   # type: ignore
+    class Statuses(Enum):      # type: ignore
+        COMPLETED = "completed"
+        IN_PROGRESS = "in_progress"
+        FAILED = "failed"
 
     # Here are the actual slots/fields.
     source_id: str
 
-    format: str
+    format: 'CompilationStatus.Formats'
     """
     The target format of the compilation.
 
@@ -31,32 +34,45 @@ class CompilationStatus(NamedTuple):
     source_checksum: str
     """Checksum of the source tarball from the file management service."""
 
-    task_id: str
-    """If a task exists for this compilation, the unique task ID."""
-
-    status: str
+    status: 'CompilationStatus.Statuses'
     """
     The status of the compilation.
 
-    One of :attr:`CURRENT`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.
+    One of :attr:`COMPLETED`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.
 
-    If :attr:`CURRENT`, the current file corresponding to the format of this
+    If :attr:`COMPLETED`, the current file corresponding to the format of this
     compilation status is the product of this compilation.
     """
+
+    task_id: Optional[str] = None
+    """If a task exists for this compilation, the unique task ID."""
 
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.format
+        return self.format.value
+
+    def get_ext(format: 'CompilationStatus.Format') -> str:
+        """Get a filename extension for a compilation format."""
+        return format.value
+
+    @property
+    def content_type(self):
+        _ctypes = {
+            CompilationStatus.Formats.PDF: 'application/pdf',
+            CompilationStatus.Formats.DVI: 'application/x-dvi',
+            CompilationStatus.Formats.PS: 'application/postscript'
+        }
+        return _ctypes[self.format]
 
     def to_dict(self) -> dict:
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'format': self.format,
+            'format': self.format.value,
             'source_checksum': self.source_checksum,
             'task_id': self.task_id,
-            'status': self.status
+            'status': self.status.value
         }
 
 
@@ -66,11 +82,11 @@ class CompilationProduct(NamedTuple):
     stream: io.BytesIO
     """Readable buffer with the product content."""
 
-    checksum: Optional[str] = None
-    """The B64-encoded MD5 hash of the compilation product."""
-
     status: Optional[CompilationStatus] = None
     """Status information about the product."""
+
+    checksum: Optional[str] = None
+    """The B64-encoded MD5 hash of the compilation product."""
 
 
 class SourcePackage(NamedTuple):

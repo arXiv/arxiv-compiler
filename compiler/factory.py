@@ -9,6 +9,7 @@ from arxiv.users import auth
 from arxiv.base.middleware import wrap, request_logs
 
 from .services import filemanager
+from . import routes
 
 
 def create_web_app() -> Flask:
@@ -21,6 +22,7 @@ def create_web_app() -> Flask:
     auth.Auth(app)
 
     # Don't forget to register your API blueprint, when it's ready.
+    app.register_blueprint(routes.blueprint)
 
     wrap(app, [auth.middleware.AuthMiddleware])
 

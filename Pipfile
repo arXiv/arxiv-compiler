@@ -8,7 +8,7 @@ arxiv-base = "*"
 flask = "*"
 requests = "*"
 arxiv-auth = "==0.1.0rc6"
-"boto3" = "*"
+"boto3" = "==1.7.84"
 moto = "==1.3.4"
 
 [dev-packages]
@@ -19,7 +19,7 @@ pylint = "*"
 "nose2" = "*"
 coveralls = "*"
 coverage = "*"
-importlib_resources = "*"
+importlib-resources = "*"
 
 [requires]
 python_version = "3.6"

@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "9f6c959cead84e356aa9ddf15345f91f39ad436b783b4aeca1dbaf93a0e42410"
+            "sha256": "6cae86a15954cb1d990b95efdd1d8bd57210d2288997c0f570ad2b80aabcd146"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -53,18 +53,18 @@
         },
         "boto3": {
             "hashes": [
-                "sha256:d8f9aa40e30ea166ca7e67fe2db15b3d2c41fd2f4a308e4c10f607980ea7ce65",
-                "sha256:e8172e67a7aa0d011f01919bcc643ef668f2dcb251d45d709b9227fac3959fe3"
+                "sha256:0ed4b107c3b4550547aaec3c9bb17df068ff92d1f6f4781205800e2cb8a66de5",
+                "sha256:64496f2c814e454e26c024df86bd08fb4643770d0e2b7a8fd70055fc6683eb9d"
             ],
             "index": "pypi",
-            "version": "==1.9.8"
+            "version": "==1.7.84"
         },
         "botocore": {
             "hashes": [
-                "sha256:38ee0fbc13a22b904d0e573ac78b4dbc5c3eb633ace76a08959086307a664234",
-                "sha256:e2056bdbddaf8d224efd64fd05065532c3def5c58065e94f150c54bf3e6cd579"
+                "sha256:380852e1adb9ba4ba9ff096af61f88a6888197b86e580e1bd786f04ebe6f9c0c",
+                "sha256:d3e4b5a2c903ea30d19d41ea2f65d0e51dce54f4f4c4dfd6ecd7b04f240844a8"
             ],
-            "version": "==1.12.8"
+            "version": "==1.10.84"
         },
         "certifi": {
             "hashes": [
@@ -233,6 +233,8 @@
         },
         "jsonpickle": {
             "hashes": [
+                "sha256:8b6212f1155f43ce67fa945efae6d010ed059f3ca5ed377aa070e5903d45b722",
+                "sha256:d43ede55b3d9b5524a8e11566ea0b11c9c8109116ef6a509a1b619d2041e7397",
                 "sha256:ed4adf0d14564c56023862eabfac211cf01211a20c5271896c8ab6f80c68086c"
             ],
             "version": "==1.0"
@@ -346,7 +348,6 @@
                 "sha256:1adb80e7a782c12e52ef9a8182bebeb73f1d7e24e374397af06fb4956c8dc5c0",
                 "sha256:e27001de32f627c22380a688bcc43ce83504a7bc5da472209b4c70f02829f0b8"
             ],
-            "markers": "python_version >= '2.7'",
             "version": "==2.7.3"
         },
         "python-jose": {

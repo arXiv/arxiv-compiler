@@ -2,10 +2,10 @@
   "title": "Compilation Info",
   "description": "Describes the compilations and outputs for the given upload.",
   "additionalProperties": false,
-  "required": ["upload_id", "products", "timestamp"],
+  "required": ["source_id", "products", "timestamp"],
   "type": "object",
   "properties": {
-    "upload_id": {
+    "source_id": {
       "description": "Identifier of the upload bundle.",
       "type": "integer"
     },

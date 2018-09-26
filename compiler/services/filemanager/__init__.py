@@ -24,8 +24,8 @@ from arxiv import status
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
-from ..domain import SourcePackageInfo, SourcePackage
-from ..util import ResponseStream
+from ...domain import SourcePackageInfo, SourcePackage
+from ...util import ResponseStream
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class FileManagementService(object):
     def _path(self, path: str, query: dict = {}) -> str:
         o = urlparse(self._endpoint)
         path = path.lstrip('/')
-        return urlunparse(( # type: ignore
+        return urlunparse((  # type: ignore
             o.scheme, o.netloc, f"{o.path}{path}",
             None, urlencode(query), None
         ))
@@ -170,17 +170,17 @@ class FileManagementService(object):
     def get_service_status(self) -> dict:
         """Get the status of the file management service."""
         logger.debug('Get service status')
-        content, headers = self.request('get', 'status') # pylint: disable=unused-variable
+        content, headers = self.request('get', 'status')  # pylint: disable=unused-variable
         logger.debug('Got status response: %s', content)
         return content
 
-    def get_upload_content(self, upload_id: str) -> SourcePackage:
+    def get_source_content(self, source_id: str) -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
         Parameters
         ----------
-        upload_id : str
+        source_id : str
             Unique long-lived identifier for the upload.
 
         Returns
@@ -189,33 +189,33 @@ class FileManagementService(object):
             A ``read() -> bytes``-able wrapper around response content.
 
         """
-        logger.debug('Get upload content for: %s', upload_id)
-        response = self._make_request('get', f'/{upload_id}/content',
+        logger.debug('Get upload content for: %s', source_id)
+        response = self._make_request('get', f'/{source_id}/content',
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
         return SourcePackage(
-            source_id=upload_id,
+            source_id=source_id,
             stream=ResponseStream(response.iter_content(chunk_size=None)),
             etag=response.headers['ETag']
         )
 
-    def get_upload_info(self, upload_id: str) -> SourcePackageInfo:
+    def get_upload_info(self, source_id: str) -> SourcePackageInfo:
         """
         Get the current state of the source package/upload workspace.
 
         Parameters
         ------------
-        upload_id: str
+        source_id: str
 
         Returns
         ---------
         :class:`SourcePackageInfo`
 
         """
-        logger.debug('Get upload info for: %s', upload_id)
-        response, headers = self.request('head', f'/{upload_id}/content') # pylint: disable=unused-variable
+        logger.debug('Get upload info for: %s', source_id)
+        response, headers = self.request('head', f'/{source_id}/content')
         logger.debug('Got response with etag %s', headers['ETag'])
-        return SourcePackageInfo(source_id=upload_id, etag=headers['ETag'])
+        return SourcePackageInfo(source_id=source_id, etag=headers['ETag'])
 
 
 def init_app(app: object = None) -> None:
@@ -250,13 +250,13 @@ def set_auth_token(token: str) -> None:
     return current_session().set_auth_token(token)
 
 
-@wraps(FileManagementService.get_upload_content)
-def get_upload_content(upload_id: str) -> SourcePackage:
-    """See :meth:`FileManagementService.get_upload_content`."""
-    return current_session().get_upload_content(upload_id)
+@wraps(FileManagementService.get_source_content)
+def get_source_content(source_id: str) -> SourcePackage:
+    """See :meth:`FileManagementService.get_source_content`."""
+    return current_session().get_source_content(source_id)
 
 
 @wraps(FileManagementService.get_upload_info)
-def get_upload_info(upload_id: str) -> SourcePackageInfo:
+def get_upload_info(source_id: str) -> SourcePackageInfo:
     """See :meth:`FileManagementService.upload_package`."""
-    return current_session().get_upload_info(upload_id)
+    return current_session().get_upload_info(source_id)
