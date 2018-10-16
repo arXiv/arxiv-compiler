@@ -10,6 +10,8 @@ Welcome to arXiv Compilation Service's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   compiler.domain.rst
+
 
 
 Indices and tables
