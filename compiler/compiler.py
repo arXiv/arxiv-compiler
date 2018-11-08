@@ -1,5 +1,51 @@
+"""
+
+Parameters supported by autotex "converter" image.
+
+```
+ -C cache directory [defaults to paper/format specific directory in PS_CACHE]
+ -D pass through for -D dvips flag
+ -f output format, only sensible use is -f fInm for pdf generation
+ -u add a psmapfile to dvips command "-u +psmapfile"
+ -h print usage
+ -k do not delete temporary directory
+ -P pass through for -P dvips flag
+ -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+ -d id to use for decrytion (overrides default to -p id)
+ -s do not add stamp to PostScript
+ -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+ -v verbose logging, that is, print log messages to STDOUT
+ (they are always logged to auto_gen_ps.log)
+ -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
+ -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
+ -X cache DVI file (default: no)
+ -Y don't copy PostScript or PDF to cache
+ -Z don't gzip PostScript before moving to cache
+ -T override the default AUTOTEX_TIMEOUT setting with user value
+```
+
+We're going to use:
+
+- -f output format, only sensible use is -f fInm for pdf generation (fInm, dvi, ps)
+- -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+- -s do not add stamp to PostScript
+- -T override the default AUTOTEX_TIMEOUT setting with user value
+
+- -u add a psmapfile to dvips command "-u +psmapfile"
+- -P pass through for -P dvips flag
+- -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+- -D pass through for -D dvips flag
+
+- -d id to use for decrytion (overrides default to -p id)
+
+Always do this:
+- -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
+- -Y don't copy PostScript or PDF to cache
+
+"""
+
 import os
-import os.path
+from typing import List
 import subprocess
 import tarfile
 from tempfile import TemporaryDirectory
@@ -15,7 +61,7 @@ from compiler.services import filemanager, store
 logger = logging.getLogger(__name__)
 
 
-def compile(source_id: str, source_checksum: str, format: str = 'pdf',
+def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
             preferred_compiler: Optional[str] = None) -> dict:
     """
     Retrieves an upload, submits to the converter service, uploads results.
@@ -34,7 +80,7 @@ def compile(source_id: str, source_checksum: str, format: str = 'pdf',
     source_checksum : str
         The checksum for the source package. This is used to differentiate
         compilation tasks.
-    format: str
+    output_format: str
         The desired output format. Default: "pdf". Other potential values:
         "dvi", "html", "ps"
     preferred_compiler: str
@@ -57,12 +103,8 @@ def compile(source_id: str, source_checksum: str, format: str = 'pdf',
             tar.extractall(path=source_dir)
 
         # 2. Generate the compiled files
-        try:
-            product_path, log_path = compile_source(source_dir, output_dir,
-                                                    format=format)
-        except Exception as e:
-            # TODO: what gets raised?
-            raise RuntimeError('Compilation failed') from e
+        product_path, log_path = compile_source(source_dir, output_dir,
+                                                format=format)
 
         status = CompilationStatus(
             source_id=source_id,
@@ -83,15 +125,37 @@ def compile(source_id: str, source_checksum: str, format: str = 'pdf',
         return status.to_dict()
 
 
-def compile_source(source_dir: str, output_dir: str,
-                   format: str = 'pdf',
-                   image: Optional[str] = None) -> Tuple[str, str]:
+# TODO: rename []_dvips_flag parameters when we figure out what they mean.
+def compile_source(source_dir: str, output_dir: str, paper_id: str,
+                   output_format: str = 'pdf', add_stamp: bool = True,
+                   timeout: int = 600, add_psmapfile: bool = False,
+                   P_dvips_flag: bool = False, dvips_layout: str = 'letter',
+                   D_dvips_flag: bool = False,
+                   id_for_decryption: Optional[str] = None) -> Tuple[str, str]:
     """Compile a TeX source package."""
-    if image is None:
-        image = current_app.config['COMPILER_DOCKER_IMAGE']
+    image = current_app.config['COMPILER_DOCKER_IMAGE']
 
-    # TODO: specify format
-    run_docker(image, volumes=[(source_dir, '/src'), (output_dir, '/out')])
+    args = [
+        f'-p {paper_id}',
+        f'-f {output_format}',
+        f'-T {timeout}',
+        f'-t {dvips_layout}',
+        '-q',
+        '-Y'
+    ]
+    if not add_stamp:
+        args.append('-s')
+    if add_psmapfile:
+        args.append('-u')
+    if P_dvips_flag:
+        args.append('-P')
+    if D_dvips_flag:
+        args.append('-D')
+    if id_for_decryption is not None:
+        args.append(f'-d {id_for_decryption}')
+
+    run_docker(image, args=args,
+               volumes=[(source_dir, '/src'), (output_dir, '/out')])
 
     return (
         os.path.join(output_dir, 'test.pdf'),
@@ -100,8 +164,7 @@ def compile_source(source_dir: str, output_dir: str,
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: str = '', daemon: bool = False) \
-        -> subprocess.CompletedProcess:
+               args: List[str] = [], daemon: bool = False) -> None:
     """
     Run a generic docker image.
 
@@ -126,13 +189,15 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     opt_volumes = ' '.join(['-v {}:{}'.format(hd, cd) for hd, cd in volumes])
     opt_ports = ' '.join(['-p {}:{}'.format(hp, cp) for hp, cp in ports])
     cmd = 'docker run --rm {} {} {} {} {}'.format(
-        opt_user, opt_ports, opt_volumes, image, args
+        opt_user, opt_ports, opt_volumes, image, ' '.join(args)
     )
     result = subprocess.run(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
+
     if result.returncode:
         logger.error(f"Docker image call '{cmd}' exited {result.returncode}")
         logger.error(f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        result.check_returncode()
-
-    return result
+        try:
+            result.check_returncode()
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f'Compilation failed with {result.returncode}')
