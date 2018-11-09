@@ -40,7 +40,7 @@ def get_info(source_id: int, checksum: int, format: str) \
     resp = controllers.get_info(source_id, checksum, format)
     data, status_code, headers = resp
     if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
-        return redirect(headers['Location'], status=status)
+        return redirect(headers['Location'], code=status_code)
     return jsonify(data), status_code, headers
 
 
@@ -70,5 +70,5 @@ def get_status(task_id: str) -> Response:
     """Get the status of a compilation task."""
     data, status_code, headers = controllers.get_status(task_id)
     if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
-        return redirect(headers['Location'], status=status)
+        return redirect(headers['Location'], code=status_code)
     return jsonify(data), status_code, headers
