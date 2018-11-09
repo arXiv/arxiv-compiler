@@ -48,6 +48,7 @@ import os
 from typing import List
 import subprocess
 import tarfile
+import tempfile
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
 
@@ -100,7 +101,7 @@ def create_compilation_task(source_id: str, source_checksum: str,
         The identifier for the created compilation task.
     """
     try:
-        result = foo_compile.delay(source_id, source_checksum,
+        result = compile.delay(source_id, source_checksum,
                                    output_format.value,
                                    preferred_compiler=preferred_compiler)
         logger.info('compile: started processing as %s' % result.task_id)
@@ -132,7 +133,6 @@ def get_compilation_task(task_id: str) -> CompilationStatus:
         data['status'] = CompilationStatus.Statuses.IN_PROGRESS
     elif result.status == 'FAILURE':
         data['status'] = CompilationStatus.Statuses.FAILED
-        data['result']: str = result.result
     elif result.status == 'SUCCESS':
         data['status'] = CompilationStatus.Statuses.COMPLETED
         _result: Dist[str, str] = result.result
@@ -190,36 +190,42 @@ def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
         raise RuntimeError('Source does not exist') from e
 
     if source.etag != source_checksum:
+        logger.debug('source: %s; expected: %s', source.etag, source_checksum)
         raise RuntimeError('Source etag does not match requested checksum')
 
     # 2. Generate the compiled files
     # 3. Upload the results to output_endpoint
-    with TemporaryDirectory(prefix='arxiv') as source_dir, \
-            TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=source.stream, mode='r:gz') as tar:
-            tar.extractall(path=source_dir)
+    source_dir, _ = os.path.split(source.stream)
+    output_dir = tempfile.mkdtemp()
 
-        # 2. Generate the compiled files
-        product_path, log_path = compile_source(source_dir, output_dir,
-                                                format=format)
+    # with TemporaryDirectory(prefix='arxiv') as source_dir, \
+    #         TemporaryDirectory(prefix='arxiv') as output_dir:
+    logger.debug('source_dir: %s; output_dir: %s', source_dir, output_dir)
+    # with tarfile.open(fileobj=source.stream, mode='r:gz') as tar:
+    #     tar.extractall(path=source_dir)
 
-        status = CompilationStatus(
-            source_id=source_id,
-            format=CompilationStatus.Formats(output_format),
-            source_checksum=source_checksum,
-            status=CompilationStatus.Statuses.COMPLETED
-        )
+    # 2. Generate the compiled files
+    product_path, log_path = compile_source(source_dir, output_dir,
+                                            source_id,
+                                            output_format=output_format)
 
-        # Store the result.
-        try:
-            with open(product_path, 'rb') as f:
-                store.store(CompilationProduct(stream=f, status=status))
-            with open(log_path, 'rb') as f:
-                store.store_log(CompilationProduct(stream=f, status=status))
-            store.set_status(status)
-        except Exception as e:  # TODO: look at exceptions in object store.
-            raise RuntimeError('Failed to store result') from e
-        return status.to_dict()
+    status = CompilationStatus(
+        source_id=source_id,
+        format=CompilationStatus.Formats(output_format),
+        source_checksum=source_checksum,
+        status=CompilationStatus.Statuses.COMPLETED
+    )
+
+    # Store the result.
+    try:
+        with open(product_path, 'rb') as f:
+            store.store(CompilationProduct(stream=f, status=status))
+        with open(log_path, 'rb') as f:
+            store.store_log(CompilationProduct(stream=f, status=status))
+        store.set_status(status)
+    except Exception as e:  # TODO: look at exceptions in object store.
+        raise RuntimeError('Failed to store result') from e
+    return status.to_dict()
 
 
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
@@ -233,6 +239,7 @@ def compile_source(source_dir: str, output_dir: str, paper_id: str,
     image = current_app.config['COMPILER_DOCKER_IMAGE']
 
     args = [
+        '-S /autotex',
         f'-p {paper_id}',
         f'-f {output_format}',
         f'-T {timeout}',
@@ -285,7 +292,7 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     opt_user = '-u {}'.format(os.getuid())
     opt_volumes = ' '.join(['-v {}:{}'.format(hd, cd) for hd, cd in volumes])
     opt_ports = ' '.join(['-p {}:{}'.format(hp, cp) for hp, cp in ports])
-    cmd = 'docker run --rm {} {} {} {} {}'.format(
+    cmd = 'docker run --rm {} {} {} {} /bin/autotex.pl {}'.format(
         opt_user, opt_ports, opt_volumes, image, ' '.join(args)
     )
     result = subprocess.run(cmd, stdout=subprocess.PIPE,

@@ -9,8 +9,8 @@ class ResponseStream(object):
 
     def __init__(self, iterator: Iterator) -> None:
         """Set the bytes-producing iterator."""
-        self._iterator = iterator
+        self.read = iterator
 
-    def read(self) -> Iterator:
-        """Get bytes from the stream."""
-        return self._iterator
+    # def read(self, *args, **kwargs) -> Iterator:
+    #     """Get bytes from the stream."""
+    #     return self._iterator(chunk_size=1, decode_unicode=False)

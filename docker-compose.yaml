@@ -11,8 +11,11 @@ x-base-service:
     REDIS_ENDPOINT: "compiler-test-redis"
     AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
     AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-    AWS_STORAGE_BUCKET_NAME: "${AWS_STORAGE_BUCKET_NAME}"
     AWS_S3_REGION_NAME: "us-east-1"
+    S3_ENDPOINT: "compiler-test-localstack:4572"
+    COMPILER_DOCKER_IMAGE: "${COMPILER_DOCKER_IMAGE}"
+    FILE_MANAGER_CONTENT_PATH: "/src/{source_id}"
+    LOGLEVEL: 10
 
 services:
   compiler-test-redis:

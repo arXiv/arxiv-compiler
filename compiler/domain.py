@@ -22,18 +22,6 @@ class CompilationStatus(NamedTuple):
         FAILED = "failed"
 
     # Here are the actual slots/fields.
-    source_id: str
-
-    format: 'CompilationStatus.Formats'
-    """
-    The target format of the compilation.
-
-    One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
-    """
-
-    source_checksum: str
-    """Checksum of the source tarball from the file management service."""
-
     status: 'CompilationStatus.Statuses'
     """
     The status of the compilation.
@@ -43,6 +31,18 @@ class CompilationStatus(NamedTuple):
     If :attr:`COMPLETED`, the current file corresponding to the format of this
     compilation status is the product of this compilation.
     """
+
+    source_id: Optional[str] = None
+
+    format: Optional['CompilationStatus.Formats'] = None
+    """
+    The target format of the compilation.
+
+    One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
+    """
+
+    source_checksum: Optional[str] = None
+    """Checksum of the source tarball from the file management service."""
 
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
@@ -69,10 +69,10 @@ class CompilationStatus(NamedTuple):
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'format': self.format.value,
+            'format': self.format.value if self.format else None,
             'source_checksum': self.source_checksum,
             'task_id': self.task_id,
-            'status': self.status.value
+            'status': self.status.value if self.status else None
         }
 
 
@@ -93,7 +93,8 @@ class SourcePackage(NamedTuple):
     """Source package content, retrieved from file management service."""
 
     source_id: str
-    stream: ResponseStream
+    stream: str     # Path to the source file.
+    # stream: ResponseStream
     etag: str
 
 

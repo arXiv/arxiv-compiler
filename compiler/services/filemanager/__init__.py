@@ -13,8 +13,11 @@ the file management service as they are being received by this UI application.
 from functools import wraps
 from typing import MutableMapping, Tuple
 import json
+import re
+import os
 from urllib.parse import urlparse, urlunparse, urlencode
 import dateutil.parser
+import tempfile
 
 import requests
 from urllib3.util.retry import Retry
@@ -75,7 +78,8 @@ class FileManagementService(object):
     """Encapsulates a connection with the file management service."""
 
     def __init__(self, endpoint: str, verify_cert: bool = True,
-                 headers: dict = {}) -> None:
+                 headers: dict = {},
+                 content_path: str = '/{source_id}/content') -> None:
         """
         Initialize an HTTP session.
 
@@ -106,6 +110,7 @@ class FileManagementService(object):
             endpoint += '/'
         self._endpoint = endpoint
         self._session.headers.update(headers)
+        self._content_path = content_path
 
     def _path(self, path: str, query: dict = {}) -> str:
         o = urlparse(self._endpoint)
@@ -190,12 +195,30 @@ class FileManagementService(object):
 
         """
         logger.debug('Get upload content for: %s', source_id)
-        response = self._make_request('get', f'/{source_id}/content',
+        path = self._content_path.format(source_id=source_id)
+        logger.debug('at path %s', path)
+        response = self._make_request('get', path,
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
+
+        # This should be in a separate method.
+        source_dir = tempfile.mkdtemp()
+        match = re.search('filename=(.+)',
+                          response.headers.get('content-disposition', ''))
+        if match:
+            filename = match.group(1)
+        else:
+            filename = f'{source_id}.tar.gz'
+
+        source_file_path = os.path.join(source_dir, filename)
+        with open(source_file_path, 'wb') as f:
+            for chunk in response.iter_content():
+                if chunk:
+                    f.write(chunk)
+
         return SourcePackage(
             source_id=source_id,
-            stream=ResponseStream(response.iter_content(chunk_size=None)),
+            stream=source_file_path,
             etag=response.headers['ETag']
         )
 
@@ -223,6 +246,7 @@ def init_app(app: object = None) -> None:
     config = get_application_config(app)
     config.setdefault('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
     config.setdefault('FILE_MANAGER_VERIFY', True)
+    config.setdefault('FILE_MANAGER_CONTENT_PATH', '/{source_id}/content')
 
 
 def get_session(app: object = None) -> FileManagementService:
@@ -230,8 +254,11 @@ def get_session(app: object = None) -> FileManagementService:
     config = get_application_config(app)
     endpoint = config.get('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
     verify_cert = config.get('FILE_MANAGER_VERIFY', True)
+    content_path = config.get('FILE_MANAGER_CONTENT_PATH',
+                              '/{source_id}/content')
     logger.debug('Create FileManagementService with endpoint %s', endpoint)
-    return FileManagementService(endpoint, verify_cert=verify_cert)
+    return FileManagementService(endpoint, verify_cert=verify_cert,
+                                 content_path=content_path)
 
 
 def current_session() -> FileManagementService:
