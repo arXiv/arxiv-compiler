@@ -55,12 +55,50 @@ from flask import current_app
 from arxiv.base import logging
 
 from .domain import CompilationProduct, CompilationStatus
+from .celery import celery_app
 
 from compiler.services import filemanager, store
 
 logger = logging.getLogger(__name__)
 
 
+
+class TaskCreationFailed(RuntimeError):
+    """An extraction task could not be created."""
+
+
+def create_compilation_task(source_id: str, source_checksum: str,
+                            output_format: str = 'pdf') -> str:
+    """
+    Create a new compilation task.
+
+    Parameters
+    ----------
+    source_id : str
+        Unique identifier for the source being compiled.
+    source_checksum : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
+    output_format: str
+        The desired output format. Default: "pdf". Other potential values:
+        "dvi", "html", "ps"
+
+    Returns
+    -------
+    str
+        The identifier for the created extraction task.
+    """
+    try:
+        result = compile.delay(source_id, source_checksum, output_format)
+        logger.info('compile: started processing as %s' % result.task_id)
+        placeholder = ExtractionPlaceholder(task_id=result.task_id)
+    except Exception as e:
+        raise TaskCreationFailed('Failed to create task: %s', e) from e
+    return result.task_id
+
+
+
+@celery_app.task
 def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
             preferred_compiler: Optional[str] = None) -> dict:
     """
@@ -155,7 +193,7 @@ def compile_source(source_dir: str, output_dir: str, paper_id: str,
         args.append(f'-d {id_for_decryption}')
 
     run_docker(image, args=args,
-               volumes=[(source_dir, '/src'), (output_dir, '/out')])
+               volumes=[(source_dir, '/autotex'), (output_dir, '/out')])
 
     return (
         os.path.join(output_dir, 'test.pdf'),
