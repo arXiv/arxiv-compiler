@@ -1,0 +1,58 @@
+version: '3.4'
+x-base-service:
+  &base-service
+  stdin_open: true
+  tty: true
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+  environment:
+    SECRET_KEY: "not secure only use for development"
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    REDIS_ENDPOINT: "compiler-test-redis"
+    AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+    AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+    AWS_STORAGE_BUCKET_NAME: "${AWS_STORAGE_BUCKET_NAME}"
+    AWS_S3_REGION_NAME: "us-east-1"
+
+services:
+  compiler-test-redis:
+    image: redis
+    container_name: compiler-test-redis
+    networks:
+      - compiler-test
+    ports:
+      - "6379:6379"
+  compiler-test-localstack:
+    image: atlassianlabs/localstack
+    container_name: compiler-test-localstack
+    networks:
+      - compiler-test
+    ports:
+      - "4572:4572"
+      - "4568:4568"
+    environment:
+      USE_SSL: 'true'
+      DEBUG: 'true'
+  compiler-test-api:
+    << : *base-service
+    build: .
+    depends_on:
+     - "compiler-test-localstack"
+     - "compiler-test-redis"
+     - "compiler-test-worker"
+    networks:
+      - compiler-test
+    ports:
+      - "8000:8000"
+  compiler-test-worker:
+    << : *base-service
+    build: .
+    command: /opt/arxiv/start_worker.sh -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
+    depends_on:
+     - "compiler-test-localstack"
+     - "compiler-test-redis"
+    networks:
+      - compiler-test
+
+networks:
+  compiler-test:

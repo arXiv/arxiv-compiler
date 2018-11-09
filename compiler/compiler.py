@@ -52,15 +52,112 @@ from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
 
 from flask import current_app
+
+from celery.result import AsyncResult
+from celery.signals import after_task_publish
+
 from arxiv.base import logging
 
+from .celery import celery_app
 from .domain import CompilationProduct, CompilationStatus
-
-from compiler.services import filemanager, store
+from .services import filemanager, store
 
 logger = logging.getLogger(__name__)
 
 
+class NoSuchTask(RuntimeError):
+    """A request was made for a non-existant task."""
+
+
+class TaskCreationFailed(RuntimeError):
+    """An extraction task could not be created."""
+
+
+PDF = CompilationStatus.Formats.PDF
+
+
+def create_compilation_task(source_id: str, source_checksum: str,
+                            output_format: CompilationStatus.Formats = PDF,
+                            preferred_compiler: Optional[str] = None) -> str:
+    """
+    Create a new compilation task.
+
+    Parameters
+    ----------
+    source_id : str
+        Unique identifier for the source being compiled.
+    source_checksum : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
+    output_format: str
+        The desired output format. Default: "pdf". Other potential values:
+        "dvi", "html", "ps"
+    preferred_compiler : str
+
+    Returns
+    -------
+    str
+        The identifier for the created compilation task.
+    """
+    try:
+        result = foo_compile.delay(source_id, source_checksum,
+                                   output_format.value,
+                                   preferred_compiler=preferred_compiler)
+        logger.info('compile: started processing as %s' % result.task_id)
+    except Exception as e:
+        logger.error('Failed to create task: %s', e)
+        raise TaskCreationFailed('Failed to create task: %s', e) from e
+    return result.task_id
+
+
+def get_compilation_task(task_id: str) -> CompilationStatus:
+    """
+    Get the status of an extraction task.
+
+    Parameters
+    ----------
+    task_id : str
+        The identifier for the created extraction task.
+
+    Returns
+    -------
+    :class:`ExtractionTask`
+
+    """
+    result = foo_compile.AsyncResult(task_id)
+    data = {}
+    if result.status == 'PENDING':
+        raise NoSuchTask('No such task')
+    elif result.status in ['SENT', 'STARTED', 'RETRY']:
+        data['status'] = CompilationStatus.Statuses.IN_PROGRESS
+    elif result.status == 'FAILURE':
+        data['status'] = CompilationStatus.Statuses.FAILED
+        data['result']: str = result.result
+    elif result.status == 'SUCCESS':
+        data['status'] = CompilationStatus.Statuses.COMPLETED
+        _result: Dist[str, str] = result.result
+        data['source_id'] = _result['source_id']
+        data['format'] = CompilationStatus.Formats(_result['output_format'])
+        data['source_checksum'] = _result['source_checksum']
+    return CompilationStatus(task_id=task_id, **data)
+
+
+@celery_app.task
+def foo_compile(source_id: str, source_checksum: str,
+                output_format: str = 'pdf',
+                preferred_compiler: Optional[str] = None) -> dict:
+    """Dummy task for testing purposes."""
+    logger.debug('executed compile task with %s, %s, %s, %s',
+                 source_id, source_checksum, output_format, preferred_compiler)
+    return {
+        'source_id': source_id,
+        'source_checksum': source_checksum,
+        'output_format': output_format,
+        'preferred_compiler': preferred_compiler
+    }
+
+
+@celery_app.task
 def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
             preferred_compiler: Optional[str] = None) -> dict:
     """
@@ -108,7 +205,7 @@ def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
 
         status = CompilationStatus(
             source_id=source_id,
-            format=CompilationStatus.Formats(format),
+            format=CompilationStatus.Formats(output_format),
             source_checksum=source_checksum,
             status=CompilationStatus.Statuses.COMPLETED
         )
@@ -155,7 +252,7 @@ def compile_source(source_dir: str, output_dir: str, paper_id: str,
         args.append(f'-d {id_for_decryption}')
 
     run_docker(image, args=args,
-               volumes=[(source_dir, '/src'), (output_dir, '/out')])
+               volumes=[(source_dir, '/autotex'), (output_dir, '/out')])
 
     return (
         os.path.join(output_dir, 'test.pdf'),

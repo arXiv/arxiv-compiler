@@ -12,7 +12,7 @@ from .services import filemanager
 from . import routes
 
 
-def create_web_app() -> Flask:
+def create_app() -> Flask:
     """Create an instance of the compiler service app."""
     app = Flask(__name__)
     filemanager.init_app(app)
