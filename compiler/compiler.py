@@ -73,8 +73,11 @@ class TaskCreationFailed(RuntimeError):
     """An extraction task could not be created."""
 
 
+PDF = CompilationStatus.Formats.PDF
+
+
 def create_compilation_task(source_id: str, source_checksum: str,
-                            output_format: CompilationStatus.Formats,
+                            output_format: CompilationStatus.Formats = PDF,
                             preferred_compiler: Optional[str] = None) -> str:
     """
     Create a new compilation task.
@@ -82,8 +85,13 @@ def create_compilation_task(source_id: str, source_checksum: str,
     Parameters
     ----------
     source_id : str
+        Unique identifier for the source being compiled.
     source_checksum : str
-    output_format : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
+    output_format: str
+        The desired output format. Default: "pdf". Other potential values:
+        "dvi", "html", "ps"
     preferred_compiler : str
 
     Returns
@@ -197,7 +205,7 @@ def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
 
         status = CompilationStatus(
             source_id=source_id,
-            format=CompilationStatus.Formats(format),
+            format=CompilationStatus.Formats(output_format),
             source_checksum=source_checksum,
             status=CompilationStatus.Statuses.COMPLETED
         )
@@ -244,7 +252,7 @@ def compile_source(source_dir: str, output_dir: str, paper_id: str,
         args.append(f'-d {id_for_decryption}')
 
     run_docker(image, args=args,
-               volumes=[(source_dir, '/src'), (output_dir, '/out')])
+               volumes=[(source_dir, '/autotex'), (output_dir, '/out')])
 
     return (
         os.path.join(output_dir, 'test.pdf'),

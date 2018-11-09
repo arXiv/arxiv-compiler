@@ -1,2 +1,2 @@
 FROM alpine:3.7
-CMD cp /src/test.pdf /out/test.pdf
+CMD cp /autotex/test.pdf /out/test.pdf
