@@ -55,7 +55,7 @@ from flask import current_app
 from arxiv.base import logging
 
 from .domain import CompilationProduct, CompilationStatus
-#from .celery import celery_app
+from .celery import celery_app
 
 from compiler.services import filemanager, store
 
@@ -98,7 +98,7 @@ def create_compilation_task(source_id: str, source_checksum: str,
 
 
 
-#@celery_app.task
+@celery_app.task
 def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
             preferred_compiler: Optional[str] = None) -> dict:
     """
