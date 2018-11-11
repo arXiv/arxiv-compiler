@@ -251,9 +251,13 @@ def compile_source(source_dir: str, source_id: str,
     # converter container.
     image = current_app.config['COMPILER_DOCKER_IMAGE']
     host_source_root = current_app.config['HOST_SOURCE_ROOT']
+    logger.debug('host_source_root: %s', host_source_root)
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
-    leaf_path = source_dir.split(container_source_root, 1)[1]
+    logger.debug('container_source_root: %s', container_source_root)
+    leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
+    logger.debug('leaf_path: %s', leaf_path)
     host_source_dir = os.path.join(host_source_root, leaf_path)
+    logger.debug('host_source_dir: %s', host_source_dir)
     logger.debug('got image %s', image)
 
     args = [
@@ -278,7 +282,7 @@ def compile_source(source_dir: str, source_id: str,
 
     logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
-               volumes=[(host_source_dir, '/autotex')])
+               volumes=[(source_dir, '/autotex')])
 
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
