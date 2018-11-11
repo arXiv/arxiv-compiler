@@ -282,14 +282,14 @@ def compile_source(source_dir: str, source_id: str,
 
     logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
-               volumes=[(source_dir, '/autotex')])
+               volumes=[(host_source_dir, '/autotex')])
 
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
     # to ignore that output.
-    output_path = os.path.join(source_dir, f'{source_id}.{output_format}')
+    output_path = os.path.join(source_dir, 'tex_cache', f'{source_id}.{output_format}')
     source_log_path = os.path.join(source_dir, 'source.log')
-    tex_log_path = os.path.join(source_dir, 'text_logs', 'auto_gen_ps.log')
+    tex_log_path = os.path.join(source_dir, 'tex_logs', 'auto_gen_ps.log')
     return (
         output_path if os.path.exists(output_path) else None,
         source_log_path if os.path.exists(source_log_path) else None,

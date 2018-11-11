@@ -50,13 +50,13 @@ services:
       - compiler-test
     ports:
       - "8000:8000"
-  dind:
-    image: docker:17.11-dind
-    privileged: true
-    volumes:
-      - /tmp/dind:/var/lib/docker
-      - /tmp/dind-run:/var/run
-      - "${HOST_SOURCE_ROOT}:/tmp"
+  # dind:
+  #   image: docker:17.11-dind
+  #   privileged: true
+  #   volumes:
+  #     - /tmp/dind:/var/lib/docker
+  #     - /tmp/dind-run:/var/run/docker.sock
+  #     - "${HOST_SOURCE_ROOT}:/tmp"
   compiler-test-worker:
     << : *base-service
     build: .
@@ -69,8 +69,7 @@ services:
 
     volumes:
       - "${HOST_SOURCE_ROOT}:/tmp"
-      - /tmp/dind:/var/lib/docker
-      - /tmp/dind-run:/var/run
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   compiler-test:
