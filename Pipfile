@@ -10,6 +10,7 @@ requests = "*"
 arxiv-auth = "==0.1.0rc6"
 "boto3" = "==1.7.84"
 celery = "*"
+pytest = "*"
 
 [dev-packages]
 moto = "==1.3.4"

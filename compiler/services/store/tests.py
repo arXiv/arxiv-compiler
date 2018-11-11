@@ -30,7 +30,7 @@ class TestStore(TestCase):
         store.current_session().create_bucket()
         status_pdf = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PDF,
+            output_format=domain.CompilationStatus.Formats.PDF,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.CompilationStatus.Statuses.IN_PROGRESS
@@ -53,7 +53,7 @@ class TestStore(TestCase):
         # New format for same upload ID/checksum.
         status_ps = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PS,
+            output_format=domain.CompilationStatus.Formats.PS,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.CompilationStatus.Statuses.IN_PROGRESS
@@ -70,7 +70,7 @@ class TestStore(TestCase):
         # Change the status of the existing format/checksum.
         status_ps_failed = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PS,
+            output_format=domain.CompilationStatus.Formats.PS,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.CompilationStatus.Statuses.FAILED
@@ -83,7 +83,7 @@ class TestStore(TestCase):
         # Same format, new checksum.
         status_ps_alt = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PS,
+            output_format=domain.CompilationStatus.Formats.PS,
             source_checksum='someotherchecksum1234',
             task_id='foo-task-1234-6710',
             status=domain.CompilationStatus.Statuses.COMPLETED
@@ -102,7 +102,7 @@ class TestStore(TestCase):
         store.current_session().create_bucket()
         status_pdf = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PDF,
+            output_format=domain.CompilationStatus.Formats.PDF,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.CompilationStatus.Statuses.COMPLETED
@@ -130,7 +130,7 @@ class TestStore(TestCase):
         store.current_session().create_bucket()
         status_pdf = domain.CompilationStatus(
             source_id='12345',
-            format=domain.CompilationStatus.Formats.PDF,
+            output_format=domain.CompilationStatus.Formats.PDF,
             source_checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.CompilationStatus.Statuses.COMPLETED

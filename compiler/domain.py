@@ -34,7 +34,7 @@ class CompilationStatus(NamedTuple):
 
     source_id: Optional[str] = None
 
-    format: Optional['CompilationStatus.Formats'] = None
+    output_format: Optional['CompilationStatus.Formats'] = None
     """
     The target format of the compilation.
 
@@ -50,11 +50,11 @@ class CompilationStatus(NamedTuple):
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.format.value
+        return self.output_format.value
 
-    def get_ext(format: 'CompilationStatus.Format') -> str:
+    def get_ext(output_format: 'CompilationStatus.Format') -> str:
         """Get a filename extension for a compilation format."""
-        return format.value
+        return output_format.value
 
     @property
     def content_type(self):
@@ -63,13 +63,14 @@ class CompilationStatus(NamedTuple):
             CompilationStatus.Formats.DVI: 'application/x-dvi',
             CompilationStatus.Formats.PS: 'application/postscript'
         }
-        return _ctypes[self.format]
+        return _ctypes[self.output_format]
 
     def to_dict(self) -> dict:
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'format': self.format.value if self.format else None,
+            'output_format': \
+                self.output_format.value if self.output_format else None,
             'source_checksum': self.source_checksum,
             'task_id': self.task_id,
             'status': self.status.value if self.status else None
@@ -93,8 +94,7 @@ class SourcePackage(NamedTuple):
     """Source package content, retrieved from file management service."""
 
     source_id: str
-    stream: str     # Path to the source file.
-    # stream: ResponseStream
+    stream: str
     etag: str
 
 

@@ -201,26 +201,31 @@ class FileManagementService(object):
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
 
-        # This should be in a separate method.
-        source_dir = tempfile.mkdtemp()
-        match = re.search('filename=(.+)',
-                          response.headers.get('content-disposition', ''))
-        if match:
-            filename = match.group(1)
-        else:
-            filename = f'{source_id}.tar.gz'
+        source_file_path = self._save_file_content(source_id, response)
 
-        source_file_path = os.path.join(source_dir, filename)
-        with open(source_file_path, 'wb') as f:
-            for chunk in response.iter_content():
-                if chunk:
-                    f.write(chunk)
-
+        logger.debug('wrote source content to %s', source_file_path)
         return SourcePackage(
             source_id=source_id,
             stream=source_file_path,
             etag=response.headers['ETag']
         )
+
+    def _save_file_content(self, source_id: str,
+                           response: requests.Response) -> str:
+        source_dir = tempfile.mkdtemp()
+        match = re.search('filename=(.+)',
+                          response.headers.get('content-disposition', ''))
+        if match:
+            filename = match.group(1).strip('"')
+        else:
+            filename = f'{source_id}.tar.gz'
+
+        source_file_path = os.path.join(source_dir, filename)
+        with open(source_file_path, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                if chunk:
+                    f.write(chunk)
+        return source_file_path
 
     def get_upload_info(self, source_id: str) -> SourcePackageInfo:
         """

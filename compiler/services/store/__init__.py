@@ -81,11 +81,11 @@ class StoreSession(object):
         self.client = boto3.client('s3', **params)
 
     def _key(self, source_id: str, checksum: str,
-             format: CompilationStatus.Formats) -> str:
-        return f'{source_id}/{checksum}/{format.value}'
+             output_format: CompilationStatus.Formats) -> str:
+        return f'{source_id}/{checksum}/{output_format.value}'
 
     def get_status(self, source_id: str, source_checksum: str,
-                   format: CompilationStatus.Formats,
+                   output_format: CompilationStatus.Formats,
                    bucket: str = 'arxiv') -> CompilationStatus:
         """
         Get the status of a compilation.
@@ -94,7 +94,7 @@ class StoreSession(object):
         ----------
         source_id : str
             The unique identifier of the source package.
-        format: str
+        output_format: str
             Compilation format. See :attr:`CompilationStatus.Formats`.
         source_checksum : str
             Base64-encoded MD5 hash of the source package.
@@ -110,7 +110,7 @@ class StoreSession(object):
             Raised if no status exists for the provided parameters.
 
         """
-        _key = self._key(source_id, source_checksum, format)
+        _key = self._key(source_id, source_checksum, output_format)
         key = f'{_key}/status.json'
         logger.debug('Get status for upload %s with key %s', source_id, key)
         try:
@@ -124,7 +124,7 @@ class StoreSession(object):
                                    f' {bucket}.') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         data = json.loads(response['Body'].read().decode('utf-8'))
-        data['format'] = CompilationStatus.Formats(data['format'])
+        data['output_format'] = CompilationStatus.Formats(data['output_format'])
         data['status'] = CompilationStatus.Statuses(data['status'])
         return CompilationStatus(**data)
 
@@ -140,7 +140,7 @@ class StoreSession(object):
 
         """
         _key = self._key(status.source_id, status.source_checksum,
-                         status.format)
+                         status.output_format)
         key = f'{_key}/status.json'
         body = json.dumps(status.to_dict()).encode('utf-8')
         try:
@@ -173,7 +173,7 @@ class StoreSession(object):
         body = product.stream.read()
         status = product.status
         _key = self._key(status.source_id, status.source_checksum,
-                         status.format)
+                         status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}'
         try:
             self.client.put_object(
@@ -188,7 +188,7 @@ class StoreSession(object):
         self.set_status(status, bucket=bucket)
 
     def retrieve(self, source_id: str, source_checksum: str,
-                 format: CompilationStatus.Formats,
+                 output_format: CompilationStatus.Formats,
                  bucket: str = 'arxiv') -> CompilationProduct:
         """
         Retrieve a compilation product.
@@ -197,7 +197,7 @@ class StoreSession(object):
         ----------
         source_id : str
         source_checksum : str
-        format : enum
+        output_format : enum
             One of :attr:`CompilationStatus.Formats`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
@@ -209,8 +209,8 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_checksum, format)
-        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(format)}'
+        _key = self._key(source_id, source_checksum, output_format)
+        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(output_format)}'
         try:
             response = self.client.get_object(
                 Bucket=self._get_bucket(bucket),
@@ -244,7 +244,7 @@ class StoreSession(object):
         body = product.stream.read()
         status = product.status
         _key = self._key(status.source_id, status.source_checksum,
-                         status.format)
+                         status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}.log'
         try:
             self.client.put_object(
@@ -259,7 +259,7 @@ class StoreSession(object):
         self.set_status(status, bucket=bucket)
 
     def retrieve_log(self, source_id: str, source_checksum: str,
-                     format: CompilationStatus.Formats,
+                     output_format: CompilationStatus.Formats,
                      bucket: str = 'arxiv') -> CompilationProduct:
         """
         Retrieve a compilation log.
@@ -268,7 +268,7 @@ class StoreSession(object):
         ----------
         source_id : str
         source_checksum : str
-        format : enum
+        output_format : enum
             One of :attr:`CompilationStatus.Formats`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
@@ -280,8 +280,8 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_checksum, format)
-        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(format)}.log'
+        _key = self._key(source_id, source_checksum, output_format)
+        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(output_format)}.log'
         try:
             response = self.client.get_object(
                 Bucket=self._get_bucket(bucket),
@@ -308,13 +308,20 @@ class StoreSession(object):
         return name
 
 
+@wraps(StoreSession.create_bucket)
+def create_bucket() -> None:
+    current_session().create_bucket()
+
+
 @wraps(StoreSession.get_status)
 def get_status(source_id: str, source_checksum: str,
-               format: CompilationStatus.Formats, bucket: str = 'arxiv') \
+               output_format: CompilationStatus.Formats,
+               bucket: str = 'arxiv') \
         -> CompilationStatus:
     """See :func:`StoreSession.get_status`."""
     s = current_session()
-    return s.get_status(source_id, source_checksum, format, bucket=bucket)
+    return s.get_status(source_id, source_checksum, output_format,
+                        bucket=bucket)
 
 
 @wraps(StoreSession.set_status)
@@ -337,20 +344,20 @@ def store_log(product: CompilationProduct, bucket: str = 'arxiv') -> None:
 
 @wraps(StoreSession.retrieve)
 def retrieve(source_id: str, source_checksum: str,
-             format: CompilationStatus.Formats,
+             output_format: CompilationStatus.Formats,
              bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve`."""
-    return current_session().retrieve(source_id, source_checksum, format,
-                                      bucket=bucket)
+    return current_session().retrieve(source_id, source_checksum,
+                                      output_format, bucket=bucket)
 
 
 @wraps(StoreSession.retrieve_log)
 def retrieve_log(source_id: str, source_checksum: str,
-                 format: CompilationStatus.Formats,
+                 output_format: CompilationStatus.Formats,
                  bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve_log`."""
-    return current_session().retrieve_log(source_id, source_checksum, format,
-                                          bucket=bucket)
+    return current_session().retrieve_log(source_id, source_checksum,
+                                          output_format, bucket=bucket)
 
 
 def init_app(app: Flask) -> None:
