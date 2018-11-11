@@ -20,6 +20,7 @@ x-base-service:
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
+    HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
 
 services:
   compiler-test-redis:
@@ -61,6 +62,8 @@ services:
      - "compiler-test-redis"
     networks:
       - compiler-test
+    volumes:
+      - "${HOST_SOURCE_ROOT}:/tmp"
 
 networks:
   compiler-test:

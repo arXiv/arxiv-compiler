@@ -50,3 +50,9 @@ AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
 
 COMPILER_DOCKER_IMAGE = os.environ.get('COMPILER_DOCKER_IMAGE')
+
+HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', '/tmp')
+"""Temporary directories containing source packages go in here."""
+
+CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
+"""Temporary directories containing source packages go in here."""

@@ -48,6 +48,7 @@ import os
 from typing import List
 import subprocess
 import tarfile
+import shutil
 import tempfile
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
@@ -137,7 +138,9 @@ def get_compilation_task(task_id: str) -> CompilationStatus:
         data['status'] = CompilationStatus.Statuses.COMPLETED
         _result: Dist[str, str] = result.result
         data['source_id'] = _result['source_id']
-        data['output_format'] = CompilationStatus.Formats(_result['output_format'])
+        data['output_format'] = CompilationStatus.Formats(
+            _result['output_format']
+        )
         data['source_checksum'] = _result['source_checksum']
     return CompilationStatus(task_id=task_id, **data)
 
@@ -185,8 +188,10 @@ def do_compile(source_id: str, source_checksum: str,
         The preferred tex compiler for use with the source package.
 
     """
+    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+    source_dir = tempfile.mkdtemp(dir=container_source_root)
     try:
-        source = filemanager.get_source_content(source_id)
+        source = filemanager.get_source_content(source_id, save_to=source_dir)
     except filemanager.NotFound as e:
         raise RuntimeError('Source does not exist') from e
 
@@ -195,7 +200,8 @@ def do_compile(source_id: str, source_checksum: str,
         raise RuntimeError('Source etag does not match requested checksum')
 
     # 2. Generate the compiled files
-    source_dir, _ = os.path.split(source.stream)
+    parent_dir, fname = os.path.split(source.stream)
+    assert source_dir == parent_dir
     logger.debug('source_dir: %s', source_dir)
     logger.debug('call compile_source with format %s', output_format)
     output_path, source_log_path, tex_log_path = \
@@ -240,7 +246,14 @@ def compile_source(source_dir: str, source_id: str,
                    id_for_decryption: Optional[str] = None) \
         -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Compile a TeX source package."""
+    # We need the path to the directory container the source package on the
+    # host machine, so that we can correctly mount the volume in the
+    # converter container.
     image = current_app.config['COMPILER_DOCKER_IMAGE']
+    host_source_root = current_app.config['HOST_SOURCE_ROOT']
+    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+    leaf_path = source_dir.split(container_source_root, 1)[1]
+    host_source_dir = os.path.join(host_source_root, leaf_path)
     logger.debug('got image %s', image)
 
     args = [
@@ -265,7 +278,7 @@ def compile_source(source_dir: str, source_id: str,
 
     logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
-               volumes=[(source_dir, '/autotex')])
+               volumes=[(host_source_dir, '/autotex')])
 
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
