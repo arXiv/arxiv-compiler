@@ -27,7 +27,7 @@ from flask import Flask
 from arxiv.base import logging
 from arxiv.base.globals import get_application_global, get_application_config
 
-from ...domain import CompilationStatus, CompilationProduct
+from ...domain import CompilationStatus, CompilationProduct, Format, Status
 
 
 logger = logging.getLogger(__name__)
@@ -81,11 +81,11 @@ class StoreSession(object):
         self.client = boto3.client('s3', **params)
 
     def _key(self, source_id: str, checksum: str,
-             output_format: CompilationStatus.Formats) -> str:
+             output_format: Format) -> str:
         return f'{source_id}/{checksum}/{output_format.value}'
 
-    def get_status(self, source_id: str, source_checksum: str,
-                   output_format: CompilationStatus.Formats,
+    def get_status(self, source_id: str, source_etag: str,
+                   output_format: Format,
                    bucket: str = 'arxiv') -> CompilationStatus:
         """
         Get the status of a compilation.
@@ -95,8 +95,8 @@ class StoreSession(object):
         source_id : str
             The unique identifier of the source package.
         output_format: str
-            Compilation format. See :attr:`CompilationStatus.Formats`.
-        source_checksum : str
+            Compilation format. See :attr:`Format`.
+        source_etag : str
             Base64-encoded MD5 hash of the source package.
         bucket : str
 
@@ -110,7 +110,7 @@ class StoreSession(object):
             Raised if no status exists for the provided parameters.
 
         """
-        _key = self._key(source_id, source_checksum, output_format)
+        _key = self._key(source_id, source_etag, output_format)
         key = f'{_key}/status.json'
         logger.debug('Get status for upload %s with key %s', source_id, key)
         try:
@@ -124,8 +124,8 @@ class StoreSession(object):
                                    f' {bucket}.') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         data = json.loads(response['Body'].read().decode('utf-8'))
-        data['output_format'] = CompilationStatus.Formats(data['output_format'])
-        data['status'] = CompilationStatus.Statuses(data['status'])
+        data['output_format'] = Format(data['output_format'])
+        data['status'] = Status(data['status'])
         return CompilationStatus(**data)
 
     def set_status(self, status: CompilationStatus, bucket: str = 'arxiv') \
@@ -139,7 +139,7 @@ class StoreSession(object):
         bucket : str
 
         """
-        _key = self._key(status.source_id, status.source_checksum,
+        _key = self._key(status.source_id, status.source_etag,
                          status.output_format)
         key = f'{_key}/status.json'
         body = json.dumps(status.to_dict()).encode('utf-8')
@@ -172,7 +172,7 @@ class StoreSession(object):
 
         body = product.stream.read()
         status = product.status
-        _key = self._key(status.source_id, status.source_checksum,
+        _key = self._key(status.source_id, status.source_etag,
                          status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}'
         try:
@@ -187,8 +187,8 @@ class StoreSession(object):
             raise RuntimeError(f'Unhandled exception: {e}') from e
         self.set_status(status, bucket=bucket)
 
-    def retrieve(self, source_id: str, source_checksum: str,
-                 output_format: CompilationStatus.Formats,
+    def retrieve(self, source_id: str, source_etag: str,
+                 output_format: Format,
                  bucket: str = 'arxiv') -> CompilationProduct:
         """
         Retrieve a compilation product.
@@ -196,9 +196,9 @@ class StoreSession(object):
         Parameters
         ----------
         source_id : str
-        source_checksum : str
+        source_etag : str
         output_format : enum
-            One of :attr:`CompilationStatus.Formats`.
+            One of :attr:`Format`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
             to determine the S3 bucket from which the content should be
@@ -209,8 +209,8 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_checksum, output_format)
-        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(output_format)}'
+        _key = self._key(source_id, source_etag, output_format)
+        key = f'{_key}/{source_id}.{Format(output_format).ext}'
         try:
             response = self.client.get_object(
                 Bucket=self._get_bucket(bucket),
@@ -243,7 +243,7 @@ class StoreSession(object):
 
         body = product.stream.read()
         status = product.status
-        _key = self._key(status.source_id, status.source_checksum,
+        _key = self._key(status.source_id, status.source_etag,
                          status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}.log'
         try:
@@ -258,8 +258,8 @@ class StoreSession(object):
             raise RuntimeError(f'Unhandled exception: {e}') from e
         self.set_status(status, bucket=bucket)
 
-    def retrieve_log(self, source_id: str, source_checksum: str,
-                     output_format: CompilationStatus.Formats,
+    def retrieve_log(self, source_id: str, source_etag: str,
+                     output_format: Format,
                      bucket: str = 'arxiv') -> CompilationProduct:
         """
         Retrieve a compilation log.
@@ -267,9 +267,9 @@ class StoreSession(object):
         Parameters
         ----------
         source_id : str
-        source_checksum : str
+        source_etag : str
         output_format : enum
-            One of :attr:`CompilationStatus.Formats`.
+            One of :attr:`Format`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
             to determine the S3 bucket from which the content should be
@@ -280,8 +280,8 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_checksum, output_format)
-        key = f'{_key}/{source_id}.{CompilationStatus.get_ext(output_format)}.log'
+        _key = self._key(source_id, source_etag, output_format)
+        key = f'{_key}/{source_id}.{Format(output_format).ext}.log'
         try:
             response = self.client.get_object(
                 Bucket=self._get_bucket(bucket),
@@ -314,13 +314,13 @@ def create_bucket() -> None:
 
 
 @wraps(StoreSession.get_status)
-def get_status(source_id: str, source_checksum: str,
-               output_format: CompilationStatus.Formats,
+def get_status(source_id: str, source_etag: str,
+               output_format: Format,
                bucket: str = 'arxiv') \
         -> CompilationStatus:
     """See :func:`StoreSession.get_status`."""
     s = current_session()
-    return s.get_status(source_id, source_checksum, output_format,
+    return s.get_status(source_id, source_etag, output_format,
                         bucket=bucket)
 
 
@@ -343,20 +343,20 @@ def store_log(product: CompilationProduct, bucket: str = 'arxiv') -> None:
 
 
 @wraps(StoreSession.retrieve)
-def retrieve(source_id: str, source_checksum: str,
-             output_format: CompilationStatus.Formats,
+def retrieve(source_id: str, source_etag: str,
+             output_format: Format,
              bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve`."""
-    return current_session().retrieve(source_id, source_checksum,
+    return current_session().retrieve(source_id, source_etag,
                                       output_format, bucket=bucket)
 
 
 @wraps(StoreSession.retrieve_log)
-def retrieve_log(source_id: str, source_checksum: str,
-                 output_format: CompilationStatus.Formats,
+def retrieve_log(source_id: str, source_etag: str,
+                 output_format: Format,
                  bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve_log`."""
-    return current_session().retrieve_log(source_id, source_checksum,
+    return current_session().retrieve_log(source_id, source_etag,
                                           output_format, bucket=bucket)
 
 

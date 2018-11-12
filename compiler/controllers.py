@@ -10,7 +10,7 @@ from arxiv.base import logging
 
 from .services import store
 from . import compiler
-from .domain import CompilationStatus, CompilationProduct
+from .domain import CompilationStatus, CompilationProduct, Status, Format
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
     try:
         source_id = request_data['source_id']
         checksum = request_data['checksum']
-        output_format = CompilationStatus.Formats(request_data['format'])
+        output_format = Format(request_data['format'])
     except KeyError as e:
         raise BadRequest('Missing required parameter') from e
     preferred_compiler = request_data.get('compiler')
@@ -37,7 +37,7 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
         info = None
 
     if not force and info is not None:
-        if info.status is CompilationStatus.Statuses.COMPLETED:
+        if info.status is Status.COMPLETED:
             location = url_for('api.get_product',
                                source_id=source_id, checksum=checksum,
                                output_format=output_format)
@@ -63,7 +63,7 @@ def get_info(source_id: int, checksum: str, output_format: str) \
         -> ResponseData:
     try:
         info = store.get_status(source_id, checksum,
-                                CompilationStatus.Formats(output_format))
+                                Format(output_format))
     except store.DoesNotExist as e:
         raise NotFound('No such compilation') from e
     except Exception as e:
@@ -71,7 +71,7 @@ def get_info(source_id: int, checksum: str, output_format: str) \
         raise InternalServerError('Unhandled exception: %s' % e)
 
     data = {'status': info.to_dict()}
-    if info.status is CompilationStatus.Statuses.IN_PROGRESS:
+    if info.status is Status.IN_PROGRESS:
         location = url_for('api.get_status', task_id=info.task_id)
         return data, status.HTTP_302_FOUND, {'Location': location}
     return data, status.HTTP_200_OK, {}
@@ -87,10 +87,11 @@ def get_status(task_id: str) -> ResponseData:
         raise InternalServerError('Unhandled exception: %s' % e)
 
     data = {'status': info.to_dict()}
-    if info.status is CompilationStatus.Statuses.COMPLETED:
+    logger.debug(data)
+    if info.status is Status.COMPLETED:
         location = url_for('api.get_info',
                            source_id=info.source_id,
-                           checksum=info.source_checksum,
+                           checksum=info.source_etag,
                            output_format=info.output_format.value)
         return data, status.HTTP_303_SEE_OTHER, {'Location': location}
     return data, status.HTTP_200_OK, {}
@@ -98,22 +99,39 @@ def get_status(task_id: str) -> ResponseData:
 
 def get_product(source_id: int, checksum: str, output_format: str) \
         -> ResponseData:
+    try:
+        product_format = Format(output_format)
+    except ValueError:  # Not a valid format.
+        raise BadRequest('Invalid format')
 
     try:
-        product = store.retrieve(source_id, checksum,
-                                 CompilationStatus.Formats(output_format))
+        product = store.retrieve(source_id, checksum, product_format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
     except Exception as e:
         logger.error('Unhandled exception: %s', e)
         raise InternalServerError('Unhandled exception: %s' % e)
-    return product.stream, status.HTTP_200_OK, {'ETag': product.checksum}
+    data = {
+        'stream': product.stream,
+        'content_type': product_format.content_type,
+        'filename': f'{source_id}.{product_format.ext}'
+    }
+    return data, status.HTTP_200_OK, {'ETag': product.checksum}
 
 
-def get_log(source_id: int, checksum: str, output_format: str) \
-        -> ResponseData:
+def get_log(source_id: int, checksum: str, output_format: str) -> ResponseData:
     try:
-        product = store.retrieve_log(source_id, checksum, output_format)
+        product_format = Format(output_format)
+    except ValueError:  # Not a valid format.
+        raise BadRequest('Invalid format')
+
+    try:
+        product = store.retrieve_log(source_id, checksum, product_format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
-    return product.stream, status.HTTP_200_OK, {'ETag': product.checksum}
+    data = {
+        'stream': product.stream,
+        'content_type': product_format.content_type,
+        'filename': f'{source_id}.{product_format.ext}'
+    }
+    return data, status.HTTP_200_OK, {'ETag': product.checksum}

@@ -18,7 +18,6 @@ def create_app() -> Flask:
     filemanager.init_app(app)
     store.init_app(app)
     app.config.from_pyfile('config.py')
-    print(app.config)
 
     Base(app)
     auth.Auth(app)

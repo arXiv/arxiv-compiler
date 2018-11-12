@@ -32,6 +32,15 @@ def request_compilation() -> Response:
     return jsonify(data), status_code, headers
 
 
+@blueprint.route('/task/<string:task_id>', methods=['GET'])
+def get_status(task_id: str) -> Response:
+    """Get the status of a compilation task."""
+    data, status_code, headers = controllers.get_status(task_id)
+    if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
+        return redirect(headers['Location'], code=status_code)
+    return jsonify(data), status_code, headers
+
+
 @blueprint.route(
     '/<string:source_id>/<string:checksum>/<string:output_format>',
     methods=['GET']
@@ -54,7 +63,8 @@ def get_log(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation log."""
     resp = controllers.get_log(source_id, checksum, output_format)
     data, status_code, headers = resp
-    response = send_file(data, mimetype="text/plain")
+    response = send_file(data['stream'], mimetype=data['content_type'],
+                         attachment_filename=data['filename'])
     return response
 
 
@@ -66,15 +76,7 @@ def get_product(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation product."""
     resp = controllers.get_product(source_id, checksum, output_format)
     data, status_code, headers = resp
-    response = send_file(data, mimetype="application/tar+gzip")
+    response = send_file(data['stream'], mimetype=data['content_type'],
+                         attachment_filename=data['filename'])
     response.set_etag(headers.get('ETag'))
     return response
-
-
-@blueprint.route('/task/<string:task_id>', methods=['GET'])
-def get_status(task_id: str) -> Response:
-    """Get the status of a compilation task."""
-    data, status_code, headers = controllers.get_status(task_id)
-    if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
-        return redirect(headers['Location'], code=status_code)
-    return jsonify(data), status_code, headers

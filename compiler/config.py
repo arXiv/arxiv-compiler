@@ -56,3 +56,6 @@ HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', '/tmp')
 
 CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
 """Temporary directories containing source packages go in here."""
+
+VERBOSE_COMPILE = bool(int(os.environ.get('VERBOSE_COMPILE', 0)))
+"""If 1 (True), converter image is run in verbose mode."""
