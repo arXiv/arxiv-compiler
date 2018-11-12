@@ -34,6 +34,7 @@ FILE_MANAGER_ENDPOINT = os.environ.get(
     f'/{FILE_MANAGER_PATH}'
 )
 FILE_MANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
+FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH')
 
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
@@ -47,3 +48,5 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
 
 REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
+
+COMPILER_DOCKER_IMAGE = os.environ.get('COMPILER_DOCKER_IMAGE')

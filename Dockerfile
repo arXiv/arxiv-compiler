@@ -18,8 +18,6 @@ RUN pipenv install
 
 ENV PATH "/opt/arxiv:${PATH}"
 
-ENV LC_ALL en_US.utf8
-ENV LANG en_US.utf8
 ENV LOGLEVEL 40
 
 ENV ARXIV_HOME "https://arxiv.org"
@@ -27,6 +25,7 @@ ENV ARXIV_HOME "https://arxiv.org"
 # Add the code in this repo.
 ADD compiler /opt/arxiv/compiler/
 ADD wsgi.py /opt/arxiv/
+ADD app.py /opt/arxiv/
 ADD bin/start_worker.sh /opt/arxiv/
 ADD bin/start_api.sh /opt/arxiv/
 

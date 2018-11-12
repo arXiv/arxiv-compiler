@@ -48,6 +48,7 @@ import os
 from typing import List
 import subprocess
 import tarfile
+import tempfile
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
 
@@ -100,9 +101,9 @@ def create_compilation_task(source_id: str, source_checksum: str,
         The identifier for the created compilation task.
     """
     try:
-        result = foo_compile.delay(source_id, source_checksum,
-                                   output_format.value,
-                                   preferred_compiler=preferred_compiler)
+        result = do_compile.delay(source_id, source_checksum,
+                                  output_format.value,
+                                  preferred_compiler=preferred_compiler)
         logger.info('compile: started processing as %s' % result.task_id)
     except Exception as e:
         logger.error('Failed to create task: %s', e)
@@ -132,12 +133,11 @@ def get_compilation_task(task_id: str) -> CompilationStatus:
         data['status'] = CompilationStatus.Statuses.IN_PROGRESS
     elif result.status == 'FAILURE':
         data['status'] = CompilationStatus.Statuses.FAILED
-        data['result']: str = result.result
     elif result.status == 'SUCCESS':
         data['status'] = CompilationStatus.Statuses.COMPLETED
         _result: Dist[str, str] = result.result
         data['source_id'] = _result['source_id']
-        data['format'] = CompilationStatus.Formats(_result['output_format'])
+        data['output_format'] = CompilationStatus.Formats(_result['output_format'])
         data['source_checksum'] = _result['source_checksum']
     return CompilationStatus(task_id=task_id, **data)
 
@@ -158,8 +158,9 @@ def foo_compile(source_id: str, source_checksum: str,
 
 
 @celery_app.task
-def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
-            preferred_compiler: Optional[str] = None) -> dict:
+def do_compile(source_id: str, source_checksum: str,
+               output_format: str = 'pdf',
+               preferred_compiler: Optional[str] = None) -> dict:
     """
     Retrieves an upload, submits to the converter service, uploads results.
 
@@ -190,55 +191,66 @@ def compile(source_id: str, source_checksum: str, output_format: str = 'pdf',
         raise RuntimeError('Source does not exist') from e
 
     if source.etag != source_checksum:
+        logger.debug('source: %s; expected: %s', source.etag, source_checksum)
         raise RuntimeError('Source etag does not match requested checksum')
 
     # 2. Generate the compiled files
-    # 3. Upload the results to output_endpoint
-    with TemporaryDirectory(prefix='arxiv') as source_dir, \
-            TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=source.stream, mode='r:gz') as tar:
-            tar.extractall(path=source_dir)
+    source_dir, _ = os.path.split(source.stream)
+    logger.debug('source_dir: %s', source_dir)
+    logger.debug('call compile_source with format %s', output_format)
+    output_path, source_log_path, tex_log_path = \
+        compile_source(source_dir, source_id, output_format=output_format)
+    if output_path is not None:
+        compile_status = CompilationStatus.Statuses.COMPLETED
+    else:
+        compile_status = CompilationStatus.Statuses.FAILED
+    status = CompilationStatus(
+        source_id=source_id,
+        output_format=CompilationStatus.Formats(output_format),
+        source_checksum=source_checksum,
+        status=compile_status
+    )
 
-        # 2. Generate the compiled files
-        product_path, log_path = compile_source(source_dir, output_dir,
-                                                format=format)
-
-        status = CompilationStatus(
-            source_id=source_id,
-            format=CompilationStatus.Formats(output_format),
-            source_checksum=source_checksum,
-            status=CompilationStatus.Statuses.COMPLETED
-        )
-
-        # Store the result.
-        try:
-            with open(product_path, 'rb') as f:
+    # Store the result.
+    try:
+        if output_path:
+            with open(output_path, 'rb') as f:
                 store.store(CompilationProduct(stream=f, status=status))
-            with open(log_path, 'rb') as f:
+        if tex_log_path:
+            with open(tex_log_path, 'rb') as f:
                 store.store_log(CompilationProduct(stream=f, status=status))
-            store.set_status(status)
-        except Exception as e:  # TODO: look at exceptions in object store.
-            raise RuntimeError('Failed to store result') from e
-        return status.to_dict()
+        store.set_status(status)
+    except Exception as e:  # TODO: look at exceptions in object store.
+        raise RuntimeError('Failed to store result') from e
+    return status.to_dict()
+    return {
+        'source_id': source_id,
+        'source_checksum': source_checksum,
+        'output_format': output_format,
+        'preferred_compiler': preferred_compiler
+    }
 
 
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
-def compile_source(source_dir: str, output_dir: str, paper_id: str,
+def compile_source(source_dir: str, source_id: str,
                    output_format: str = 'pdf', add_stamp: bool = True,
                    timeout: int = 600, add_psmapfile: bool = False,
                    P_dvips_flag: bool = False, dvips_layout: str = 'letter',
                    D_dvips_flag: bool = False,
-                   id_for_decryption: Optional[str] = None) -> Tuple[str, str]:
+                   id_for_decryption: Optional[str] = None) \
+        -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Compile a TeX source package."""
     image = current_app.config['COMPILER_DOCKER_IMAGE']
+    logger.debug('got image %s', image)
 
     args = [
-        f'-p {paper_id}',
-        f'-f {output_format}',
+        '-S /autotex',
+        f'-p {source_id}',
+        '-v',
+        f'-f {output_format}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
         '-q',
-        '-Y'
     ]
     if not add_stamp:
         args.append('-s')
@@ -251,12 +263,20 @@ def compile_source(source_dir: str, output_dir: str, paper_id: str,
     if id_for_decryption is not None:
         args.append(f'-d {id_for_decryption}')
 
+    logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
-               volumes=[(source_dir, '/autotex'), (output_dir, '/out')])
+               volumes=[(source_dir, '/autotex')])
 
+    # There are all kinds of ways in which compilation can fail. In many cases,
+    # we'll have log output even if the compilation failed, and we don't want
+    # to ignore that output.
+    output_path = os.path.join(source_dir, f'{source_id}.{output_format}')
+    source_log_path = os.path.join(source_dir, 'source.log')
+    tex_log_path = os.path.join(source_dir, 'text_logs', 'auto_gen_ps.log')
     return (
-        os.path.join(output_dir, 'test.pdf'),
-        os.path.join(output_dir, 'test.log')
+        output_path if os.path.exists(output_path) else None,
+        source_log_path if os.path.exists(source_log_path) else None,
+        tex_log_path if os.path.exists(tex_log_path) else None
     )
 
 
@@ -282,11 +302,11 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     """
     # we are only running strings formatted by us, so let's build the command
     # then split it so that it can be run by subprocess
-    opt_user = '-u {}'.format(os.getuid())
+    # opt_user = '-u {}'.format(os.getuid())
     opt_volumes = ' '.join(['-v {}:{}'.format(hd, cd) for hd, cd in volumes])
     opt_ports = ' '.join(['-p {}:{}'.format(hp, cp) for hp, cp in ports])
-    cmd = 'docker run --rm {} {} {} {} {}'.format(
-        opt_user, opt_ports, opt_volumes, image, ' '.join(args)
+    cmd = 'docker run --rm {} {} {} /bin/autotex.pl {}'.format(
+        opt_ports, opt_volumes, image, ' '.join(args)
     )
     result = subprocess.run(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
@@ -294,7 +314,7 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     if result.returncode:
         logger.error(f"Docker image call '{cmd}' exited {result.returncode}")
         logger.error(f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        try:
-            result.check_returncode()
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f'Compilation failed with {result.returncode}')
+        # try:
+        #     result.check_returncode()
+        # except subprocess.CalledProcessError as e:
+        #     raise RuntimeError(f'Compilation failed with {result.returncode}')

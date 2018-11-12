@@ -22,18 +22,6 @@ class CompilationStatus(NamedTuple):
         FAILED = "failed"
 
     # Here are the actual slots/fields.
-    source_id: str
-
-    format: 'CompilationStatus.Formats'
-    """
-    The target format of the compilation.
-
-    One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
-    """
-
-    source_checksum: str
-    """Checksum of the source tarball from the file management service."""
-
     status: 'CompilationStatus.Statuses'
     """
     The status of the compilation.
@@ -44,17 +32,29 @@ class CompilationStatus(NamedTuple):
     compilation status is the product of this compilation.
     """
 
+    source_id: Optional[str] = None
+
+    output_format: Optional['CompilationStatus.Formats'] = None
+    """
+    The target format of the compilation.
+
+    One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
+    """
+
+    source_checksum: Optional[str] = None
+    """Checksum of the source tarball from the file management service."""
+
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
 
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.format.value
+        return self.output_format.value
 
-    def get_ext(format: 'CompilationStatus.Format') -> str:
+    def get_ext(output_format: 'CompilationStatus.Format') -> str:
         """Get a filename extension for a compilation format."""
-        return format.value
+        return output_format.value
 
     @property
     def content_type(self):
@@ -63,16 +63,17 @@ class CompilationStatus(NamedTuple):
             CompilationStatus.Formats.DVI: 'application/x-dvi',
             CompilationStatus.Formats.PS: 'application/postscript'
         }
-        return _ctypes[self.format]
+        return _ctypes[self.output_format]
 
     def to_dict(self) -> dict:
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'format': self.format.value,
+            'output_format': \
+                self.output_format.value if self.output_format else None,
             'source_checksum': self.source_checksum,
             'task_id': self.task_id,
-            'status': self.status.value
+            'status': self.status.value if self.status else None
         }
 
 
@@ -93,7 +94,7 @@ class SourcePackage(NamedTuple):
     """Source package content, retrieved from file management service."""
 
     source_id: str
-    stream: ResponseStream
+    stream: str
     etag: str
 
 

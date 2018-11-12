@@ -5,14 +5,21 @@ x-base-service:
   tty: true
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
+    - /tmp/foo:/tmp
   environment:
     SECRET_KEY: "not secure only use for development"
     DOCKER_HOST: "unix:///var/run/docker.sock"
     REDIS_ENDPOINT: "compiler-test-redis"
     AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
     AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-    AWS_STORAGE_BUCKET_NAME: "${AWS_STORAGE_BUCKET_NAME}"
     AWS_S3_REGION_NAME: "us-east-1"
+    S3_ENDPOINT: "https://compiler-test-localstack:4572"
+    S3_VERIFY: 0
+    COMPILER_DOCKER_IMAGE: "${COMPILER_DOCKER_IMAGE}"
+    FILE_MANAGER_CONTENT_PATH: "/src/{source_id}"
+    LOGLEVEL: 10
+    FLASK_APP: /opt/arxiv/app.py
+    FLASK_DEBUG: 1
 
 services:
   compiler-test-redis:
@@ -36,6 +43,7 @@ services:
   compiler-test-api:
     << : *base-service
     build: .
+    command: pipenv run flask run -h 0.0.0.0 -p 8000
     depends_on:
      - "compiler-test-localstack"
      - "compiler-test-redis"

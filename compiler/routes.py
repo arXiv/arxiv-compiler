@@ -32,33 +32,39 @@ def request_compilation() -> Response:
     return jsonify(data), status_code, headers
 
 
-@blueprint.route('/<int:source_id>/<string:checksum>/<string:format>',
-                 methods=['GET'])
-def get_info(source_id: int, checksum: int, format: str) \
+@blueprint.route(
+    '/<string:source_id>/<string:checksum>/<string:output_format>',
+    methods=['GET']
+)
+def get_info(source_id: str, checksum: int, output_format: str) \
         -> Response:
     """Get information about a compilation."""
-    resp = controllers.get_info(source_id, checksum, format)
+    resp = controllers.get_info(source_id, checksum, output_format)
     data, status_code, headers = resp
     if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
         return redirect(headers['Location'], code=status_code)
     return jsonify(data), status_code, headers
 
 
-@blueprint.route('/<int:source_id>/<string:checksum>/<string:format>/log',
-                 methods=['GET'])
-def get_log(source_id: int, checksum: int, format: str) -> Response:
+@blueprint.route(
+    '/<string:source_id>/<string:checksum>/<string:output_format>/log',
+    methods=['GET']
+)
+def get_log(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation log."""
-    resp = controllers.get_log(source_id, checksum, format)
+    resp = controllers.get_log(source_id, checksum, output_format)
     data, status_code, headers = resp
     response = send_file(data, mimetype="text/plain")
     return response
 
 
-@blueprint.route('/<int:source_id>/<string:checksum>/<string:format>/product',
-                 methods=['GET'])
-def get_product(source_id: int, checksum: int, format: str) -> Response:
+@blueprint.route(
+    '/<string:source_id>/<string:checksum>/<string:output_format>/product',
+    methods=['GET']
+)
+def get_product(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation product."""
-    resp = controllers.get_product(source_id, checksum, format)
+    resp = controllers.get_product(source_id, checksum, output_format)
     data, status_code, headers = resp
     response = send_file(data, mimetype="application/tar+gzip")
     response.set_etag(headers.get('ETag'))

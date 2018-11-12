@@ -8,7 +8,7 @@ from arxiv.base import Base
 from arxiv.users import auth
 from arxiv.base.middleware import wrap, request_logs
 
-from .services import filemanager
+from .services import filemanager, store
 from . import routes
 
 
@@ -16,7 +16,9 @@ def create_app() -> Flask:
     """Create an instance of the compiler service app."""
     app = Flask(__name__)
     filemanager.init_app(app)
+    store.init_app(app)
     app.config.from_pyfile('config.py')
+    print(app.config)
 
     Base(app)
     auth.Auth(app)
