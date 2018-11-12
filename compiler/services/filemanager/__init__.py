@@ -93,6 +93,12 @@ class FileManagementService(object):
             Whether or not SSL certificate verification should enforced.
         headers : dict
             Headers to be included on all requests.
+        content_path : str
+            format()-able path string; should have ``source_id`` as a key.
+        save_to : str
+            Root directory for storing retrieved source packages. Each
+            retrieved source will go into a separate directory in this
+            location.
 
         """
         self._session = requests.Session()
@@ -179,7 +185,8 @@ class FileManagementService(object):
         logger.debug('Got status response: %s', content)
         return content
 
-    def get_source_content(self, source_id: str) -> SourcePackage:
+    def get_source_content(self, source_id: str, save_to: str = '/tmp') \
+            -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
@@ -187,6 +194,8 @@ class FileManagementService(object):
         ----------
         source_id : str
             Unique long-lived identifier for the upload.
+        save_to : str
+            Directory into which source should be saved.
 
         Returns
         -------
@@ -201,7 +210,8 @@ class FileManagementService(object):
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
 
-        source_file_path = self._save_file_content(source_id, response)
+        source_file_path = self._save_content(path, source_id, response,
+                                              save_to)
 
         logger.debug('wrote source content to %s', source_file_path)
         return SourcePackage(
@@ -210,15 +220,19 @@ class FileManagementService(object):
             etag=response.headers['ETag']
         )
 
-    def _save_file_content(self, source_id: str,
-                           response: requests.Response) -> str:
-        source_dir = tempfile.mkdtemp()
+    def _save_content(self, path: str, source_id: str,
+                      response: requests.Response, source_dir: str) -> str:
         match = re.search('filename=(.+)',
                           response.headers.get('content-disposition', ''))
         if match:
             filename = match.group(1).strip('"')
         else:
             filename = f'{source_id}.tar.gz'
+
+        # There is a bug on the production public site: source downloads have
+        # .gz extension, but are not in fact gzipped tarballs.
+        if path.startswith('https://arxiv.org/src'):
+            filename.rstrip('.gz')
 
         source_file_path = os.path.join(source_dir, filename)
         with open(source_file_path, 'wb') as f:
@@ -283,9 +297,9 @@ def set_auth_token(token: str) -> None:
 
 
 @wraps(FileManagementService.get_source_content)
-def get_source_content(source_id: str) -> SourcePackage:
+def get_source_content(source_id: str, save_to: str = '/tmp') -> SourcePackage:
     """See :meth:`FileManagementService.get_source_content`."""
-    return current_session().get_source_content(source_id)
+    return current_session().get_source_content(source_id, save_to=save_to)
 
 
 @wraps(FileManagementService.get_upload_info)

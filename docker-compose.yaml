@@ -3,9 +3,6 @@ x-base-service:
   &base-service
   stdin_open: true
   tty: true
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-    - /tmp/foo:/tmp
   environment:
     SECRET_KEY: "not secure only use for development"
     DOCKER_HOST: "unix:///var/run/docker.sock"
@@ -20,6 +17,7 @@ x-base-service:
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
+    HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
 
 services:
   compiler-test-redis:
@@ -52,6 +50,13 @@ services:
       - compiler-test
     ports:
       - "8000:8000"
+  # dind:
+  #   image: docker:17.11-dind
+  #   privileged: true
+  #   volumes:
+  #     - /tmp/dind:/var/lib/docker
+  #     - /tmp/dind-run:/var/run/docker.sock
+  #     - "${HOST_SOURCE_ROOT}:/tmp"
   compiler-test-worker:
     << : *base-service
     build: .
@@ -61,6 +66,10 @@ services:
      - "compiler-test-redis"
     networks:
       - compiler-test
+
+    volumes:
+      - "${HOST_SOURCE_ROOT}:/tmp"
+      - /var/run/docker.sock:/var/run/docker.sock
 
 networks:
   compiler-test:

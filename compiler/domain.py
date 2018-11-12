@@ -7,73 +7,95 @@ from .util import ResponseStream
 from enum import Enum
 
 
+class Format(Enum):
+    """Compilation formats supported by this service."""
+
+    PDF = "pdf"
+    DVI = "dvi"
+    PS = "ps"
+
+    @property
+    def ext(self) -> str:
+        """Filename extension for the compilation product."""
+        return self.value
+
+    @property
+    def content_type(self):
+        """The mime-type for this format."""
+        _ctypes = {
+            self.PDF: 'application/pdf',
+            self.DVI: 'application/x-dvi',
+            self.PS: 'application/postscript'
+        }
+        return _ctypes[self]
+
+
+class Status(Enum):      # type: ignore
+    """Represents the status of a requested compilation."""
+
+    COMPLETED = "completed"
+    IN_PROGRESS = "in_progress"
+    FAILED = "failed"
+
+
 class CompilationStatus(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
     # These are intended as fixed class attributes, not slots.
-    class Formats(Enum):       # type: ignore
-        PDF = "pdf"
-        DVI = "dvi"
-        PS = "ps"
-
-    class Statuses(Enum):      # type: ignore
-        COMPLETED = "completed"
-        IN_PROGRESS = "in_progress"
-        FAILED = "failed"
+    Formats = Format
+    Statuses = Status
 
     # Here are the actual slots/fields.
-    status: 'CompilationStatus.Statuses'
+    status: Status
     """
     The status of the compilation.
 
-    One of :attr:`COMPLETED`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.
-
-    If :attr:`COMPLETED`, the current file corresponding to the format of this
-    compilation status is the product of this compilation.
+    If :attr:`Status.COMPLETED`, the current file corresponding to the format
+    of this compilation status is the product of this compilation.
     """
 
     source_id: Optional[str] = None
 
-    output_format: Optional['CompilationStatus.Formats'] = None
+    output_format: Optional[Format] = None
     """
     The target format of the compilation.
 
     One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
     """
 
-    source_checksum: Optional[str] = None
-    """Checksum of the source tarball from the file management service."""
+    source_etag: Optional[str] = None
+    """
+    ETag of the source tarball from the file management service.
+
+    This is likely to be a checksum of some kind, but may be something else.
+    """
 
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
 
+    reason: Optional[str] = None
+    """A brief explanation of the current status. E.g. why did it fail."""
+
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.output_format.value
-
-    def get_ext(output_format: 'CompilationStatus.Format') -> str:
-        """Get a filename extension for a compilation format."""
-        return output_format.value
+        return self.output_format.ext
 
     @property
     def content_type(self):
-        _ctypes = {
-            CompilationStatus.Formats.PDF: 'application/pdf',
-            CompilationStatus.Formats.DVI: 'application/x-dvi',
-            CompilationStatus.Formats.PS: 'application/postscript'
-        }
-        return _ctypes[self.output_format]
+        """Mime type for the output format of this compilation."""
+        return self.output_format.content_type
 
     def to_dict(self) -> dict:
         """Generate a dict representation of this object."""
         return {
             'source_id': self.source_id,
-            'output_format': \
+            'output_format':
                 self.output_format.value if self.output_format else None,
-            'source_checksum': self.source_checksum,
+            'source_etag': self.source_etag,
             'task_id': self.task_id,
-            'status': self.status.value if self.status else None
+            'status': self.status.value if self.status else None,
+            'reason': self.reason
         }
 
 

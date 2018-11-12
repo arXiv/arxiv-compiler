@@ -8,7 +8,7 @@
 #
 # from arxiv import status
 #
-# from ..domain import CompilationStatus, CompilationProduct
+# from ..domain import CompilationStatus, CompilationProduct, Format, Status
 # from .. import controllers
 # from ..services import store
 #
@@ -77,10 +77,10 @@
 #         format = 'pdf'
 #         mock_store.get_status.return_value = CompilationStatus(
 #             source_id=source_id,
-#             format=CompilationStatus.Formats.PDF,
-#             status=CompilationStatus.Statuses.COMPLETED,
+#             format=Format.PDF,
+#             status=Status.COMPLETED,
 #             task_id=task_id,
-#             source_checksum=checksum
+#             source_etag=checksum
 #         )
 #         request_data = MultiDict({'source_id': source_id, 'checksum': checksum,
 #                                   'format': format})
@@ -106,10 +106,10 @@
 #         format = 'pdf'
 #         mock_store.get_status.return_value = CompilationStatus(
 #             source_id=source_id,
-#             format=CompilationStatus.Formats.PDF,
-#             status=CompilationStatus.Statuses.COMPLETED,
+#             format=Format.PDF,
+#             status=Status.COMPLETED,
 #             task_id=task_id,
-#             source_checksum=checksum
+#             source_etag=checksum
 #         )
 #         response_data = controllers.get_info(
 #             source_id,
@@ -129,10 +129,10 @@
 #         format = 'pdf'
 #         mock_store.get_status.return_value = CompilationStatus(
 #             source_id=source_id,
-#             format=CompilationStatus.Formats.PDF,
-#             status=CompilationStatus.Statuses.IN_PROGRESS,
+#             format=Format.PDF,
+#             status=Status.IN_PROGRESS,
 #             task_id=task_id,
-#             source_checksum=checksum
+#             source_etag=checksum
 #         )
 #         response_data = controllers.get_info(
 #             source_id,
@@ -170,10 +170,10 @@
 #         format = 'pdf'
 #         mock_compiler.get_task.return_value = CompilationStatus(
 #             source_id=source_id,
-#             format=CompilationStatus.Formats.PDF,
-#             status=CompilationStatus.Statuses.COMPLETED,
+#             format=Format.PDF,
+#             status=Status.COMPLETED,
 #             task_id=task_id,
-#             source_checksum=checksum
+#             source_etag=checksum
 #         )
 #         response_data = controllers.get_status(task_id)
 #         data, code, headers = response_data
@@ -191,10 +191,10 @@
 #         checksum = 'asdf12345zxcv'
 #         mock_compiler.get_task.return_value = CompilationStatus(
 #             source_id=source_id,
-#             format=CompilationStatus.Formats.PDF,
-#             status=CompilationStatus.Statuses.IN_PROGRESS,
+#             format=Format.PDF,
+#             status=Status.IN_PROGRESS,
 #             task_id=task_id,
-#             source_checksum=checksum
+#             source_etag=checksum
 #         )
 #         response_data = controllers.get_status(task_id)
 #         data, code, headers = response_data
@@ -218,10 +218,10 @@
 #             checksum=product_checksum,
 #             status=CompilationStatus(
 #                 source_id=source_id,
-#                 format=CompilationStatus.Formats.PDF,
-#                 status=CompilationStatus.Statuses.COMPLETED,
+#                 format=Format.PDF,
+#                 status=Status.COMPLETED,
 #                 task_id=task_id,
-#                 source_checksum=checksum
+#                 source_etag=checksum
 #             )
 #         )
 #         response_data = controllers.get_product(
@@ -264,10 +264,10 @@
 #             checksum=product_checksum,
 #             status=CompilationStatus(
 #                 source_id=source_id,
-#                 format=CompilationStatus.Formats.PDF,
-#                 status=CompilationStatus.Statuses.COMPLETED,
+#                 format=Format.PDF,
+#                 status=Status.COMPLETED,
 #                 task_id=task_id,
-#                 source_checksum=checksum
+#                 source_etag=checksum
 #             )
 #         )
 #         response_data = controllers.get_log(

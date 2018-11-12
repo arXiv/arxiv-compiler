@@ -29,7 +29,7 @@ class TestCompile(TestCase):
     def test_real_compiler(self, mock_get_source_content, mock_store):
         """The compilation succeeds, and storage works without a hitch."""
         source_id = '1902.00123'
-        source_checksum = 'asdf12345checksum'
+        source_etag = 'asdf12345checksum'
         source_dir = mkdtemp()
         fpath = os.path.join(source_dir, 'real-test.tar.gz')
         shutil.copy(os.path.join(data_dir, 'real-test.tar.gz'), fpath)
@@ -37,20 +37,20 @@ class TestCompile(TestCase):
         mock_get_source_content.return_value = domain.SourcePackage(
             stream=fpath,
             source_id=source_id,
-            etag=source_checksum
+            etag=source_etag
         )
 
         app = create_app()
         with app.app_context():
-            data = compiler.compile(source_id, source_checksum)
+            data = compiler.compile(source_id, source_etag)
         self.assertEqual(data['source_id'], source_id)
-        self.assertEqual(data['source_checksum'], source_checksum)
+        self.assertEqual(data['source_etag'], source_etag)
         self.assertEqual(data['output_format'], 'pdf')
 
         stored_product = mock_store.store.call_args[0][0]
         self.assertEqual(stored_product.status.status,
-                         domain.CompilationStatus.Statuses.COMPLETED)
+                         domain.Status.COMPLETED)
         self.assertEqual(stored_product.status.format,
-                         domain.CompilationStatus.Formats.PDF)
-        self.assertEqual(stored_product.status.source_checksum,
-                         source_checksum)
+                         domain.Format.PDF)
+        self.assertEqual(stored_product.status.source_etag,
+                         source_etag)
