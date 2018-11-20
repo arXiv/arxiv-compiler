@@ -50,10 +50,14 @@ async def test_compilation(arxiv_id=None):
     elif status == 'completed':
         return (arxiv_id, True)
 
-def main(N=1):
+def main(N=1, ids=[]):
     futures = []
-    for i in range(N):
-        futures.append(asyncio.ensure_future(test_compilation()))
+    if ids:
+        for id in ids:
+            futures.append(asyncio.ensure_future(test_compilation(id)))
+    else:
+        for i in range(N):
+            futures.append(asyncio.ensure_future(test_compilation()))
 
     loop = asyncio.get_event_loop()
     result = loop.run_until_complete(asyncio.wait(futures))
@@ -62,6 +66,12 @@ def main(N=1):
         print(arxiv_id, success)
 
 if __name__ == '__main__':
-    main(N=5)
+    from argparse import ArgumentParser
 
-    # asyncio.run(main()) # TODO: Replace above block when upgraded to py37
+    parser = ArgumentParser()
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-N', type=int, default=5)
+    group.add_argument('--ids', nargs="+")
+    args = parser.parse_args()
+    
+    main(N=args.N, ids=args.ids)
