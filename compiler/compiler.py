@@ -184,16 +184,18 @@ def do_compile(source_id: str, source_etag: str,
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
 
+    """
     if source.etag != source_etag:
         logger.debug('source: %s; expected: %s', source.etag, source_etag)
         reason = 'Source etag does not match requested etag'
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
+    """
 
     # 2. Generate the compiled files
     o_path, log_path = compile_source(source, output_format=output_format,
                                       verbose=verbose)
-
+    
     compile_status = CompilationStatus(
         status=Status.COMPLETED if o_path is not None else Status.FAILED,
         **status
@@ -210,6 +212,7 @@ def do_compile(source_id: str, source_etag: str,
     try:
         shutil.rmtree(source_dir)
         logger.debug('Cleaned up %s', source_dir)
+        #logger.debug('skipping cleanup of %s', source_dir)
     except Exception as e:
         logger.error('Could not clean up %s: %s', source_dir, e)
     return compile_status.to_dict()
@@ -242,7 +245,7 @@ def compile_source(source: SourcePackage,
                    P_dvips_flag: bool = False, dvips_layout: str = 'letter',
                    D_dvips_flag: bool = False,
                    id_for_decryption: Optional[str] = None,
-                   verbose: bool = False) \
+                   verbose: bool = True) \
         -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Compile a TeX source package."""
     # We need the path to the directory container the source package on the
@@ -290,16 +293,22 @@ def compile_source(source: SourcePackage,
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
 
-    # TODO: Why does the product end up in tex_cache most of the time, but not
-    # in the root source directory?
+    # TODO: Sometimes the resuts end up in the tex_cache directory (when using pdflatex),
+    # but other times it ends up in the root source (when using ps2pdf). Eventually,
+    # this needs to be sorted out.
     cache = os.path.join(source_dir, 'tex_cache')
     try:
         # The converter image has some heuristics for naming (e.g. adding a
         # version affix). But at the end of the day there should be only one
         # file in the format that we requested, so that's as specific as we
         # should need to be.
-        oname = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')][0]
-        output_path = os.path.join(cache, oname)
+        cache_results = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')]
+        if cache_results:
+            oname = cache_results[0]
+            output_path = os.path.join(cache, oname)
+        else:
+            oname = [fp for fp in os.listdir(source_dir) if fp.endswith(f'.{ext}')][0]
+            output_path = os.path.join(source_dir, oname)
     except IndexError:  # The expected output isn't here.
         # Normally I'd prefer to raise an exception if the compilation failed,
         # but we still have work to do.
