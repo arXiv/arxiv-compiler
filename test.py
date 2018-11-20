@@ -23,7 +23,6 @@ def payload(id):
 
 def check_status(task_url):
     r = requests.get(task_url)
-    print(r)
     try:
         data = r.json()
         return data['status']['status']
@@ -42,20 +41,27 @@ async def test_compilation(arxiv_id=None):
 
     status = 'in_progress'
     while status in ['in_progress', 'pending']:
-        status = check_status(task_url)
-        print(status)
         await asyncio.sleep(10)
+        status = check_status(task_url)
+        print(arxiv_id, status)
 
     if status == 'failed':
         return (arxiv_id, False)
     elif status == 'completed':
         return (arxiv_id, True)
 
-async def main(N=1):
-    arxiv_id, success = await test_compilation('1601.00004')
-    print(arxiv_id, success)
+def main(N=1):
+    futures = []
+    for i in range(N):
+        futures.append(asyncio.ensure_future(test_compilation()))
+
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(asyncio.wait(futures))
+    for future in futures:
+        arxiv_id, success = future.result()
+        print(arxiv_id, success)
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(main())
+    main(N=5)
+
     # asyncio.run(main()) # TODO: Replace above block when upgraded to py37
