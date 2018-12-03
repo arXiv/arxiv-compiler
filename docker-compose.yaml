@@ -18,6 +18,7 @@ x-base-service:
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
     HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
+    VERBOSE_COMPILE: 1
 
 services:
   compiler-test-redis:
