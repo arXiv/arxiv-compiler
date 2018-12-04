@@ -297,9 +297,6 @@ def compile_source(source: SourcePackage,
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
 
-    # TODO: Sometimes the resuts end up in the tex_cache directory (when using pdflatex),
-    # but other times it ends up in the root source (when using ps2pdf). Eventually,
-    # this needs to be sorted out.
     cache = os.path.join(source_dir, 'tex_cache')
     try:
         # The converter image has some heuristics for naming (e.g. adding a
@@ -307,12 +304,8 @@ def compile_source(source: SourcePackage,
         # file in the format that we requested, so that's as specific as we
         # should need to be.
         cache_results = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')]
-        if cache_results:
-            oname = cache_results[0]
-            output_path = os.path.join(cache, oname)
-        else:
-            oname = [fp for fp in os.listdir(source_dir) if fp.endswith(f'.{ext}')][0]
-            output_path = os.path.join(source_dir, oname)
+        oname = cache_results[0]
+        output_path = os.path.join(cache, oname)
     except IndexError:  # The expected output isn't here.
         # Normally I'd prefer to raise an exception if the compilation failed,
         # but we still have work to do.
