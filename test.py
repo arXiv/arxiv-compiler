@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from itertools import chain
 import json
 import logging
@@ -13,10 +14,15 @@ def generate_arxiv_id():
     return f"{year:02d}{month:02d}.{id:05d}"
 
 def payload(id):
+    year = int(id[0:2])
+    year += 1900 if year > 90 else 2000
+    month = int(id[2:4])
+    date = datetime(year, month, 1,1,4,33)
     return {
         "source_id" : id,
         # TODO: Update with actual checksum
-        "checksum" : "\"Tue, 02 Feb 2016 01:04:33 GMT\"", 
+        #"checksum" : "\"Tue, 02 Feb 2016 01:04:33 GMT\"", 
+        "checksum" : date.timestamp(),
         "format" : "pdf",
         "force" : True
         }

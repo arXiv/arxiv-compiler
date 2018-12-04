@@ -194,7 +194,8 @@ def do_compile(source_id: str, source_etag: str,
 
     # 2. Generate the compiled files
     o_path, log_path = compile_source(source, output_format=output_format,
-                                      verbose=verbose)
+                                      verbose=verbose,
+                                      tex_tree_timestamp=source_etag)
     
     compile_status = CompilationStatus(
         status=Status.COMPLETED if o_path is not None else Status.FAILED,
@@ -245,6 +246,7 @@ def compile_source(source: SourcePackage,
                    P_dvips_flag: bool = False, dvips_layout: str = 'letter',
                    D_dvips_flag: bool = False,
                    id_for_decryption: Optional[str] = None,
+                   tex_tree_timestamp = None,
                    verbose: bool = True) \
         -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Compile a TeX source package."""
@@ -285,6 +287,8 @@ def compile_source(source: SourcePackage,
         args.append('-D')
     if id_for_decryption is not None:
         args.append(f'-d {id_for_decryption}')
+    if tex_tree_timestamp is not None:
+        args.append(f'-U {tex_tree_timestamp}')
 
     logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
