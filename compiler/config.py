@@ -34,6 +34,7 @@ FILE_MANAGER_ENDPOINT = os.environ.get(
     f'/{FILE_MANAGER_PATH}'
 )
 FILE_MANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
+FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH')
 
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
@@ -45,3 +46,16 @@ S3_BUCKETS = [
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+
+REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
+
+COMPILER_DOCKER_IMAGE = os.environ.get('COMPILER_DOCKER_IMAGE')
+
+HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', '/tmp')
+"""Temporary directories containing source packages go in here."""
+
+CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
+"""Temporary directories containing source packages go in here."""
+
+VERBOSE_COMPILE = bool(int(os.environ.get('VERBOSE_COMPILE', 0)))
+"""If 1 (True), converter image is run in verbose mode."""

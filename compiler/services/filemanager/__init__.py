@@ -13,8 +13,11 @@ the file management service as they are being received by this UI application.
 from functools import wraps
 from typing import MutableMapping, Tuple
 import json
+import re
+import os
 from urllib.parse import urlparse, urlunparse, urlencode
 import dateutil.parser
+import tempfile
 
 import requests
 from urllib3.util.retry import Retry
@@ -24,8 +27,8 @@ from arxiv import status
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
-from ..domain import SourcePackageInfo, SourcePackage
-from ..util import ResponseStream
+from ...domain import SourcePackageInfo, SourcePackage
+from ...util import ResponseStream
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +78,8 @@ class FileManagementService(object):
     """Encapsulates a connection with the file management service."""
 
     def __init__(self, endpoint: str, verify_cert: bool = True,
-                 headers: dict = {}) -> None:
+                 headers: dict = {},
+                 content_path: str = '/{source_id}/content') -> None:
         """
         Initialize an HTTP session.
 
@@ -89,6 +93,12 @@ class FileManagementService(object):
             Whether or not SSL certificate verification should enforced.
         headers : dict
             Headers to be included on all requests.
+        content_path : str
+            format()-able path string; should have ``source_id`` as a key.
+        save_to : str
+            Root directory for storing retrieved source packages. Each
+            retrieved source will go into a separate directory in this
+            location.
 
         """
         self._session = requests.Session()
@@ -106,11 +116,12 @@ class FileManagementService(object):
             endpoint += '/'
         self._endpoint = endpoint
         self._session.headers.update(headers)
+        self._content_path = content_path
 
     def _path(self, path: str, query: dict = {}) -> str:
         o = urlparse(self._endpoint)
         path = path.lstrip('/')
-        return urlunparse(( # type: ignore
+        return urlunparse((  # type: ignore
             o.scheme, o.netloc, f"{o.path}{path}",
             None, urlencode(query), None
         ))
@@ -170,18 +181,21 @@ class FileManagementService(object):
     def get_service_status(self) -> dict:
         """Get the status of the file management service."""
         logger.debug('Get service status')
-        content, headers = self.request('get', 'status') # pylint: disable=unused-variable
+        content, headers = self.request('get', 'status')  # pylint: disable=unused-variable
         logger.debug('Got status response: %s', content)
         return content
 
-    def get_upload_content(self, upload_id: str) -> SourcePackage:
+    def get_source_content(self, source_id: str, save_to: str = '/tmp') \
+            -> SourcePackage:
         """
         Retrieve the sanitized/processed upload package.
 
         Parameters
         ----------
-        upload_id : str
+        source_id : str
             Unique long-lived identifier for the upload.
+        save_to : str
+            Directory into which source should be saved.
 
         Returns
         -------
@@ -189,33 +203,61 @@ class FileManagementService(object):
             A ``read() -> bytes``-able wrapper around response content.
 
         """
-        logger.debug('Get upload content for: %s', upload_id)
-        response = self._make_request('get', f'/{upload_id}/content',
+        logger.debug('Get upload content for: %s', source_id)
+        path = self._content_path.format(source_id=source_id)
+        logger.debug('at path %s', path)
+        response = self._make_request('get', path,
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
+
+        source_file_path = self._save_content(path, source_id, response,
+                                              save_to)
+
+        logger.debug('wrote source content to %s', source_file_path)
         return SourcePackage(
-            source_id=upload_id,
-            stream=ResponseStream(response.iter_content(chunk_size=None)),
+            source_id=source_id,
+            stream=source_file_path,
             etag=response.headers['ETag']
         )
 
-    def get_upload_info(self, upload_id: str) -> SourcePackageInfo:
+    def _save_content(self, path: str, source_id: str,
+                      response: requests.Response, source_dir: str) -> str:
+        match = re.search('filename=(.+)',
+                          response.headers.get('content-disposition', ''))
+        if match:
+            filename = match.group(1).strip('"')
+        else:
+            filename = f'{source_id}.tar.gz'
+
+        # There is a bug on the production public site: source downloads have
+        # .gz extension, but are not in fact gzipped tarballs.
+        if path.startswith('https://arxiv.org/src'):
+            filename.rstrip('.gz')
+
+        source_file_path = os.path.join(source_dir, filename)
+        with open(source_file_path, 'wb') as f:
+            for chunk in response.iter_content(1024):
+                if chunk:
+                    f.write(chunk)
+        return source_file_path
+
+    def get_upload_info(self, source_id: str) -> SourcePackageInfo:
         """
         Get the current state of the source package/upload workspace.
 
         Parameters
         ------------
-        upload_id: str
+        source_id: str
 
         Returns
         ---------
         :class:`SourcePackageInfo`
 
         """
-        logger.debug('Get upload info for: %s', upload_id)
-        response, headers = self.request('head', f'/{upload_id}/content') # pylint: disable=unused-variable
+        logger.debug('Get upload info for: %s', source_id)
+        response, headers = self.request('head', f'/{source_id}/content')
         logger.debug('Got response with etag %s', headers['ETag'])
-        return SourcePackageInfo(source_id=upload_id, etag=headers['ETag'])
+        return SourcePackageInfo(source_id=source_id, etag=headers['ETag'])
 
 
 def init_app(app: object = None) -> None:
@@ -223,6 +265,7 @@ def init_app(app: object = None) -> None:
     config = get_application_config(app)
     config.setdefault('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
     config.setdefault('FILE_MANAGER_VERIFY', True)
+    config.setdefault('FILE_MANAGER_CONTENT_PATH', '/{source_id}/content')
 
 
 def get_session(app: object = None) -> FileManagementService:
@@ -230,8 +273,11 @@ def get_session(app: object = None) -> FileManagementService:
     config = get_application_config(app)
     endpoint = config.get('FILE_MANAGER_ENDPOINT', 'https://arxiv.org/')
     verify_cert = config.get('FILE_MANAGER_VERIFY', True)
+    content_path = config.get('FILE_MANAGER_CONTENT_PATH',
+                              '/{source_id}/content')
     logger.debug('Create FileManagementService with endpoint %s', endpoint)
-    return FileManagementService(endpoint, verify_cert=verify_cert)
+    return FileManagementService(endpoint, verify_cert=verify_cert,
+                                 content_path=content_path)
 
 
 def current_session() -> FileManagementService:
@@ -250,13 +296,13 @@ def set_auth_token(token: str) -> None:
     return current_session().set_auth_token(token)
 
 
-@wraps(FileManagementService.get_upload_content)
-def get_upload_content(upload_id: str) -> SourcePackage:
-    """See :meth:`FileManagementService.get_upload_content`."""
-    return current_session().get_upload_content(upload_id)
+@wraps(FileManagementService.get_source_content)
+def get_source_content(source_id: str, save_to: str = '/tmp') -> SourcePackage:
+    """See :meth:`FileManagementService.get_source_content`."""
+    return current_session().get_source_content(source_id, save_to=save_to)
 
 
 @wraps(FileManagementService.get_upload_info)
-def get_upload_info(upload_id: str) -> SourcePackageInfo:
+def get_upload_info(source_id: str) -> SourcePackageInfo:
     """See :meth:`FileManagementService.upload_package`."""
-    return current_session().get_upload_info(upload_id)
+    return current_session().get_upload_info(source_id)
