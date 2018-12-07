@@ -21,7 +21,9 @@ pylint = "*"
 "nose2" = "*"
 coveralls = "*"
 coverage = "*"
-importlib-resources = "*"
+importlib_resources = "*"
+sphinx = "*"
+sphinx-autodoc-typehints = "*"
 
 [requires]
 python_version = "3.6"
