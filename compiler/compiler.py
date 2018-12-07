@@ -184,16 +184,19 @@ def do_compile(source_id: str, source_etag: str,
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
 
+    """
     if source.etag != source_etag:
         logger.debug('source: %s; expected: %s', source.etag, source_etag)
         reason = 'Source etag does not match requested etag'
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
+    """
 
     # 2. Generate the compiled files
     o_path, log_path = compile_source(source, output_format=output_format,
-                                      verbose=verbose)
-
+                                      verbose=verbose,
+                                      tex_tree_timestamp=source_etag)
+    
     compile_status = CompilationStatus(
         status=Status.COMPLETED if o_path is not None else Status.FAILED,
         **status
@@ -210,6 +213,7 @@ def do_compile(source_id: str, source_etag: str,
     try:
         shutil.rmtree(source_dir)
         logger.debug('Cleaned up %s', source_dir)
+        #logger.debug('skipping cleanup of %s', source_dir)
     except Exception as e:
         logger.error('Could not clean up %s: %s', source_dir, e)
     return compile_status.to_dict()
@@ -242,7 +246,8 @@ def compile_source(source: SourcePackage,
                    P_dvips_flag: bool = False, dvips_layout: str = 'letter',
                    D_dvips_flag: bool = False,
                    id_for_decryption: Optional[str] = None,
-                   verbose: bool = False) \
+                   tex_tree_timestamp = None,
+                   verbose: bool = True) \
         -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """Compile a TeX source package."""
     # We need the path to the directory container the source package on the
@@ -282,6 +287,8 @@ def compile_source(source: SourcePackage,
         args.append('-D')
     if id_for_decryption is not None:
         args.append(f'-d {id_for_decryption}')
+    if tex_tree_timestamp is not None:
+        args.append(f'-U {tex_tree_timestamp}')
 
     logger.debug('run image %s with args %s', image, args)
     run_docker(image, args=args,
@@ -290,15 +297,14 @@ def compile_source(source: SourcePackage,
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
 
-    # TODO: Why does the product end up in tex_cache most of the time, but not
-    # in the root source directory?
     cache = os.path.join(source_dir, 'tex_cache')
     try:
         # The converter image has some heuristics for naming (e.g. adding a
         # version affix). But at the end of the day there should be only one
         # file in the format that we requested, so that's as specific as we
         # should need to be.
-        oname = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')][0]
+        cache_results = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')]
+        oname = cache_results[0]
         output_path = os.path.join(cache, oname)
     except IndexError:  # The expected output isn't here.
         # Normally I'd prefer to raise an exception if the compilation failed,
