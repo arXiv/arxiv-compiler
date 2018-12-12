@@ -1,77 +1,321 @@
+"""
+
+Parameters supported by autotex "converter" image.
+
+```
+ -C cache directory [defaults to paper/format specific directory in PS_CACHE]
+ -D pass through for -D dvips flag
+ -f output format, only sensible use is -f fInm for pdf generation
+ -u add a psmapfile to dvips command "-u +psmapfile"
+ -h print usage
+ -k do not delete temporary directory
+ -P pass through for -P dvips flag
+ -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+ -d id to use for decrytion (overrides default to -p id)
+ -s do not add stamp to PostScript
+ -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+ -v verbose logging, that is, print log messages to STDOUT
+ (they are always logged to auto_gen_ps.log)
+ -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
+ -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
+ -X cache DVI file (default: no)
+ -Y don't copy PostScript or PDF to cache
+ -Z don't gzip PostScript before moving to cache
+ -T override the default AUTOTEX_TIMEOUT setting with user value
+```
+
+We're going to use:
+
+- -f output format, only sensible use is -f fInm for pdf generation (fInm, dvi, ps)
+- -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+- -s do not add stamp to PostScript
+- -T override the default AUTOTEX_TIMEOUT setting with user value
+
+- -u add a psmapfile to dvips command "-u +psmapfile"
+- -P pass through for -P dvips flag
+- -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+- -D pass through for -D dvips flag
+
+- -d id to use for decrytion (overrides default to -p id)
+
+Always do this:
+- -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
+- -Y don't copy PostScript or PDF to cache
+
+"""
+
 import os
-import os.path
+from typing import List
 import subprocess
 import tarfile
+import shutil
+import tempfile
 from tempfile import TemporaryDirectory
 from typing import Optional, Tuple
 
 from flask import current_app
+
+from celery.result import AsyncResult
+from celery.signals import after_task_publish
+
 from arxiv.base import logging
 
-from .domain import CompilationProduct
-
-import compiler.services.filemanager as filemanager
+from .celery import celery_app
+from .domain import CompilationProduct, CompilationStatus, Format, Status, \
+    SourcePackage
+from .services import filemanager, store
 
 logger = logging.getLogger(__name__)
 
-def compile_upload(upload_id: str, output_format: str='pdf', 
-                   preferred_compiler: Optional[str]=None):
-    """
-    Retrieves an upload, submits to the converter service, uploads results.
 
-    More or less, the ``main()`` function for compiler. It operates in a
-    three-step process:
-    1.  Retrieve the source package for ``upload_id`` from the file management
-        service.
-    2.  Use the ``preferred_compiler`` to generate ``output_format``.
-    3.  Upload the results.
+class NoSuchTask(RuntimeError):
+    """A request was made for a non-existant task."""
+
+
+class TaskCreationFailed(RuntimeError):
+    """An extraction task could not be created."""
+
+
+def create_compilation_task(source_id: str, source_etag: str,
+                            output_format: Format = Format.PDF,
+                            preferred_compiler: Optional[str] = None) -> str:
+    """
+    Create a new compilation task.
+
+    Parameters
+    ----------
+    source_id : str
+        Unique identifier for the source being compiled.
+    source_etag : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
+    output_format: str
+        The desired output format. Default: "pdf". Other potential values:
+        "dvi", "html", "ps"
+    preferred_compiler : str
+
+    Returns
+    -------
+    str
+        The identifier for the created compilation task.
+    """
+    try:
+        result = do_compile.delay(source_id, source_etag,
+                                  output_format.value,
+                                  preferred_compiler=preferred_compiler)
+        logger.info('compile: started processing as %s' % result.task_id)
+    except Exception as e:
+        logger.error('Failed to create task: %s', e)
+        raise TaskCreationFailed('Failed to create task: %s', e) from e
+    return result.task_id
+
+
+def get_compilation_task(task_id: str) -> CompilationStatus:
+    """
+    Get the status of an extraction task.
+
+    Parameters
+    ----------
+    task_id : str
+        The identifier for the created extraction task.
+
+    Returns
+    -------
+    :class:`ExtractionTask`
+
+    """
+    result = do_compile.AsyncResult(task_id)
+    data = {}
+    if result.status == 'PENDING':
+        raise NoSuchTask('No such task')
+    elif result.status in ['SENT', 'STARTED', 'RETRY']:
+        data['status'] = Status.IN_PROGRESS
+    elif result.status == 'FAILURE':
+        data['status'] = Status.FAILED
+    elif result.status == 'SUCCESS':
+        _result: Dist[str, str] = result.result
+        if 'status' in _result:
+            data['status'] = Status(_result['status'])
+        else:
+            data['status'] = Status.COMPLETED
+        data['source_id'] = _result['source_id']
+        data['output_format'] = Format(_result['output_format'])
+        data['source_etag'] = _result['source_etag']
+        data['reason'] = _result.get('reason')
+    return CompilationStatus(task_id=task_id, **data)
+
+
+@celery_app.task
+def do_compile(source_id: str, source_etag: str,
+               output_format: str = 'pdf',
+               preferred_compiler: Optional[str] = None) -> dict:
+    """
+    Retrieve a source package, compile to something, and store the result.
+
+    Executed by the async worker on a completely separate machine (let's
+    assume) from the compiler web service API.
 
     Parameters
     ------------
-    upload_id: str
+    source_id: str
         Required. The upload to retrieve.
+    source_etag : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
     output_format: str
         The desired output format. Default: "pdf". Other potential values:
         "dvi", "html", "ps"
     preferred_compiler: str
         The preferred tex compiler for use with the source package.
+
     """
-    source_package = filemanager.get_upload_content(upload_id)
+    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+    verbose = current_app.config['VERBOSE_COMPILE']
+    source_dir = tempfile.mkdtemp(dir=container_source_root)
+    status = {
+        'source_id': source_id,
+        'output_format': Format(output_format),
+        'source_etag': source_etag
+    }
+    try:
+        source = filemanager.get_source_content(source_id, save_to=source_dir)
+    except filemanager.NotFound as e:
+        reason = 'Could not retrieve a matching source package'
+        stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
+        return stat.to_dict()
+
+    if source.etag != source_etag:
+        logger.debug('source: %s; expected: %s', source.etag, source_etag)
+        reason = 'Source etag does not match requested etag'
+        stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
+        return stat.to_dict()
 
     # 2. Generate the compiled files
-    # 3. Upload the results to output_endpoint
-    with TemporaryDirectory(prefix='arxiv') as source_dir,\
-         TemporaryDirectory(prefix='arxiv') as output_dir:
-        with tarfile.open(fileobj=source_package.stream, mode='r:gz') as tar: # type: ignore
-            tar.extractall(path=source_dir)
+    o_path, log_path = compile_source(source, output_format=output_format,
+                                      verbose=verbose)
 
-        # 2. Generate the compiled files
-        compile_source(source_dir, output_dir)
+    compile_status = CompilationStatus(
+        status=Status.COMPLETED if o_path is not None else Status.FAILED,
+        **status
+    )
 
-        # 3. Upload the results to output_endpoint
-        # 3a. gather the candidate products based on output_format
-        products = [f for f in os.listdir(output_dir) 
-                        if f.endswith(output_format)]
+    # Store the result.
+    try:
+        _store_compilation_result(compile_status, o_path, log_path)
+    except RuntimeError as e:
+        stat = CompilationStatus(status=Status.FAILED, reason=str(e), **status)
+        return stat.to_dict()
 
-        if len(products) != 1:
-            raise RuntimeWarning("Multiple compilation products")
+    # Clean up!
+    try:
+        shutil.rmtree(source_dir)
+        logger.debug('Cleaned up %s', source_dir)
+    except Exception as e:
+        logger.error('Could not clean up %s: %s', source_dir, e)
+    return compile_status.to_dict()
 
-        # TODO: 3b. upload the output somewhere(?)
+
+def _store_compilation_result(status: CompilationStatus,
+                              output_path: Optional[str],
+                              log_path: Optional[str]) -> None:
+    if output_path is not None:
+        try:
+            with open(output_path, 'rb') as f:
+                store.store(CompilationProduct(stream=f, status=status))
+        except Exception as e:  # TODO: look at exceptions in object store.
+            raise RuntimeError('Failed to store result') from e
+
+    if log_path is not None:
+        try:
+            with open(log_path, 'rb') as f:
+                store.store_log(CompilationProduct(stream=f, status=status))
+        except Exception as e:  # TODO: look at exceptions in object store.
+            raise RuntimeError('Failed to store result') from e
+    store.set_status(status)
 
 
+# TODO: rename []_dvips_flag parameters when we figure out what they mean.
+# TODO: can we get rid of any of these?
+def compile_source(source: SourcePackage,
+                   output_format: str = 'pdf', add_stamp: bool = True,
+                   timeout: int = 600, add_psmapfile: bool = False,
+                   P_dvips_flag: bool = False, dvips_layout: str = 'letter',
+                   D_dvips_flag: bool = False,
+                   id_for_decryption: Optional[str] = None,
+                   verbose: bool = False) \
+        -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Compile a TeX source package."""
+    # We need the path to the directory container the source package on the
+    # host machine, so that we can correctly mount the volume in the
+    # converter container. We are assuming that the image is not running in
+    # the same container as this worker application.
+    source_dir, fname = os.path.split(source.stream)
+    image = current_app.config['COMPILER_DOCKER_IMAGE']
+    host_source_root = current_app.config['HOST_SOURCE_ROOT']
+    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+    leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
+    host_source_dir = os.path.join(host_source_root, leaf_path)
+    logger.debug('source_dir: %s', source_dir)
+    logger.debug('host_source_root: %s', host_source_root)
+    logger.debug('container_source_root: %s', container_source_root)
+    logger.debug('leaf_path: %s', leaf_path)
+    logger.debug('host_source_dir: %s', host_source_dir)
+    logger.debug('got image %s', image)
 
-def compile_source(source_dir: str, output_dir: str, image: Optional[str]=None):
-    if image is None:
-        image = current_app.config['COMPILER_DOCKER_IMAGE']
+    args = [
+        '-S /autotex',
+        f'-p {source.source_id}',
+        f'-f {output_format}',  # This doesn't do what we think it does.
+        f'-T {timeout}',
+        f'-t {dvips_layout}',
+        '-q',
+    ]
+    if verbose:
+        args.append('-v')
+    if not add_stamp:
+        args.append('-s')
+    if add_psmapfile:
+        args.append('-u')
+    if P_dvips_flag:
+        args.append('-P')
+    if D_dvips_flag:
+        args.append('-D')
+    if id_for_decryption is not None:
+        args.append(f'-d {id_for_decryption}')
 
-    run_docker(image, volumes=[(source_dir, '/src'), (output_dir, '/out')])
+    logger.debug('run image %s with args %s', image, args)
+    run_docker(image, args=args,
+               volumes=[(host_source_dir, '/autotex')])
+
+    # Now we have to figure out what went right or wrong.
+    ext = Format(output_format).ext
+
+    # TODO: Why does the product end up in tex_cache most of the time, but not
+    # in the root source directory?
+    cache = os.path.join(source_dir, 'tex_cache')
+    try:
+        # The converter image has some heuristics for naming (e.g. adding a
+        # version affix). But at the end of the day there should be only one
+        # file in the format that we requested, so that's as specific as we
+        # should need to be.
+        oname = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')][0]
+        output_path = os.path.join(cache, oname)
+    except IndexError:  # The expected output isn't here.
+        # Normally I'd prefer to raise an exception if the compilation failed,
+        # but we still have work to do.
+        output_path = None
+    # There are all kinds of ways in which compilation can fail. In many cases,
+    # we'll have log output even if the compilation failed, and we don't want
+    # to ignore that output.
+    tex_log_path = os.path.join(source_dir, 'tex_logs', 'auto_gen_ps.log')
+    return output_path, tex_log_path if os.path.exists(tex_log_path) else None
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: str = '', daemon: bool = False) -> subprocess.CompletedProcess:
+               args: List[str] = [], daemon: bool = False) -> None:
     """
     Run a generic docker image.
-    
+
     In our uses, we wish to set the userid to that of running process (getuid)
     by default. Additionally, we do not expose any ports for running services
     making this a rather simple function.
@@ -89,17 +333,16 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     """
     # we are only running strings formatted by us, so let's build the command
     # then split it so that it can be run by subprocess
-    opt_user = '-u {}'.format(os.getuid())
+    # opt_user = '-u {}'.format(os.getuid())
     opt_volumes = ' '.join(['-v {}:{}'.format(hd, cd) for hd, cd in volumes])
     opt_ports = ' '.join(['-p {}:{}'.format(hp, cp) for hp, cp in ports])
-    cmd = 'docker run --rm {} {} {} {} {}'.format(
-        opt_user, opt_ports, opt_volumes, image, args
+    cmd = 'docker run --rm {} {} {} /bin/autotex.pl {}'.format(
+        opt_ports, opt_volumes, image, ' '.join(args)
     )
+    logger.debug('Full compile command: %s', cmd)
     result = subprocess.run(cmd, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, shell=True)
-    if result.returncode:
-        logger.error(f"Docker image call '{cmd}' exited {result.returncode}")
-        logger.error(f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}")
-        result.check_returncode()
 
-    return result
+    logger.error('Docker exited with %i', result.returncode)
+    logger.error('STDOUT: %s', result.stdout)
+    logger.error('STDERR: %s', result.stderr)
