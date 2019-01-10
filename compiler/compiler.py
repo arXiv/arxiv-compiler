@@ -76,7 +76,7 @@ class TaskCreationFailed(RuntimeError):
     """An extraction task could not be created."""
 
 
-def create_compilation_task(source_id: str, source_etag: str,
+def create_compilation_task(source_id: str, checksum: str,
                             output_format: Format = Format.PDF,
                             preferred_compiler: Optional[str] = None) -> str:
     """
@@ -86,7 +86,7 @@ def create_compilation_task(source_id: str, source_etag: str,
     ----------
     source_id : str
         Unique identifier for the source being compiled.
-    source_etag : str
+    checksum : str
         The checksum for the source package. This is used to differentiate
         compilation tasks.
     output_format: str
@@ -99,31 +99,44 @@ def create_compilation_task(source_id: str, source_etag: str,
     str
         The identifier for the created compilation task.
     """
+    task_id = get_task_id(source_id, checksum, output_format)
     try:
-        result = do_compile.delay(source_id, source_etag,
-                                  output_format.value,
-                                  preferred_compiler=preferred_compiler)
-        logger.info('compile: started processing as %s' % result.task_id)
+        do_compile.apply_async(
+            (source_id, checksum),
+            {'output_format': output_format.value,
+             'preferred_compiler': preferred_compiler},
+            task_id=task_id
+        )
+        logger.info('compile: started processing as %s' % task_id)
     except Exception as e:
         logger.error('Failed to create task: %s', e)
         raise TaskCreationFailed('Failed to create task: %s', e) from e
-    return result.task_id
+    return task_id
 
 
-def get_compilation_task(task_id: str) -> CompilationStatus:
+def get_compilation_task(source_id: str, checksum: str,
+                         output_format: Format = Format.PDF) \
+        -> CompilationStatus:
     """
     Get the status of an extraction task.
 
     Parameters
     ----------
-    task_id : str
-        The identifier for the created extraction task.
+    source_id : str
+        Unique identifier for the source being compiled.
+    checksum : str
+        The checksum for the source package. This is used to differentiate
+        compilation tasks.
+    output_format: str
+        The desired output format. Default: "pdf". Other potential values:
+        "dvi", "html", "ps"
 
     Returns
     -------
     :class:`ExtractionTask`
 
     """
+    task_id = get_task_id(source_id, checksum, output_format)
     result = do_compile.AsyncResult(task_id)
     data = {}
     if result.status == 'PENDING':
@@ -140,13 +153,21 @@ def get_compilation_task(task_id: str) -> CompilationStatus:
             data['status'] = Status.COMPLETED
         data['source_id'] = _result['source_id']
         data['output_format'] = Format(_result['output_format'])
-        data['source_etag'] = _result['source_etag']
+        data['checksum'] = _result['checksum']
         data['reason'] = _result.get('reason')
     return CompilationStatus(task_id=task_id, **data)
 
 
+@after_task_publish.connect
+def update_sent_state(sender=None, headers=None, body=None, **kwargs):
+    """Set state to SENT, so that we can tell whether a task exists."""
+    task = celery_app.tasks.get(sender)
+    backend = task.backend if task else celery_app.backend
+    backend.store_result(headers['id'], None, "SENT")
+
+
 @celery_app.task
-def do_compile(source_id: str, source_etag: str,
+def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None) -> dict:
     """
@@ -159,7 +180,7 @@ def do_compile(source_id: str, source_etag: str,
     ------------
     source_id: str
         Required. The upload to retrieve.
-    source_etag : str
+    checksum : str
         The checksum for the source package. This is used to differentiate
         compilation tasks.
     output_format: str
@@ -175,7 +196,7 @@ def do_compile(source_id: str, source_etag: str,
     status = {
         'source_id': source_id,
         'output_format': Format(output_format),
-        'source_etag': source_etag
+        'checksum': checksum
     }
     try:
         source = filemanager.get_source_content(source_id, save_to=source_dir)
@@ -185,8 +206,8 @@ def do_compile(source_id: str, source_etag: str,
         return stat.to_dict()
 
     """
-    if source.etag != source_etag:
-        logger.debug('source: %s; expected: %s', source.etag, source_etag)
+    if source.etag != checksum:
+        logger.debug('source: %s; expected: %s', source.etag, checksum)
         reason = 'Source etag does not match requested etag'
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
@@ -195,8 +216,8 @@ def do_compile(source_id: str, source_etag: str,
     # 2. Generate the compiled files
     o_path, log_path = compile_source(source, output_format=output_format,
                                       verbose=verbose,
-                                      tex_tree_timestamp=source_etag)
-    
+                                      tex_tree_timestamp=checksum)
+
     compile_status = CompilationStatus(
         status=Status.COMPLETED if o_path is not None else Status.FAILED,
         **status
@@ -352,3 +373,8 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     logger.error('Docker exited with %i', result.returncode)
     logger.error('STDOUT: %s', result.stdout)
     logger.error('STDERR: %s', result.stderr)
+
+
+def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
+    """Generate a key for a source_id/checksum/format combination."""
+    return f"{source_id}::{checksum}::{output_format.value}"

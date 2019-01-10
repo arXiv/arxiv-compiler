@@ -22,7 +22,6 @@
       "description": "The md5 checksum of the upload bundle at time of compilation.",
       "type": "string"
     },
-
     "compilation_requested": {
       "description": "The date-time that compilation was requested.",
       "type": "string",
