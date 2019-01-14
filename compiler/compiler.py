@@ -89,9 +89,8 @@ def create_compilation_task(source_id: str, checksum: str,
     checksum : str
         The checksum for the source package. This is used to differentiate
         compilation tasks.
-    output_format: str
-        The desired output format. Default: "pdf". Other potential values:
-        "dvi", "html", "ps"
+    output_format: Format
+        The desired output format. Default: Format.PDF.
     preferred_compiler : str
 
     Returns
@@ -127,9 +126,8 @@ def get_compilation_task(source_id: str, checksum: str,
     checksum : str
         The checksum for the source package. This is used to differentiate
         compilation tasks.
-    output_format: str
-        The desired output format. Default: "pdf". Other potential values:
-        "dvi", "html", "ps"
+    output_format: Format
+        The desired output format. Default: Format.PDF.
 
     Returns
     -------
@@ -200,6 +198,7 @@ def do_compile(source_id: str, checksum: str,
     }
     try:
         source = filemanager.get_source_content(source_id, save_to=source_dir)
+        logger.debug(f"{source_id} etag: {source.etag}")
     except filemanager.NotFound as e:
         reason = 'Could not retrieve a matching source package'
         stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
@@ -377,4 +376,4 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
 
 def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
-    return f"{source_id}::{checksum}::{output_format.value}"
+    return f"{source_id}::{checksum}::{output_format}"

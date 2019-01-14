@@ -43,7 +43,8 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
                                output_format=output_format)
         else:
             location = url_for('api.get_status',
-                               task_id=info.task_id)
+                               source_id=source_id, checksum=checksum,
+                               output_format=output_format)
         return {}, status.HTTP_303_SEE_OTHER, {'Location': location}
     try:
         task_id = compiler.create_compilation_task(
@@ -55,7 +56,8 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
-    location = url_for('api.get_status', task_id=task_id)
+    location = url_for('api.get_status', source_id=source_id, checksum=checksum,
+                       output_format=output_format)
     return {}, status.HTTP_202_ACCEPTED, {'Location': location}
 
 
@@ -77,14 +79,15 @@ def get_info(source_id: int, checksum: str, output_format: str) \
     return data, status.HTTP_200_OK, {}
 
 
-def get_status(task_id: str) -> ResponseData:
+def get_status(source_id: str, checksum: str,
+               output_format: Format = Format.PDF) -> ResponseData:
     try:
-        info = compiler.get_compilation_task(task_id)
+        info = compiler.get_compilation_task(source_id, checksum, output_format)
     except compiler.NoSuchTask as e:
         raise NotFound('No such compilation task') from e
-    except Exception as e:
-        logger.error('Unhandled exception: %s', e)
-        raise InternalServerError('Unhandled exception: %s' % e)
+    #except Exception as e:
+    #    logger.error('Unhandled exception: %s', e)
+    #    raise InternalServerError('Unhandled exception: %s' % e)
 
     data = {'status': info.to_dict()}
     logger.debug(data)
@@ -92,7 +95,7 @@ def get_status(task_id: str) -> ResponseData:
         location = url_for('api.get_info',
                            source_id=info.source_id,
                            checksum=info.source_etag,
-                           output_format=info.output_format.value)
+                           output_format=info.output_format)
         return data, status.HTTP_303_SEE_OTHER, {'Location': location}
     return data, status.HTTP_200_OK, {}
 

@@ -63,7 +63,7 @@ class CompilationStatus(NamedTuple):
     One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.
     """
 
-    source_etag: Optional[str] = None
+    checksum: Optional[str] = None
     """
     ETag of the source tarball from the file management service.
 
@@ -92,7 +92,7 @@ class CompilationStatus(NamedTuple):
             'source_id': self.source_id,
             'output_format':
                 self.output_format.value if self.output_format else None,
-            'source_etag': self.source_etag,
+            'checksum': self.checksum,
             'task_id': self.task_id,
             'status': self.status.value if self.status else None,
             'reason': self.reason

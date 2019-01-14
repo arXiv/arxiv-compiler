@@ -32,10 +32,10 @@ def request_compilation() -> Response:
     return jsonify(data), status_code, headers
 
 
-@blueprint.route('/task/<string:task_id>', methods=['GET'])
-def get_status(task_id: str) -> Response:
+@blueprint.route('/task/<string:source_id>/<string:checksum>/<string:output_format>', methods=['GET'])
+def get_status(source_id: str, checksum: int, output_format: str) -> Response:
     """Get the status of a compilation task."""
-    data, status_code, headers = controllers.get_status(task_id)
+    data, status_code, headers = controllers.get_status(source_id, checksum, output_format)
     if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
         return redirect(headers['Location'], code=status_code)
     return jsonify(data), status_code, headers
