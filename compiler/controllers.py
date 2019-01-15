@@ -64,8 +64,12 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
 def get_info(source_id: int, checksum: str, output_format: str) \
         -> ResponseData:
     try:
-        info = store.get_status(source_id, checksum,
-                                Format(output_format))
+        product_format = Format(output_format)
+    except ValueError:  # Not a valid format.
+        raise BadRequest('Invalid format')
+
+    try:
+        info = store.get_status(source_id, checksum, product_format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation') from e
     except Exception as e:
@@ -80,9 +84,14 @@ def get_info(source_id: int, checksum: str, output_format: str) \
 
 
 def get_status(source_id: str, checksum: str,
-               output_format: Format = Format.PDF) -> ResponseData:
+               output_format: str) -> ResponseData:
     try:
-        info = compiler.get_compilation_task(source_id, checksum, output_format)
+        product_format = Format(output_format)
+    except ValueError:  # Not a valid format.
+        raise BadRequest('Invalid format')
+    
+    try:
+        info = compiler.get_compilation_task(source_id, checksum, product_format)
     except compiler.NoSuchTask as e:
         raise NotFound('No such compilation task') from e
     #except Exception as e:
@@ -94,7 +103,7 @@ def get_status(source_id: str, checksum: str,
     if info.status is Status.COMPLETED:
         location = url_for('api.get_info',
                            source_id=info.source_id,
-                           checksum=info.source_etag,
+                           checksum=info.checksum,
                            output_format=info.output_format.value)
         return data, status.HTTP_303_SEE_OTHER, {'Location': location}
     return data, status.HTTP_200_OK, {}

@@ -188,14 +188,20 @@ def do_compile(source_id: str, checksum: str,
         The preferred tex compiler for use with the source package.
 
     """
+    output_format = Format(output_format)
+
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     verbose = current_app.config['VERBOSE_COMPILE']
     source_dir = tempfile.mkdtemp(dir=container_source_root)
+    task_id = get_task_id(source_id, checksum, output_format)
+
     status = {
+        'task_id': task_id,
         'source_id': source_id,
-        'output_format': Format(output_format),
+        'output_format': output_format,
         'checksum': checksum
     }
+
     try:
         source = filemanager.get_source_content(source_id, save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
@@ -376,4 +382,4 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
 
 def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
-    return f"{source_id}::{checksum}::{output_format}"
+    return f"{source_id}::{checksum}::{output_format.value}"
