@@ -40,11 +40,11 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
         if info.status is Status.COMPLETED:
             location = url_for('api.get_product',
                                source_id=source_id, checksum=checksum,
-                               output_format=output_format)
+                               output_format=output_format.value)
         else:
             location = url_for('api.get_status',
                                source_id=source_id, checksum=checksum,
-                               output_format=output_format)
+                               output_format=output_format.value)
         return {}, status.HTTP_303_SEE_OTHER, {'Location': location}
     try:
         task_id = compiler.create_compilation_task(
@@ -57,7 +57,7 @@ def request_compilation(request_data: MultiDict) -> ResponseData:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
     location = url_for('api.get_status', source_id=source_id, checksum=checksum,
-                       output_format=output_format)
+                       output_format=output_format.value)
     return {}, status.HTTP_202_ACCEPTED, {'Location': location}
 
 
@@ -95,7 +95,7 @@ def get_status(source_id: str, checksum: str,
         location = url_for('api.get_info',
                            source_id=info.source_id,
                            checksum=info.source_etag,
-                           output_format=info.output_format)
+                           output_format=info.output_format.value)
         return data, status.HTTP_303_SEE_OTHER, {'Location': location}
     return data, status.HTTP_200_OK, {}
 
