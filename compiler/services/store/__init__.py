@@ -84,7 +84,7 @@ class StoreSession(object):
              output_format: Format) -> str:
         return f'{source_id}/{checksum}/{output_format.value}'
 
-    def get_status(self, source_id: str, source_etag: str,
+    def get_status(self, source_id: str, checksum: str,
                    output_format: Format,
                    bucket: str = 'arxiv') -> CompilationStatus:
         """
@@ -96,7 +96,7 @@ class StoreSession(object):
             The unique identifier of the source package.
         output_format: str
             Compilation format. See :attr:`Format`.
-        source_etag : str
+        checksum : str
             Base64-encoded MD5 hash of the source package.
         bucket : str
 
@@ -110,7 +110,7 @@ class StoreSession(object):
             Raised if no status exists for the provided parameters.
 
         """
-        _key = self._key(source_id, source_etag, output_format)
+        _key = self._key(source_id, checksum, output_format)
         key = f'{_key}/status.json'
         logger.debug('Get status for upload %s with key %s', source_id, key)
         try:
@@ -139,7 +139,7 @@ class StoreSession(object):
         bucket : str
 
         """
-        _key = self._key(status.source_id, status.source_etag,
+        _key = self._key(status.source_id, status.checksum,
                          status.output_format)
         key = f'{_key}/status.json'
         body = json.dumps(status.to_dict()).encode('utf-8')
@@ -172,7 +172,7 @@ class StoreSession(object):
 
         body = product.stream.read()
         status = product.status
-        _key = self._key(status.source_id, status.source_etag,
+        _key = self._key(status.source_id, status.checksum,
                          status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}'
         try:
@@ -187,7 +187,7 @@ class StoreSession(object):
             raise RuntimeError(f'Unhandled exception: {e}') from e
         self.set_status(status, bucket=bucket)
 
-    def retrieve(self, source_id: str, source_etag: str,
+    def retrieve(self, source_id: str, checksum: str,
                  output_format: Format,
                  bucket: str = 'arxiv') -> CompilationProduct:
         """
@@ -196,7 +196,7 @@ class StoreSession(object):
         Parameters
         ----------
         source_id : str
-        source_etag : str
+        checksum : str
         output_format : enum
             One of :attr:`Format`.
         bucket : str
@@ -209,7 +209,7 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_etag, output_format)
+        _key = self._key(source_id, checksum, output_format)
         key = f'{_key}/{source_id}.{Format(output_format).ext}'
         try:
             response = self.client.get_object(
@@ -243,7 +243,7 @@ class StoreSession(object):
 
         body = product.stream.read()
         status = product.status
-        _key = self._key(status.source_id, status.source_etag,
+        _key = self._key(status.source_id, status.checksum,
                          status.output_format)
         key = f'{_key}/{status.source_id}.{status.ext}.log'
         try:
@@ -258,7 +258,7 @@ class StoreSession(object):
             raise RuntimeError(f'Unhandled exception: {e}') from e
         self.set_status(status, bucket=bucket)
 
-    def retrieve_log(self, source_id: str, source_etag: str,
+    def retrieve_log(self, source_id: str, checksum: str,
                      output_format: Format,
                      bucket: str = 'arxiv') -> CompilationProduct:
         """
@@ -267,7 +267,7 @@ class StoreSession(object):
         Parameters
         ----------
         source_id : str
-        source_etag : str
+        checksum : str
         output_format : enum
             One of :attr:`Format`.
         bucket : str
@@ -280,7 +280,7 @@ class StoreSession(object):
         :class:`CompilationProduct`
 
         """
-        _key = self._key(source_id, source_etag, output_format)
+        _key = self._key(source_id, checksum, output_format)
         key = f'{_key}/{source_id}.{Format(output_format).ext}.log'
         try:
             response = self.client.get_object(
@@ -314,13 +314,13 @@ def create_bucket() -> None:
 
 
 @wraps(StoreSession.get_status)
-def get_status(source_id: str, source_etag: str,
+def get_status(source_id: str, checksum: str,
                output_format: Format,
                bucket: str = 'arxiv') \
         -> CompilationStatus:
     """See :func:`StoreSession.get_status`."""
     s = current_session()
-    return s.get_status(source_id, source_etag, output_format,
+    return s.get_status(source_id, checksum, output_format,
                         bucket=bucket)
 
 
@@ -343,20 +343,20 @@ def store_log(product: CompilationProduct, bucket: str = 'arxiv') -> None:
 
 
 @wraps(StoreSession.retrieve)
-def retrieve(source_id: str, source_etag: str,
+def retrieve(source_id: str, checksum: str,
              output_format: Format,
              bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve`."""
-    return current_session().retrieve(source_id, source_etag,
+    return current_session().retrieve(source_id, checksum,
                                       output_format, bucket=bucket)
 
 
 @wraps(StoreSession.retrieve_log)
-def retrieve_log(source_id: str, source_etag: str,
+def retrieve_log(source_id: str, checksum: str,
                  output_format: Format,
                  bucket: str = 'arxiv') -> CompilationProduct:
     """See :func:`StoreSession.retrieve_log`."""
-    return current_session().retrieve_log(source_id, source_etag,
+    return current_session().retrieve_log(source_id, checksum,
                                           output_format, bucket=bucket)
 
 
