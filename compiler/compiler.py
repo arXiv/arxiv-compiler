@@ -45,7 +45,7 @@ Always do this:
 """
 
 import os
-from typing import List
+from typing import List, Dict
 import subprocess
 import tarfile
 import shutil
@@ -78,7 +78,8 @@ class TaskCreationFailed(RuntimeError):
 
 def create_compilation_task(source_id: str, checksum: str,
                             output_format: Format = Format.PDF,
-                            preferred_compiler: Optional[str] = None) -> str:
+                            preferred_compiler: Optional[str] = None,
+                            token: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -103,7 +104,8 @@ def create_compilation_task(source_id: str, checksum: str,
         do_compile.apply_async(
             (source_id, checksum),
             {'output_format': output_format.value,
-             'preferred_compiler': preferred_compiler},
+             'preferred_compiler': preferred_compiler,
+             'token': token},
             task_id=task_id
         )
         logger.info('compile: started processing as %s' % task_id)
@@ -136,7 +138,11 @@ def get_compilation_task(source_id: str, checksum: str,
     """
     task_id = get_task_id(source_id, checksum, output_format)
     result = do_compile.AsyncResult(task_id)
-    data = {}
+    data = {
+        'source_id': source_id,
+        'checksum': checksum,
+        'output_format': output_format
+    }
     if result.status == 'PENDING':
         raise NoSuchTask('No such task')
     elif result.status in ['SENT', 'STARTED', 'RETRY']:
@@ -144,14 +150,11 @@ def get_compilation_task(source_id: str, checksum: str,
     elif result.status == 'FAILURE':
         data['status'] = Status.FAILED
     elif result.status == 'SUCCESS':
-        _result: Dist[str, str] = result.result
+        _result: Dict[str, str] = result.result
         if 'status' in _result:
             data['status'] = Status(_result['status'])
         else:
             data['status'] = Status.COMPLETED
-        data['source_id'] = _result['source_id']
-        data['output_format'] = Format(_result['output_format'])
-        data['checksum'] = _result['checksum']
         data['reason'] = _result.get('reason')
     return CompilationStatus(task_id=task_id, **data)
 
@@ -167,7 +170,8 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',
-               preferred_compiler: Optional[str] = None) -> dict:
+               preferred_compiler: Optional[str] = None,
+               token: Optional[str] = None) -> dict:
     """
     Retrieve a source package, compile to something, and store the result.
 
@@ -203,6 +207,7 @@ def do_compile(source_id: str, checksum: str,
     }
 
     try:
+        filemanager.set_auth_token(token)
         source = filemanager.get_source_content(source_id, save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
     except filemanager.NotFound as e:

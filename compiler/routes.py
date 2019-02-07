@@ -26,9 +26,11 @@ def get_service_status() -> Union[str, Response]:
 @blueprint.route('/', methods=['POST'])
 def request_compilation() -> Response:
     """Request that a source package be compiled."""
-    # data, status_code, headers =
     request_data = request.get_json(force=True)
-    data, status_code, headers = controllers.request_compilation(request_data)
+    token = request.environ['token']
+    logger.debug('Request for compilation: %s', request_data)
+    logger.debug('Got token: %s', token)
+    data, status_code, headers = controllers.request_compilation(request_data, token)
     return jsonify(data), status_code, headers
 
 

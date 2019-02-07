@@ -39,6 +39,7 @@ services:
     environment:
       USE_SSL: 'true'
       DEBUG: 'true'
+
   compiler-test-api:
     << : *base-service
     build: .
@@ -51,13 +52,7 @@ services:
       - compiler-test
     ports:
       - "8000:8000"
-  # dind:
-  #   image: docker:17.11-dind
-  #   privileged: true
-  #   volumes:
-  #     - /tmp/dind:/var/lib/docker
-  #     - /tmp/dind-run:/var/run/docker.sock
-  #     - "${HOST_SOURCE_ROOT}:/tmp"
+
   compiler-test-worker:
     << : *base-service
     build: .

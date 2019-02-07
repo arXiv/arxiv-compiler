@@ -4,10 +4,10 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-arxiv-base = "*"
+arxiv-base = "==0.12.1"
 flask = "*"
 requests = "*"
-arxiv-auth = "==0.1.0rc6"
+arxiv-auth = "==0.2.6"
 "boto3" = "==1.7.84"
 celery = "*"
 pytest = "*"
