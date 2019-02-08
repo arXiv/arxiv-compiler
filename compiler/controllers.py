@@ -32,26 +32,30 @@ def request_compilation(request_data: MultiDict, token: str) -> ResponseData:
 
     preferred_compiler = request_data.get('compiler')
     force = request_data.get('force', False)
-
+    logger.debug('%s: request compilation with %s', __name__, request_data)
     try:
         info = store.get_status(source_id, checksum, output_format)
+        logger.debug('info %s', info)
     except store.DoesNotExist as e:
-        info = None
+        logger.debug('no info in store')
+        try:
+            logger.debug('check running or completed tasks')
+            info = compiler.get_compilation_task(source_id, checksum, Format(output_format))
+        except compiler.NoSuchTask as e:
+            logger.debug('no task')
+            info = None
     except Exception as e:
         logger.error('Unhandled exception: %s', e)
         info = None
 
     if not force and info is not None:
-        if info.status is Status.COMPLETED:
-            location = url_for('api.get_product',
-                               source_id=source_id, checksum=checksum,
-                               output_format=output_format.value)
-        else:
-            location = url_for('api.get_status',
-                               source_id=source_id, checksum=checksum,
-                               output_format=output_format.value)
+        logger.debug('compilation exists, redirecting')
+        location = url_for('api.get_status',
+                           source_id=source_id, checksum=checksum,
+                           output_format=output_format.value)
         return {}, status.HTTP_303_SEE_OTHER, {'Location': location}
     try:
+        logger.debug('create a compilation task')
         task_id = compiler.create_compilation_task(
             source_id,
             checksum,

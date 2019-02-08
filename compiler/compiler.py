@@ -192,6 +192,8 @@ def do_compile(source_id: str, checksum: str,
         The preferred tex compiler for use with the source package.
 
     """
+    logger.debug("do compile for %s @ %s to %s", source_id, checksum,
+                 output_format)
     output_format = Format(output_format)
 
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
@@ -300,7 +302,7 @@ def compile_source(source: SourcePackage,
 
     args = [
         '-S /autotex',
-        f'-p {source.source_id}',
+        f'-p 1901.00123', # {source.source_id}
         f'-f {output_format}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
@@ -383,6 +385,8 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     logger.error('Docker exited with %i', result.returncode)
     logger.error('STDOUT: %s', result.stdout)
     logger.error('STDERR: %s', result.stderr)
+    if b"Removing leading `/' from member names" in result.stderr:
+        raise RuntimeError("Source package has members with absolute paths")
 
 
 def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
