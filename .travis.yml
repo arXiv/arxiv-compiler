@@ -13,3 +13,4 @@ script:
   - pip install pipenv
   - pipenv install --dev
   - pipenv run openapi-spec-validator schema/openapi.yaml
+  - pipenv run nose2 --with-coverage

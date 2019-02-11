@@ -4,4 +4,5 @@ omit =
     */wsgi.py
     */config.py
     docs/*
-    */tests*
+    */test*
+    */worker.py
