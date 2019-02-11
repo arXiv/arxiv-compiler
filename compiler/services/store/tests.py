@@ -31,7 +31,7 @@ class TestStore(TestCase):
         status_pdf = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PDF,
-            source_etag='abc123checksum',
+            checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.Status.IN_PROGRESS
         )
@@ -54,7 +54,7 @@ class TestStore(TestCase):
         status_ps = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PS,
-            source_etag='abc123checksum',
+            checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.Status.IN_PROGRESS
         )
@@ -71,7 +71,7 @@ class TestStore(TestCase):
         status_ps_failed = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PS,
-            source_etag='abc123checksum',
+            checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.Status.FAILED
         )
@@ -84,7 +84,7 @@ class TestStore(TestCase):
         status_ps_alt = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PS,
-            source_etag='someotherchecksum1234',
+            checksum='someotherchecksum1234',
             task_id='foo-task-1234-6710',
             status=domain.Status.COMPLETED
         )
@@ -103,7 +103,7 @@ class TestStore(TestCase):
         status_pdf = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PDF,
-            source_etag='abc123checksum',
+            checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.Status.COMPLETED
         )
@@ -131,7 +131,7 @@ class TestStore(TestCase):
         status_pdf = domain.CompilationStatus(
             source_id='12345',
             output_format=domain.Format.PDF,
-            source_etag='abc123checksum',
+            checksum='abc123checksum',
             task_id='foo-task-1234-6789',
             status=domain.Status.COMPLETED
         )

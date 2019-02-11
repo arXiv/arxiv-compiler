@@ -45,13 +45,13 @@ Always do this:
 """
 
 import os
-from typing import List, Dict
+from typing import List, Dict, Optional, Tuple, Callable
+from functools import wraps
 import subprocess
 import tarfile
 import shutil
 import tempfile
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple
 
 from flask import current_app
 
@@ -62,7 +62,7 @@ from arxiv.base import logging
 
 from .celery import celery_app
 from .domain import CompilationProduct, CompilationStatus, Format, Status, \
-    SourcePackage
+    SourcePackage, Reason
 from .services import filemanager, store
 
 logger = logging.getLogger(__name__)
@@ -76,10 +76,14 @@ class TaskCreationFailed(RuntimeError):
     """An extraction task could not be created."""
 
 
-def create_compilation_task(source_id: str, checksum: str,
-                            output_format: Format = Format.PDF,
-                            preferred_compiler: Optional[str] = None,
-                            token: Optional[str] = None) -> str:
+class CorruptedSource(RuntimeError):
+    pass
+
+
+def start_compilation(source_id: str, checksum: str,
+                      output_format: Format = Format.PDF,
+                      preferred_compiler: Optional[str] = None,
+                      token: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -115,9 +119,8 @@ def create_compilation_task(source_id: str, checksum: str,
     return task_id
 
 
-def get_compilation_task(source_id: str, checksum: str,
-                         output_format: Format = Format.PDF) \
-        -> CompilationStatus:
+def get_task(source_id: str, checksum: str,
+             output_format: Format = Format.PDF) -> CompilationStatus:
     """
     Get the status of an extraction task.
 
@@ -167,6 +170,13 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
     backend.store_result(headers['id'], None, "SENT")
 
 
+def to_dict(func: Callable) -> Callable:
+    @wraps(func)
+    def inner(*args, **kwargs) -> dict:
+        return func(*args, **kwargs).to_dict()
+    return inner
+
+
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',
@@ -179,7 +189,7 @@ def do_compile(source_id: str, checksum: str,
     assume) from the compiler web service API.
 
     Parameters
-    ------------
+    ----------
     source_id: str
         Required. The upload to retrieve.
     checksum : str
@@ -207,15 +217,24 @@ def do_compile(source_id: str, checksum: str,
         'output_format': output_format,
         'checksum': checksum
     }
-
+    stat = None
     try:
         filemanager.set_auth_token(token)
         source = filemanager.get_source_content(source_id, save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
-    except filemanager.NotFound as e:
-        reason = 'Could not retrieve a matching source package'
-        stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
-        return stat.to_dict()
+    except (filemanager.RequestUnauthorized, filemanager.RequestForbidden):
+        description = "There was a problem authorizing your request."
+        stat = CompilationStatus(status=Status.FAILED,
+                                 reason=Reason.AUTHORIZATION,
+                                 description=description, **status)
+    except filemanager.ConnectionFailed:
+        description = "There was a problem retrieving your source files."
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.NETWORK,
+                                 description=description, **status)
+    except filemanager.NotFound:
+        description = 'Could not retrieve a matching source package'
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.MISSING,
+                                 description=description, **status)
 
     """
     if source.etag != checksum:
@@ -226,30 +245,36 @@ def do_compile(source_id: str, checksum: str,
     """
 
     # 2. Generate the compiled files
-    o_path, log_path = compile_source(source, output_format=output_format,
-                                      verbose=verbose,
-                                      tex_tree_timestamp=checksum)
+    if stat is not None:
+        try:
+            output_path, log_path = compile_source(source,
+                                                   output_format=output_format,
+                                                   verbose=verbose,
+                                                   tex_tree_timestamp=checksum)
+        except CorruptedSource:
+            stat = CompilationStatus(status=Status.FAILED,
+                                     reason=Reason.CORRUPTED,
+                                     **status)
 
-    compile_status = CompilationStatus(
-        status=Status.COMPLETED if o_path is not None else Status.FAILED,
-        **status
-    )
-
+    if output_path is not None:
+        stat = CompilationStatus(status=Status.COMPLETED, **status)
+    else:
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.ERROR,
+                                 **status)
     # Store the result.
     try:
-        _store_compilation_result(compile_status, o_path, log_path)
+        _store_compilation_result(stat, output_path, log_path)
     except RuntimeError as e:
-        stat = CompilationStatus(status=Status.FAILED, reason=str(e), **status)
-        return stat.to_dict()
+        return CompilationStatus(status=Status.FAILED, reason=str(e),
+                                 **status).to_dict()
 
     # Clean up!
     try:
         shutil.rmtree(source_dir)
         logger.debug('Cleaned up %s', source_dir)
-        #logger.debug('skipping cleanup of %s', source_dir)
     except Exception as e:
         logger.error('Could not clean up %s: %s', source_dir, e)
-    return compile_status.to_dict()
+    return stat.to_dict()
 
 
 def _store_compilation_result(status: CompilationStatus,
@@ -287,7 +312,7 @@ def compile_source(source: SourcePackage,
     # host machine, so that we can correctly mount the volume in the
     # converter container. We are assuming that the image is not running in
     # the same container as this worker application.
-    source_dir, fname = os.path.split(source.stream)
+    source_dir, fname = os.path.split(source.path)
     image = current_app.config['COMPILER_DOCKER_IMAGE']
     host_source_root = current_app.config['HOST_SOURCE_ROOT']
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
@@ -324,8 +349,10 @@ def compile_source(source: SourcePackage,
         args.append(f'-U {tex_tree_timestamp}')
 
     logger.debug('run image %s with args %s', image, args)
-    run_docker(image, args=args,
-               volumes=[(host_source_dir, '/autotex')])
+    code, stdout, stderr = run_docker(image, args=args,
+                                      volumes=[(host_source_dir, '/autotex')])
+    if "Removing leading `/' from member names" in stderr:
+        raise CorruptedSource("Source package has member with absolute path")
 
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
@@ -351,7 +378,8 @@ def compile_source(source: SourcePackage,
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: List[str] = [], daemon: bool = False) -> None:
+               args: List[str] = [], daemon: bool = False) \
+        -> Tuple[int, str, str]:
     """
     Run a generic docker image.
 
@@ -385,8 +413,9 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     logger.error('Docker exited with %i', result.returncode)
     logger.error('STDOUT: %s', result.stdout)
     logger.error('STDERR: %s', result.stderr)
-    if b"Removing leading `/' from member names" in result.stderr:
-        raise RuntimeError("Source package has members with absolute paths")
+    return (result.returncode,
+            result.stdout.decode('utf-8'),
+            result.stderr.decode('utf-8'))
 
 
 def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:

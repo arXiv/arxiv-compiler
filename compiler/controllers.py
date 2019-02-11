@@ -1,4 +1,6 @@
-from typing import Tuple
+"""Request controllers."""
+
+from typing import Tuple, Optional
 
 from werkzeug import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
@@ -14,13 +16,43 @@ from .domain import CompilationStatus, CompilationProduct, Status, Format
 
 logger = logging.getLogger(__name__)
 
-ResponseData = Tuple[dict, int, dict]
+Response = Tuple[dict, int, dict]
 
 
-def request_compilation(request_data: MultiDict, token: str) -> ResponseData:
-    """Request compilation of an upload workspace."""
-    if 'format' in request_data:
-        output_format = Format(request_data['format'])
+def _status_from_store(source_id: str, checksum: str,
+                       output_format: Format) -> Optional[CompilationStatus]:
+    """Get a :class:`.CompilationStatus` from storage."""
+    try:
+        return store.get_status(source_id, checksum, output_format)
+    except store.DoesNotExist as e:
+        logger.debug('No such compilation: %s', e)
+    except Exception as e:
+        logger.debug('No such compilation: %s', e)
+    return None
+
+
+def _status_from_task(source_id: str, checksum: str,
+                      output_format: Format) -> Optional[CompilationStatus]:
+    """Get a :class:`.CompilationStatus` from the task queue."""
+    try:
+        return compiler.get_task(source_id, checksum, output_format)
+    except compiler.NoSuchTask as e:
+        logger.debug('No such compilation task: %s', e)
+    return None
+
+
+def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
+                        code: int = status.HTTP_303_SEE_OTHER) -> Response:
+    """Redirect to the status endpoint."""
+    location = url_for('api.get_status', source_id=source_id,
+                       checksum=checksum, output_format=output_format.value)
+    return {}, code, {'Location': location}
+
+
+def compile(request_data: MultiDict, token: str) -> Response:
+    """Start compilation of an upload workspace."""
+    if 'output_format' in request_data:
+        output_format = Format(request_data['output_format'])
     else:
         output_format = Format.PDF
     source_id = request_data.get('source_id', None)
@@ -30,99 +62,43 @@ def request_compilation(request_data: MultiDict, token: str) -> ResponseData:
     if checksum is None:
         raise BadRequest('Missing required parameter: checksum')
 
-    preferred_compiler = request_data.get('compiler')
     force = request_data.get('force', False)
     logger.debug('%s: request compilation with %s', __name__, request_data)
+    if not force:
+        if _status_from_store(source_id, checksum, output_format) is not None:
+            logger.debug('compilation exists, redirecting')
+            return _redirect_to_status(source_id, checksum, output_format)
+        if _status_from_task(source_id, checksum, output_format) is not None:
+            logger.debug('compilation exists, redirecting')
+            return _redirect_to_status(source_id, checksum, output_format)
     try:
-        info = store.get_status(source_id, checksum, output_format)
-        logger.debug('info %s', info)
-    except store.DoesNotExist as e:
-        logger.debug('no info in store')
-        try:
-            logger.debug('check running or completed tasks')
-            info = compiler.get_compilation_task(source_id, checksum, Format(output_format))
-        except compiler.NoSuchTask as e:
-            logger.debug('no task')
-            info = None
-    except Exception as e:
-        logger.error('Unhandled exception: %s', e)
-        info = None
-
-    if not force and info is not None:
-        logger.debug('compilation exists, redirecting')
-        location = url_for('api.get_status',
-                           source_id=source_id, checksum=checksum,
-                           output_format=output_format.value)
-        return {}, status.HTTP_303_SEE_OTHER, {'Location': location}
-    try:
-        logger.debug('create a compilation task')
-        task_id = compiler.create_compilation_task(
-            source_id,
-            checksum,
-            output_format,
-            preferred_compiler=preferred_compiler,
-            token=token
-        )
+        compiler.start_compilation(source_id, checksum, output_format,
+                                   token=token)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
-    location = url_for('api.get_status', source_id=source_id,
-                       checksum=checksum, output_format=output_format.value)
-    return {}, status.HTTP_202_ACCEPTED, {'Location': location}
+    return _redirect_to_status(source_id, checksum, output_format,
+                               status.HTTP_202_ACCEPTED)
 
 
-def get_info(source_id: int, checksum: str, output_format: str) \
-        -> ResponseData:
+def get_status(source_id: str, checksum: str, output_format: str) -> Response:
+    """Get the status of a compilation."""
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
         raise BadRequest('Invalid format')
-
-    logger.debug('get_info for %s, %s, %s', source_id, checksum, output_format)
-    try:
-        info = store.get_status(source_id, checksum, product_format)
-    except store.DoesNotExist as e:
-        raise NotFound('No such compilation') from e
-    except Exception as e:
-        logger.error('Unhandled exception: %s', e)
-        raise InternalServerError('Unhandled exception: %s' % e)
-
-    data = {'status': info.to_dict()}
-    if info.status is Status.IN_PROGRESS:
-        location = url_for('api.get_status', task_id=info.task_id)
-        return data, status.HTTP_302_FOUND, {'Location': location}
-    return data, status.HTTP_200_OK, {}
+    logger.debug('get_status for %s, %s, %s', source_id, checksum,
+                 output_format)
+    info = _status_from_store(source_id, checksum, product_format)
+    if info is None:
+        info = _status_from_task(source_id, checksum, product_format)
+    if info is None:
+        raise NotFound('No such compilation')
+    return info.to_dict(), status.HTTP_200_OK, {}
 
 
-def get_status(source_id: str, checksum: str,
-               output_format: str) -> ResponseData:
-    try:
-        product_format = Format(output_format)
-    except ValueError:  # Not a valid format.
-        raise BadRequest('Invalid format')
-    logger.debug('get_status for %s, %s, %s', source_id, checksum, output_format)
-    try:
-        info = compiler.get_compilation_task(source_id, checksum, product_format)
-    except compiler.NoSuchTask as e:
-        logger.debug('No such compilation task: %s', e)
-        raise NotFound('No such compilation task') from e
-    #except Exception as e:
-    #    logger.error('Unhandled exception: %s', e)
-    #    raise InternalServerError('Unhandled exception: %s' % e)
-
-    data = {'status': info.to_dict()}
-    logger.debug(data)
-    if info.status is Status.COMPLETED:
-        location = url_for('api.get_info',
-                           source_id=info.source_id,
-                           checksum=info.checksum,
-                           output_format=info.output_format.value)
-        return data, status.HTTP_303_SEE_OTHER, {'Location': location}
-    return data, status.HTTP_200_OK, {}
-
-
-def get_product(source_id: int, checksum: str, output_format: str) \
-        -> ResponseData:
+def get_product(source_id: int, checksum: str, output_format: str) -> Response:
+    """Get the product of a compilation."""
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
@@ -142,7 +118,8 @@ def get_product(source_id: int, checksum: str, output_format: str) \
     return data, status.HTTP_200_OK, {'ETag': product.checksum}
 
 
-def get_log(source_id: int, checksum: str, output_format: str) -> ResponseData:
+def get_log(source_id: int, checksum: str, output_format: str) -> Response:
+    """Get a compilation log."""
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.

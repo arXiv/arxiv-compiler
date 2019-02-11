@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 blueprint = Blueprint('api', __name__, url_prefix='')
 
+base_url = '/<string:source_id>/<string:checksum>/<string:output_format>'
+
 
 @blueprint.route('/status', methods=['GET'])
 def get_service_status() -> Union[str, Response]:
@@ -24,43 +26,27 @@ def get_service_status() -> Union[str, Response]:
 
 
 @blueprint.route('/', methods=['POST'])
-def request_compilation() -> Response:
+def compile() -> Response:
     """Request that a source package be compiled."""
     request_data = request.get_json(force=True)
     token = request.environ['token']
     logger.debug('Request for compilation: %s', request_data)
     logger.debug('Got token: %s', token)
-    data, status_code, headers = controllers.request_compilation(request_data, token)
+    data, status_code, headers = controllers.compile(request_data, token)
     return jsonify(data), status_code, headers
 
 
-@blueprint.route('/task/<string:source_id>/<string:checksum>/<string:output_format>', methods=['GET'])
+@blueprint.route(base_url, methods=['GET'])
 def get_status(source_id: str, checksum: int, output_format: str) -> Response:
     """Get the status of a compilation task."""
-    data, status_code, headers = controllers.get_status(source_id, checksum, output_format)
+    data, status_code, headers = controllers.get_status(source_id, checksum,
+                                                        output_format)
     if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
         return redirect(headers['Location'], code=status_code)
     return jsonify(data), status_code, headers
 
 
-@blueprint.route(
-    '/<string:source_id>/<string:checksum>/<string:output_format>',
-    methods=['GET']
-)
-def get_info(source_id: str, checksum: int, output_format: str) \
-        -> Response:
-    """Get information about a compilation."""
-    resp = controllers.get_info(source_id, checksum, output_format)
-    data, status_code, headers = resp
-    if status_code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
-        return redirect(headers['Location'], code=status_code)
-    return jsonify(data), status_code, headers
-
-
-@blueprint.route(
-    '/<string:source_id>/<string:checksum>/<string:output_format>/log',
-    methods=['GET']
-)
+@blueprint.route(f'{base_url}/log', methods=['GET'])
 def get_log(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation log."""
     resp = controllers.get_log(source_id, checksum, output_format)
@@ -70,10 +56,7 @@ def get_log(source_id: str, checksum: int, output_format: str) -> Response:
     return response
 
 
-@blueprint.route(
-    '/<string:source_id>/<string:checksum>/<string:output_format>/product',
-    methods=['GET']
-)
+@blueprint.route(f'{base_url}/product', methods=['GET'])
 def get_product(source_id: str, checksum: int, output_format: str) -> Response:
     """Get a compilation product."""
     resp = controllers.get_product(source_id, checksum, output_format)

@@ -9,9 +9,8 @@ from werkzeug.exceptions import NotFound, BadRequest
 from arxiv import status
 
 from ..domain import CompilationStatus, CompilationProduct, Format, Status
-from .. import controllers
+from .. import controllers, compiler
 from ..services import store
-from . import compiler
 
 
 def mock_url_for(endpoint, **kwargs):
@@ -29,75 +28,66 @@ def raise_no_such_task(*args, **kwargs):
 
 
 class TestRequestCompilation(TestCase):
-    """Tests for :func:`controllers.request_compilation`."""
+    """Tests for :func:`controllers.compile`."""
 
     def test_request_missing_parameter(self):
         """Request for a new compilation with missing parameter."""
         with self.assertRaises(BadRequest):
-            controllers.request_compilation(MultiDict({
-                'source_id': 1234,
-                'checksum': 'asdf12345zxcv'
-            }))
+            controllers.compile(MultiDict({'checksum': 'as12345'}), 'footoken')
 
         with self.assertRaises(BadRequest):
-            controllers.request_compilation(MultiDict({
-                'checksum': 'asdf12345zxcv',
-                'format': 'pdf'
-            }))
-
-        with self.assertRaises(BadRequest):
-            controllers.request_compilation(MultiDict({
-                'source_id': 1234,
-                'format': 'pdf'
-            }))
+            controllers.compile(MultiDict({'source_id': 1234}), 'footoken')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
     @mock.patch(f'{controllers.__name__}.store')
-    def test_request_compilation_de_novo(self, mock_store, mock_compiler):
+    def test_compile_de_novo(self, mock_store, mock_compiler):
         """Request for a new compilation."""
         mock_store.get_status.return_value = None
+        mock_compiler.get_task.return_value = None
         task_id = '123::asdf12345zxcv::pdf'
-        mock_compiler.create_compilation_task.return_value = task_id
+        token = 'footoken'
+        mock_compiler.start_compilation.return_value = task_id
 
         request_data = MultiDict({
             'source_id': 1234,
             'checksum': 'asdf12345zxcv',
-            'format': 'pdf'
+            'output_format': 'pdf'
         })
-        response_data = controllers.request_compilation(request_data)
+        response_data = controllers.compile(request_data, token)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_202_ACCEPTED)
         self.assertIn('Location', headers)
         self.assertIn(str(request_data['source_id']), headers['Location'])
         self.assertIn(request_data['checksum'], headers['Location'])
-        self.assertIn(request_data['format'], headers['Location'])
+        self.assertIn(request_data['output_format'], headers['Location'])
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
     @mock.patch(f'{controllers.__name__}.store')
-    def test_request_compilation_exists(self, mock_store, mock_compiler):
+    def test_compile_exists(self, mock_store, mock_compiler):
         """Request for a compilation that already exists."""
         task_id = '123::asdf12345zxcv::pdf'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
+        token = "footoken"
         mock_store.get_status.return_value = CompilationStatus(
             source_id=source_id,
-            format=Format.PDF,
+            output_format=Format.PDF,
             status=Status.COMPLETED,
             task_id=task_id,
-            source_etag=checksum
+            checksum=checksum
         )
         request_data = MultiDict({'source_id': source_id, 'checksum': checksum,
-                                  'format': format})
-        response_data = controllers.request_compilation(request_data)
+                                  'output_format': output_format})
+        response_data = controllers.compile(request_data, token)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_303_SEE_OTHER)
         self.assertIn('Location', headers)
         self.assertIn(str(request_data['source_id']), headers['Location'])
         self.assertIn(request_data['checksum'], headers['Location'])
-        self.assertIn(request_data['format'], headers['Location'])
+        self.assertIn(request_data['output_format'], headers['Location'])
 
 
 class TestGetCompilationStatus(TestCase):
@@ -110,15 +100,16 @@ class TestGetCompilationStatus(TestCase):
         task_id = '123::asdf12345zxcv::pdf'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
-        mock_compiler.get_compilation_task.return_value = CompilationStatus(
+        output_format = 'pdf'
+        mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
-            format=Format.PDF,
+            output_format=Format.PDF,
             status=Status.COMPLETED,
             task_id=task_id,
-            source_etag=checksum
+            checksum=checksum
         )
-        response_data = controllers.get_status(source_id, checksum, format)
+        response_data = controllers.get_status(source_id, checksum,
+                                               output_format)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
 
@@ -129,15 +120,16 @@ class TestGetCompilationStatus(TestCase):
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
-        mock_compiler.get_compilation_task.return_value = CompilationStatus(
+        output_format = 'pdf'
+        mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
-            format=Format.PDF,
+            output_format=Format.PDF,
             status=Status.IN_PROGRESS,
             task_id=task_id,
-            source_etag=checksum
+            checksum=checksum
         )
-        response_data = controllers.get_status(source_id, checksum, format)
+        response_data = controllers.get_status(source_id, checksum,
+                                               output_format)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
 
@@ -147,12 +139,12 @@ class TestGetCompilationStatus(TestCase):
         """Request for a nonexistant compilation."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         mock_compiler.NoSuchTask = compiler.NoSuchTask
-        mock_compiler.get_compilation_task.side_effect = raise_no_such_task
+        mock_compiler.get_task.side_effect = raise_no_such_task
 
         with self.assertRaises(NotFound):
-            controllers.get_status(source_id, checksum, format)
+            controllers.get_status(source_id, checksum, output_format)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
@@ -161,15 +153,16 @@ class TestGetCompilationStatus(TestCase):
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
-            format=Format.PDF,
+            output_format=Format.PDF,
             status=Status.COMPLETED,
             task_id=task_id,
-            source_etag=checksum
+            checksum=checksum
         )
-        response_data = controllers.get_status(source_id, checksum, format)
+        response_data = controllers.get_status(source_id, checksum,
+                                               output_format)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
 
@@ -180,14 +173,16 @@ class TestGetCompilationStatus(TestCase):
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
+        output_format = Format.PDF
         mock_compiler.get_task.return_value = CompilationStatus(
             source_id=source_id,
-            format=Format.PDF,
+            output_format=Format.PDF,
             status=Status.IN_PROGRESS,
             task_id=task_id,
-            source_etag=checksum
+            checksum=checksum
         )
-        response_data = controllers.get_status(source_id, checksum, format)
+        response_data = controllers.get_status(source_id, checksum,
+                                               output_format)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
 
@@ -202,23 +197,23 @@ class TestGetCompilationProduct(TestCase):
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
         mock_store.retrieve.return_value = CompilationProduct(
             stream=io.BytesIO(b'foocontent'),
             checksum=product_checksum,
             status=CompilationStatus(
                 source_id=source_id,
-                format=Format.PDF,
+                output_format=Format.PDF,
                 status=Status.COMPLETED,
                 task_id=task_id,
-                source_etag=checksum
+                checksum=checksum
             )
         )
         response_data = controllers.get_product(
             source_id,
             checksum,
-            format
+            output_format
         )
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
@@ -230,12 +225,12 @@ class TestGetCompilationProduct(TestCase):
         """Request for a nonexistant compilation product."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         mock_store.DoesNotExist = store.DoesNotExist
         mock_store.retrieve.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_product(source_id, checksum, format)
+            controllers.get_product(source_id, checksum,output_format)
 
 
 class TestGetCompilationLog(TestCase):
@@ -248,23 +243,23 @@ class TestGetCompilationLog(TestCase):
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
         mock_store.retrieve_log.return_value = CompilationProduct(
             stream=io.BytesIO(b'foolog'),
             checksum=product_checksum,
             status=CompilationStatus(
                 source_id=source_id,
-                format=Format.PDF,
+                output_format=Format.PDF,
                 status=Status.COMPLETED,
                 task_id=task_id,
-                source_etag=checksum
+                checksum=checksum
             )
         )
         response_data = controllers.get_log(
             source_id,
             checksum,
-            format
+            output_format
         )
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_200_OK)
@@ -276,9 +271,9 @@ class TestGetCompilationLog(TestCase):
         """Request for a nonexistant compilation log."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
-        format = 'pdf'
+        output_format = 'pdf'
         mock_store.DoesNotExist = store.DoesNotExist
         mock_store.retrieve_log.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_log(source_id, checksum, format)
+            controllers.get_log(source_id, checksum, output_format)

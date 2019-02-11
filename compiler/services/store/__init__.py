@@ -218,8 +218,8 @@ class StoreSession(object):
             )
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {format} product for {source_id} in'
-                                   f' bucket {bucket}') from e
+                raise DoesNotExist(f'No {output_format} product for'
+                                   f' {source_id} in bucket {bucket}') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         return CompilationProduct(stream=response['Body'],
                                   checksum=response['ETag'][1:-1])
@@ -289,8 +289,8 @@ class StoreSession(object):
             )
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {format} product for {source_id} in'
-                                   f' bucket {bucket}') from e
+                raise DoesNotExist(f'No {output_format} product for'
+                                   f' {source_id} in bucket {bucket}') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         return CompilationProduct(stream=response['Body'],
                                   checksum=response['ETag'][1:-1])

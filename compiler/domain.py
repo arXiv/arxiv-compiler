@@ -38,6 +38,18 @@ class Status(Enum):      # type: ignore
     FAILED = "failed"
 
 
+class Reason(Enum):
+    """Specific reasons for a (usually failure) outcome."""
+
+    AUTHORIZATION = "auth_error"
+    MISSING = "missing_source"
+    SOURCE_TYPE = "invalid_source_type"
+    CORRUPTED = "corrupted_source"
+    CANCELLED = "cancelled"
+    ERROR = "compilation_errors"
+    NETWORK = "network_error"
+
+
 class CompilationStatus(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
@@ -73,8 +85,11 @@ class CompilationStatus(NamedTuple):
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
 
-    reason: Optional[str] = None
-    """A brief explanation of the current status. E.g. why did it fail."""
+    reason: Optional[Reason] = None
+    """An explanation of the current status. E.g. why did it fail."""
+
+    description: str = ""
+    """A description of the outcome."""
 
     @property
     def ext(self) -> str:
@@ -116,8 +131,11 @@ class SourcePackage(NamedTuple):
     """Source package content, retrieved from file management service."""
 
     source_id: str
-    stream: str
+    """The identifier of the source package (upload workspace)."""
+    path: str
+    """Path to the retrieved source package."""
     etag: str
+    """Etag returned with the source package content; MD5 checksum."""
 
 
 class SourcePackageInfo(NamedTuple):

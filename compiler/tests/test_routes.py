@@ -20,11 +20,13 @@ class TestRoutes(TestCase):
         self.app.register_blueprint(routes.blueprint)
         self.client = self.app.test_client()
 
+    @mock.patch(f'{routes.__name__}.request')
     @mock.patch(f'{routes.__name__}.controllers')
-    def test_request_compilation(self, mock_controllers):
+    def test_compile(self, mock_controllers, mock_request):
         """POST request for compilation."""
+        mock_request.environ = {'token': 'footoken'}
         response_data = {'da': 'ta'}
-        mock_controllers.request_compilation.return_value = (
+        mock_controllers.compile.return_value = (
             response_data, status.HTTP_200_OK, {}
         )
         response = self.client.post('/', json={
@@ -32,7 +34,7 @@ class TestRoutes(TestCase):
             'checksum': 'asdf12345zxcv',
             'format': 'pdf'
         })
-        self.assertEqual(mock_controllers.request_compilation.call_count, 1)
+        self.assertEqual(mock_controllers.compile.call_count, 1)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(json.loads(response.data), response_data)
 
@@ -40,7 +42,7 @@ class TestRoutes(TestCase):
     def test_get_info(self, mock_controllers):
         """GET request for compilation info."""
         response_data = {'da': 'ta'}
-        mock_controllers.get_info.return_value = (
+        mock_controllers.get_status.return_value = (
             response_data, status.HTTP_200_OK, {}
         )
         source_id = 1234
@@ -48,7 +50,7 @@ class TestRoutes(TestCase):
         format = 'pdf'
         response = self.client.get(f'/{source_id}/{checksum}/{format}')
 
-        self.assertEqual(mock_controllers.get_info.call_count, 1)
+        self.assertEqual(mock_controllers.get_status.call_count, 1)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(
             mock_controllers.get_info.called_with(source_id, checksum, format)
@@ -59,7 +61,11 @@ class TestRoutes(TestCase):
     def test_get_log(self, mock_controllers):
         """GET request for compilation log."""
         response_content = b'streamingdata'
-        response_data = io.BytesIO(response_content)
+        response_data = {
+            'stream': io.BytesIO(response_content),
+            'content_type': 'text/plain',
+            'filename': 'log.txt'
+        }
         mock_controllers.get_log.return_value = (
             response_data, status.HTTP_200_OK, {}
         )
@@ -80,7 +86,11 @@ class TestRoutes(TestCase):
         """GET request for compilation product."""
         response_content = b'streamingdata'
         etag = 'asdf1234etag'
-        response_data = io.BytesIO(response_content)
+        response_data = {
+            'stream': io.BytesIO(response_content),
+            'content_type': 'application/pdf',
+            'filename': '1234.pdf'
+        }
         mock_controllers.get_product.return_value = (
             response_data, status.HTTP_200_OK, {'ETag': etag}
         )
