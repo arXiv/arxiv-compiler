@@ -5,6 +5,7 @@ services:
 cache: pip
 env:
   - MIN_SCORE=9
+  - BOTO_CONFIG=/dev/null   # This is the dumbest thing. https://github.com/travis-ci/travis-ci/issues/7940
 os:
   - linux
 python:
