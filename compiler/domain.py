@@ -45,6 +45,7 @@ class Reason(Enum):
     MISSING = "missing_source"
     SOURCE_TYPE = "invalid_source_type"
     CORRUPTED = "corrupted_source"
+    STORAGE = "storage"
     CANCELLED = "cancelled"
     ERROR = "compilation_errors"
     NETWORK = "network_error"
@@ -110,7 +111,8 @@ class CompilationStatus(NamedTuple):
             'checksum': self.checksum,
             'task_id': self.task_id,
             'status': self.status.value if self.status else None,
-            'reason': self.reason
+            'reason': self.reason.value if self.reason else None,
+            'description': self.description
         }
 
 

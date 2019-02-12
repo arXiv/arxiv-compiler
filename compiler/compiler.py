@@ -210,6 +210,8 @@ def do_compile(source_id: str, checksum: str,
     verbose = current_app.config['VERBOSE_COMPILE']
     source_dir = tempfile.mkdtemp(dir=container_source_root)
     task_id = get_task_id(source_id, checksum, output_format)
+    out_path: Optional[str] = None
+    log_path: Optional[str] = None
 
     status = {
         'task_id': task_id,
@@ -245,28 +247,27 @@ def do_compile(source_id: str, checksum: str,
     """
 
     # 2. Generate the compiled files
-    if stat is not None:
+    if not stat:
         try:
-            output_path, log_path = compile_source(source,
-                                                   output_format=output_format,
-                                                   verbose=verbose,
-                                                   tex_tree_timestamp=checksum)
+            out_path, log_path = _run(source, output_format=output_format,
+                                      verbose=verbose,
+                                      tex_tree_timestamp=checksum)
         except CorruptedSource:
             stat = CompilationStatus(status=Status.FAILED,
-                                     reason=Reason.CORRUPTED,
-                                     **status)
+                                     reason=Reason.CORRUPTED, **status)
 
-    if output_path is not None:
-        stat = CompilationStatus(status=Status.COMPLETED, **status)
-    else:
-        stat = CompilationStatus(status=Status.FAILED, reason=Reason.ERROR,
-                                 **status)
+    if not stat:
+        if out_path is not None:
+            stat = CompilationStatus(status=Status.COMPLETED, **status)
+        else:
+            stat = CompilationStatus(status=Status.FAILED, reason=Reason.ERROR,
+                                     **status)
     # Store the result.
     try:
-        _store_compilation_result(stat, output_path, log_path)
+        _store_compilation_result(stat, out_path, log_path)
     except RuntimeError as e:
-        return CompilationStatus(status=Status.FAILED, reason=str(e),
-                                 **status).to_dict()
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.STORAGE,
+                                 description=str(e), **status)
 
     # Clean up!
     try:
@@ -278,11 +279,11 @@ def do_compile(source_id: str, checksum: str,
 
 
 def _store_compilation_result(status: CompilationStatus,
-                              output_path: Optional[str],
+                              out_path: Optional[str],
                               log_path: Optional[str]) -> None:
-    if output_path is not None:
+    if out_path is not None:
         try:
-            with open(output_path, 'rb') as f:
+            with open(out_path, 'rb') as f:
                 store.store(CompilationProduct(stream=f, status=status))
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
@@ -298,15 +299,13 @@ def _store_compilation_result(status: CompilationStatus,
 
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
-def compile_source(source: SourcePackage,
-                   output_format: str = 'pdf', add_stamp: bool = True,
-                   timeout: int = 600, add_psmapfile: bool = False,
-                   P_dvips_flag: bool = False, dvips_layout: str = 'letter',
-                   D_dvips_flag: bool = False,
-                   id_for_decryption: Optional[str] = None,
-                   tex_tree_timestamp = None,
-                   verbose: bool = True) \
-        -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def _run(source: SourcePackage, output_format: str = 'pdf',
+         add_stamp: bool = True, timeout: int = 600,
+         add_psmapfile: bool = False, P_dvips_flag: bool = False,
+         dvips_layout: str = 'letter', D_dvips_flag: bool = False,
+         id_for_decryption: Optional[str] = None,
+         tex_tree_timestamp: Optional[str] = None,
+         verbose: bool = True) -> Tuple[Optional[str], Optional[str]]:
     """Compile a TeX source package."""
     # We need the path to the directory container the source package on the
     # host machine, so that we can correctly mount the volume in the
@@ -318,16 +317,10 @@ def compile_source(source: SourcePackage,
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
     host_source_dir = os.path.join(host_source_root, leaf_path)
-    logger.debug('source_dir: %s', source_dir)
-    logger.debug('host_source_root: %s', host_source_root)
-    logger.debug('container_source_root: %s', container_source_root)
-    logger.debug('leaf_path: %s', leaf_path)
-    logger.debug('host_source_dir: %s', host_source_dir)
-    logger.debug('got image %s', image)
 
     args = [
         '-S /autotex',
-        f'-p 1901.00123', # {source.source_id}
+        f'-p 1901.00123',   # {source.source_id}
         f'-f {output_format}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
@@ -363,23 +356,23 @@ def compile_source(source: SourcePackage,
         # version affix). But at the end of the day there should be only one
         # file in the format that we requested, so that's as specific as we
         # should need to be.
-        cache_results = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')]
+        cache_results = [f for f in os.listdir(cache) if f.endswith(f'.{ext}')]
         oname = cache_results[0]
-        output_path = os.path.join(cache, oname)
+        out_path = os.path.join(cache, oname)
     except IndexError:  # The expected output isn't here.
         # Normally I'd prefer to raise an exception if the compilation failed,
         # but we still have work to do.
-        output_path = None
+        out_path = None
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
     # to ignore that output.
     tex_log_path = os.path.join(source_dir, 'tex_logs', 'auto_gen_ps.log')
-    return output_path, tex_log_path if os.path.exists(tex_log_path) else None
+    return out_path, tex_log_path if os.path.exists(tex_log_path) else None
 
 
-def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: List[str] = [], daemon: bool = False) \
-        -> Tuple[int, str, str]:
+def run_docker(image: str, volumes: list = [],
+               ports: list = [], args: List[str] = [],
+               daemon: bool = False) -> Tuple[int, str, str]:
     """
     Run a generic docker image.
 
