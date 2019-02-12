@@ -79,7 +79,7 @@ class CompilationStatus(NamedTuple):
 
     checksum: Optional[str] = None
     """
-    ETag of the source tarball from the file management service.
+    Checksum of the source tarball from the file management service.
 
     This is likely to be a checksum of some kind, but may be something else.
     """

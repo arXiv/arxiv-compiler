@@ -17,6 +17,10 @@ In addition, the following infrastructure parts are required:
 - Redis, used as a task queue between the API and the worker.
 - S3, used to store the result of compilation tasks.
 
+## TODO
+
+- [ ] Update the ``schema/``, and implement resource URLs in the response data.
+
 ## Running the compiler service locally
 
 The easiest way to get up and running is to launch the whole service group

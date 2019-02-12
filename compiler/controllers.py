@@ -54,7 +54,27 @@ def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
 
 
 def compile(request_data: MultiDict, token: str) -> Response:
-    """Start compilation of an upload workspace."""
+    """
+    Start compilation of an upload workspace.
+
+    Parameters
+    ----------
+    request_data : :class:`.MultiDict`
+        Data payload from the request.
+    token : str
+        Auth token to be used for subrequests (e.g. to file management
+        service).
+
+    Returns
+    -------
+    dict
+        Response data.
+    int
+        HTTP status code.
+    dict
+        Headers to add to response.
+
+    """
     if 'output_format' in request_data:
         output_format = Format(request_data['output_format'])
     else:
@@ -86,11 +106,33 @@ def compile(request_data: MultiDict, token: str) -> Response:
 
 
 def get_status(source_id: str, checksum: str, output_format: str) -> Response:
-    """Get the status of a compilation."""
-    print(output_format)
+    """
+    Get the status of a compilation.
+
+    See ``schema/resources/compilationStatus.json``.
+
+    Parameters
+    ----------
+    source_id : int
+        Identifier for the source package.
+    checksum : str
+        Checksum of the source package to compile.
+    output_format : str
+        Desired output format. Only `pdf` is currently supported.
+
+    Returns
+    -------
+    dict
+        Response data.
+    int
+        HTTP status code.
+    dict
+        Headers to add to response.
+
+    """
     try:
         product_format = Format(output_format)
-    except ValueError:  # Not a valid format.
+    except ValueError:
         raise BadRequest('Invalid format')
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
@@ -103,7 +145,28 @@ def get_status(source_id: str, checksum: str, output_format: str) -> Response:
 
 
 def get_product(source_id: int, checksum: str, output_format: str) -> Response:
-    """Get the product of a compilation."""
+    """
+    Get the product of a compilation.
+
+    Parameters
+    ----------
+    source_id : int
+        Identifier for the source package.
+    checksum : str
+        Checksum of the source package to compile.
+    output_format : str
+        Desired output format. Only `pdf` is currently supported.
+
+    Returns
+    -------
+    dict
+        Response data.
+    int
+        HTTP status code.
+    dict
+        Headers to add to response.
+
+    """
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
@@ -124,8 +187,28 @@ def get_product(source_id: int, checksum: str, output_format: str) -> Response:
 
 
 def get_log(source_id: int, checksum: str, output_format: str) -> Response:
-    """Get a compilation log."""
-    print(output_format)
+    """
+    Get a compilation log.
+
+    Parameters
+    ----------
+    source_id : int
+        Identifier for the source package.
+    checksum : str
+        Checksum of the source package to compile.
+    output_format : str
+        Desired output format. Only `pdf` is currently supported.
+
+    Returns
+    -------
+    dict
+        Response data.
+    int
+        HTTP status code.
+    dict
+        Headers to add to response.
+
+    """
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.

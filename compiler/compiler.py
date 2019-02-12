@@ -77,7 +77,7 @@ class TaskCreationFailed(RuntimeError):
 
 
 class CorruptedSource(RuntimeError):
-    pass
+    """"The source content is corrupted."""
 
 
 def start_compilation(source_id: str, checksum: str,
@@ -102,8 +102,9 @@ def start_compilation(source_id: str, checksum: str,
     -------
     str
         The identifier for the created compilation task.
+
     """
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
     try:
         do_compile.apply_async(
             (source_id, checksum),
@@ -136,10 +137,10 @@ def get_task(source_id: str, checksum: str,
 
     Returns
     -------
-    :class:`ExtractionTask`
+    :class:`CompilationStatus`
 
     """
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
     result = do_compile.AsyncResult(task_id)
     data = {
         'source_id': source_id,
@@ -200,6 +201,9 @@ def do_compile(source_id: str, checksum: str,
         "dvi", "html", "ps"
     preferred_compiler: str
         The preferred tex compiler for use with the source package.
+        Not supported.
+    token : str
+        Auth token to pass with subrequests to backend services.
 
     """
     logger.debug("do compile for %s @ %s to %s", source_id, checksum,
@@ -209,7 +213,7 @@ def do_compile(source_id: str, checksum: str,
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     verbose = current_app.config['VERBOSE_COMPILE']
     source_dir = tempfile.mkdtemp(dir=container_source_root)
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
     out_path: Optional[str] = None
     log_path: Optional[str] = None
 
@@ -269,17 +273,18 @@ def do_compile(source_id: str, checksum: str,
                                  description=str(e), **status)
 
     # Clean up!
-    # try:
-    #     shutil.rmtree(source_dir)
-    #     logger.debug('Cleaned up %s', source_dir)
-    # except Exception as e:
-    #     logger.error('Could not clean up %s: %s', source_dir, e)
+    try:
+        shutil.rmtree(source_dir)
+        logger.debug('Cleaned up %s', source_dir)
+    except Exception as e:
+        logger.error('Could not clean up %s: %s', source_dir, e)
     return stat.to_dict()
 
 
 def _store_compilation_result(status: CompilationStatus,
                               out_path: Optional[str],
                               log_path: Optional[str]) -> None:
+    """Store the status and output (including log) of compilation."""
     logger.debug('_store_compilation_result: %s %s', out_path, log_path)
     if out_path is not None:
         try:
@@ -345,6 +350,7 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
     logger.debug('run image %s with args %s', image, args)
     code, stdout, stderr = run_docker(image, args=args,
                                       volumes=[(host_source_dir, '/autotex')])
+    # TODO: not sure about this.
     # if "Removing leading `/' from member names" in stderr:
     #     raise CorruptedSource("Source package has member with absolute path")
 
@@ -391,6 +397,16 @@ def run_docker(image: str, volumes: list = [],
         Arguments to the image's run cmd (set by Dockerfile CMD)
     daemon : boolean
         If True, launches the task to be run forever
+
+    Returns
+    -------
+    int
+        Compilation exit code.
+    str
+        STDOUT from compilation.
+    str
+        STDERR from compilation.
+
     """
     # we are only running strings formatted by us, so let's build the command
     # then split it so that it can be run by subprocess
@@ -412,6 +428,6 @@ def run_docker(image: str, volumes: list = [],
             result.stderr.decode('utf-8'))
 
 
-def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
+def _get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
     return f"{source_id}::{checksum}::{output_format.value}"
