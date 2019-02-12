@@ -49,6 +49,7 @@ class Reason(Enum):
     CANCELLED = "cancelled"
     ERROR = "compilation_errors"
     NETWORK = "network_error"
+    NONE = None
 
 
 class CompilationStatus(NamedTuple):
