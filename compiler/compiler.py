@@ -250,8 +250,7 @@ def do_compile(source_id: str, checksum: str,
     if not stat:
         try:
             out_path, log_path = _run(source, output_format=output_format,
-                                      verbose=verbose,
-                                      tex_tree_timestamp=checksum)
+                                      verbose=verbose)
         except CorruptedSource:
             stat = CompilationStatus(status=Status.FAILED,
                                      reason=Reason.CORRUPTED, **status)
@@ -270,17 +269,18 @@ def do_compile(source_id: str, checksum: str,
                                  description=str(e), **status)
 
     # Clean up!
-    try:
-        shutil.rmtree(source_dir)
-        logger.debug('Cleaned up %s', source_dir)
-    except Exception as e:
-        logger.error('Could not clean up %s: %s', source_dir, e)
+    # try:
+    #     shutil.rmtree(source_dir)
+    #     logger.debug('Cleaned up %s', source_dir)
+    # except Exception as e:
+    #     logger.error('Could not clean up %s: %s', source_dir, e)
     return stat.to_dict()
 
 
 def _store_compilation_result(status: CompilationStatus,
                               out_path: Optional[str],
                               log_path: Optional[str]) -> None:
+    logger.debug('_store_compilation_result: %s %s', out_path, log_path)
     if out_path is not None:
         try:
             with open(out_path, 'rb') as f:
@@ -295,11 +295,12 @@ def _store_compilation_result(status: CompilationStatus,
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
     store.set_status(status)
+    logger.debug('_store_compilation_result: ok')
 
 
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
-def _run(source: SourcePackage, output_format: str = 'pdf',
+def _run(source: SourcePackage, output_format: Format = Format.PDF,
          add_stamp: bool = True, timeout: int = 600,
          add_psmapfile: bool = False, P_dvips_flag: bool = False,
          dvips_layout: str = 'letter', D_dvips_flag: bool = False,
@@ -321,7 +322,7 @@ def _run(source: SourcePackage, output_format: str = 'pdf',
     args = [
         '-S /autotex',
         f'-p 1901.00123',   # {source.source_id}
-        f'-f {output_format}',  # This doesn't do what we think it does.
+        f'-f {output_format.value}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
         '-q',
@@ -344,8 +345,8 @@ def _run(source: SourcePackage, output_format: str = 'pdf',
     logger.debug('run image %s with args %s', image, args)
     code, stdout, stderr = run_docker(image, args=args,
                                       volumes=[(host_source_dir, '/autotex')])
-    if "Removing leading `/' from member names" in stderr:
-        raise CorruptedSource("Source package has member with absolute path")
+    # if "Removing leading `/' from member names" in stderr:
+    #     raise CorruptedSource("Source package has member with absolute path")
 
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
@@ -366,7 +367,7 @@ def _run(source: SourcePackage, output_format: str = 'pdf',
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
     # to ignore that output.
-    tex_log_path = os.path.join(source_dir, 'tex_logs', 'auto_gen_ps.log')
+    tex_log_path = os.path.join(source_dir, 'tex_logs', 'autotex.log')
     return out_path, tex_log_path if os.path.exists(tex_log_path) else None
 
 

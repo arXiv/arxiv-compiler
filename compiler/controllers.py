@@ -23,7 +23,9 @@ def _status_from_store(source_id: str, checksum: str,
                        output_format: Format) -> Optional[CompilationStatus]:
     """Get a :class:`.CompilationStatus` from storage."""
     try:
-        return store.get_status(source_id, checksum, output_format)
+        stat = store.get_status(source_id, checksum, output_format)
+        logger.debug('Got status from store: %s', stat)
+        return stat
     except store.DoesNotExist as e:
         logger.debug('No such compilation: %s', e)
     except Exception as e:
@@ -35,7 +37,9 @@ def _status_from_task(source_id: str, checksum: str,
                       output_format: Format) -> Optional[CompilationStatus]:
     """Get a :class:`.CompilationStatus` from the task queue."""
     try:
-        return compiler.get_task(source_id, checksum, output_format)
+        stat = compiler.get_task(source_id, checksum, output_format)
+        logger.debug('Got status from previous task: %s', stat)
+        return stat
     except compiler.NoSuchTask as e:
         logger.debug('No such compilation task: %s', e)
     return None
@@ -83,6 +87,7 @@ def compile(request_data: MultiDict, token: str) -> Response:
 
 def get_status(source_id: str, checksum: str, output_format: str) -> Response:
     """Get the status of a compilation."""
+    print(output_format)
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
@@ -120,6 +125,7 @@ def get_product(source_id: int, checksum: str, output_format: str) -> Response:
 
 def get_log(source_id: int, checksum: str, output_format: str) -> Response:
     """Get a compilation log."""
+    print(output_format)
     try:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
