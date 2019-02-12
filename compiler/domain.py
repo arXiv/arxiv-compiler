@@ -87,7 +87,7 @@ class CompilationStatus(NamedTuple):
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
 
-    reason: Optional[Reason] = None
+    reason: Reason = Reason.NONE
     """An explanation of the current status. E.g. why did it fail."""
 
     description: str = ""
