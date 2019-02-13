@@ -38,6 +38,20 @@ class Status(Enum):      # type: ignore
     FAILED = "failed"
 
 
+class Reason(Enum):
+    """Specific reasons for a (usually failure) outcome."""
+
+    AUTHORIZATION = "auth_error"
+    MISSING = "missing_source"
+    SOURCE_TYPE = "invalid_source_type"
+    CORRUPTED = "corrupted_source"
+    STORAGE = "storage"
+    CANCELLED = "cancelled"
+    ERROR = "compilation_errors"
+    NETWORK = "network_error"
+    NONE = None
+
+
 class CompilationStatus(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
@@ -65,7 +79,7 @@ class CompilationStatus(NamedTuple):
 
     checksum: Optional[str] = None
     """
-    ETag of the source tarball from the file management service.
+    Checksum of the source tarball from the file management service.
 
     This is likely to be a checksum of some kind, but may be something else.
     """
@@ -73,8 +87,11 @@ class CompilationStatus(NamedTuple):
     task_id: Optional[str] = None
     """If a task exists for this compilation, the unique task ID."""
 
-    reason: Optional[str] = None
-    """A brief explanation of the current status. E.g. why did it fail."""
+    reason: Reason = Reason.NONE
+    """An explanation of the current status. E.g. why did it fail."""
+
+    description: str = ""
+    """A description of the outcome."""
 
     @property
     def ext(self) -> str:
@@ -95,7 +112,8 @@ class CompilationStatus(NamedTuple):
             'checksum': self.checksum,
             'task_id': self.task_id,
             'status': self.status.value if self.status else None,
-            'reason': self.reason
+            'reason': self.reason.value if self.reason else None,
+            'description': self.description
         }
 
 
@@ -116,8 +134,11 @@ class SourcePackage(NamedTuple):
     """Source package content, retrieved from file management service."""
 
     source_id: str
-    stream: str
+    """The identifier of the source package (upload workspace)."""
+    path: str
+    """Path to the retrieved source package."""
     etag: str
+    """Etag returned with the source package content; MD5 checksum."""
 
 
 class SourcePackageInfo(NamedTuple):

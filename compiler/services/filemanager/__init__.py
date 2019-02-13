@@ -5,9 +5,9 @@ The file management service is responsible for accepting and processing user
 uploads used for submissions. The core resource for the file management service
 is the upload "workspace", which contains one or many files. We associate the
 workspace with a submission prior to finalization. The workspace URI is used
-for downstream processing, e.g. compilation.
+for downpath processing, e.g. compilation.
 
-A key requirement for this integration is the ability to stream uploads to
+A key requirement for this integration is the ability to path uploads to
 the file management service as they are being received by this UI application.
 """
 from functools import wraps
@@ -28,7 +28,6 @@ from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
 from ...domain import SourcePackageInfo, SourcePackage
-from ...util import ResponseStream
 
 logger = logging.getLogger(__name__)
 
@@ -209,14 +208,13 @@ class FileManagementService(object):
         response = self._make_request('get', path,
                                       status.HTTP_200_OK)
         logger.debug('Got response with status %s', response.status_code)
-
         source_file_path = self._save_content(path, source_id, response,
                                               save_to)
 
         logger.debug('wrote source content to %s', source_file_path)
         return SourcePackage(
             source_id=source_id,
-            stream=source_file_path,
+            path=source_file_path,
             etag=response.headers['ETag']
         )
 

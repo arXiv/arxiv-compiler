@@ -52,13 +52,12 @@ class TestGetUpload(TestCase):
         etag = 'asdf12345checksum'
         source_id = '123456'
         content = b'foocontent'
+        mock_iter_content = mock.MagicMock(return_value=[content])
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
                 return_value=mock.MagicMock(
                     status_code=status.HTTP_200_OK,
-                    iter_content=mock.MagicMock(
-                        return_value=content
-                    ),
+                    iter_content=mock_iter_content,
                     headers={'ETag': etag}
                 )
             )
@@ -67,8 +66,7 @@ class TestGetUpload(TestCase):
         self.assertIsInstance(info, domain.SourcePackage)
         self.assertEqual(info.etag, etag)
         self.assertEqual(info.source_id, source_id)
-        self.assertIsInstance(info.stream, util.ResponseStream)
-        self.assertEqual(info.stream.read(), content)
+        self.assertIsInstance(info.path, str)
 
     @mock.patch(f'{filemanager.__name__}.requests.Session')
     def test_get_upload_info_nonexistant(self, mock_Session):

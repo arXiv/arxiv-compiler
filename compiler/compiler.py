@@ -45,13 +45,13 @@ Always do this:
 """
 
 import os
-from typing import List
+from typing import List, Dict, Optional, Tuple, Callable
+from functools import wraps
 import subprocess
 import tarfile
 import shutil
 import tempfile
 from tempfile import TemporaryDirectory
-from typing import Optional, Tuple
 
 from flask import current_app
 
@@ -62,7 +62,7 @@ from arxiv.base import logging
 
 from .celery import celery_app
 from .domain import CompilationProduct, CompilationStatus, Format, Status, \
-    SourcePackage
+    SourcePackage, Reason
 from .services import filemanager, store
 
 logger = logging.getLogger(__name__)
@@ -76,9 +76,14 @@ class TaskCreationFailed(RuntimeError):
     """An extraction task could not be created."""
 
 
-def create_compilation_task(source_id: str, checksum: str,
-                            output_format: Format = Format.PDF,
-                            preferred_compiler: Optional[str] = None) -> str:
+class CorruptedSource(RuntimeError):
+    """"The source content is corrupted."""
+
+
+def start_compilation(source_id: str, checksum: str,
+                      output_format: Format = Format.PDF,
+                      preferred_compiler: Optional[str] = None,
+                      token: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -97,13 +102,15 @@ def create_compilation_task(source_id: str, checksum: str,
     -------
     str
         The identifier for the created compilation task.
+
     """
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
     try:
         do_compile.apply_async(
             (source_id, checksum),
             {'output_format': output_format.value,
-             'preferred_compiler': preferred_compiler},
+             'preferred_compiler': preferred_compiler,
+             'token': token},
             task_id=task_id
         )
         logger.info('compile: started processing as %s' % task_id)
@@ -113,9 +120,8 @@ def create_compilation_task(source_id: str, checksum: str,
     return task_id
 
 
-def get_compilation_task(source_id: str, checksum: str,
-                         output_format: Format = Format.PDF) \
-        -> CompilationStatus:
+def get_task(source_id: str, checksum: str,
+             output_format: Format = Format.PDF) -> CompilationStatus:
     """
     Get the status of an extraction task.
 
@@ -131,12 +137,16 @@ def get_compilation_task(source_id: str, checksum: str,
 
     Returns
     -------
-    :class:`ExtractionTask`
+    :class:`CompilationStatus`
 
     """
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
     result = do_compile.AsyncResult(task_id)
-    data = {}
+    data = {
+        'source_id': source_id,
+        'checksum': checksum,
+        'output_format': output_format
+    }
     if result.status == 'PENDING':
         raise NoSuchTask('No such task')
     elif result.status in ['SENT', 'STARTED', 'RETRY']:
@@ -144,14 +154,11 @@ def get_compilation_task(source_id: str, checksum: str,
     elif result.status == 'FAILURE':
         data['status'] = Status.FAILED
     elif result.status == 'SUCCESS':
-        _result: Dist[str, str] = result.result
+        _result: Dict[str, str] = result.result
         if 'status' in _result:
             data['status'] = Status(_result['status'])
         else:
             data['status'] = Status.COMPLETED
-        data['source_id'] = _result['source_id']
-        data['output_format'] = Format(_result['output_format'])
-        data['checksum'] = _result['checksum']
         data['reason'] = _result.get('reason')
     return CompilationStatus(task_id=task_id, **data)
 
@@ -164,10 +171,18 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
     backend.store_result(headers['id'], None, "SENT")
 
 
+def to_dict(func: Callable) -> Callable:
+    @wraps(func)
+    def inner(*args, **kwargs) -> dict:
+        return func(*args, **kwargs).to_dict()
+    return inner
+
+
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',
-               preferred_compiler: Optional[str] = None) -> dict:
+               preferred_compiler: Optional[str] = None,
+               token: Optional[str] = None) -> dict:
     """
     Retrieve a source package, compile to something, and store the result.
 
@@ -175,7 +190,7 @@ def do_compile(source_id: str, checksum: str,
     assume) from the compiler web service API.
 
     Parameters
-    ------------
+    ----------
     source_id: str
         Required. The upload to retrieve.
     checksum : str
@@ -186,14 +201,21 @@ def do_compile(source_id: str, checksum: str,
         "dvi", "html", "ps"
     preferred_compiler: str
         The preferred tex compiler for use with the source package.
+        Not supported.
+    token : str
+        Auth token to pass with subrequests to backend services.
 
     """
+    logger.debug("do compile for %s @ %s to %s", source_id, checksum,
+                 output_format)
     output_format = Format(output_format)
 
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     verbose = current_app.config['VERBOSE_COMPILE']
     source_dir = tempfile.mkdtemp(dir=container_source_root)
-    task_id = get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, output_format)
+    out_path: Optional[str] = None
+    log_path: Optional[str] = None
 
     status = {
         'task_id': task_id,
@@ -201,14 +223,24 @@ def do_compile(source_id: str, checksum: str,
         'output_format': output_format,
         'checksum': checksum
     }
-
+    stat = None
     try:
+        filemanager.set_auth_token(token)
         source = filemanager.get_source_content(source_id, save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
-    except filemanager.NotFound as e:
-        reason = 'Could not retrieve a matching source package'
-        stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
-        return stat.to_dict()
+    except (filemanager.RequestUnauthorized, filemanager.RequestForbidden):
+        description = "There was a problem authorizing your request."
+        stat = CompilationStatus(status=Status.FAILED,
+                                 reason=Reason.AUTHORIZATION,
+                                 description=description, **status)
+    except filemanager.ConnectionFailed:
+        description = "There was a problem retrieving your source files."
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.NETWORK,
+                                 description=description, **status)
+    except filemanager.NotFound:
+        description = 'Could not retrieve a matching source package'
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.MISSING,
+                                 description=description, **status)
 
     """
     if source.etag != checksum:
@@ -219,38 +251,44 @@ def do_compile(source_id: str, checksum: str,
     """
 
     # 2. Generate the compiled files
-    o_path, log_path = compile_source(source, output_format=output_format,
-                                      verbose=verbose,
-                                      tex_tree_timestamp=checksum)
+    if not stat:
+        try:
+            out_path, log_path = _run(source, output_format=output_format,
+                                      verbose=verbose)
+        except CorruptedSource:
+            stat = CompilationStatus(status=Status.FAILED,
+                                     reason=Reason.CORRUPTED, **status)
 
-    compile_status = CompilationStatus(
-        status=Status.COMPLETED if o_path is not None else Status.FAILED,
-        **status
-    )
-
+    if not stat:
+        if out_path is not None:
+            stat = CompilationStatus(status=Status.COMPLETED, **status)
+        else:
+            stat = CompilationStatus(status=Status.FAILED, reason=Reason.ERROR,
+                                     **status)
     # Store the result.
     try:
-        _store_compilation_result(compile_status, o_path, log_path)
+        _store_compilation_result(stat, out_path, log_path)
     except RuntimeError as e:
-        stat = CompilationStatus(status=Status.FAILED, reason=str(e), **status)
-        return stat.to_dict()
+        stat = CompilationStatus(status=Status.FAILED, reason=Reason.STORAGE,
+                                 description=str(e), **status)
 
     # Clean up!
     try:
         shutil.rmtree(source_dir)
         logger.debug('Cleaned up %s', source_dir)
-        #logger.debug('skipping cleanup of %s', source_dir)
     except Exception as e:
         logger.error('Could not clean up %s: %s', source_dir, e)
-    return compile_status.to_dict()
+    return stat.to_dict()
 
 
 def _store_compilation_result(status: CompilationStatus,
-                              output_path: Optional[str],
+                              out_path: Optional[str],
                               log_path: Optional[str]) -> None:
-    if output_path is not None:
+    """Store the status and output (including log) of compilation."""
+    logger.debug('_store_compilation_result: %s %s', out_path, log_path)
+    if out_path is not None:
         try:
-            with open(output_path, 'rb') as f:
+            with open(out_path, 'rb') as f:
                 store.store(CompilationProduct(stream=f, status=status))
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
@@ -262,41 +300,34 @@ def _store_compilation_result(status: CompilationStatus,
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
     store.set_status(status)
+    logger.debug('_store_compilation_result: ok')
 
 
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
-def compile_source(source: SourcePackage,
-                   output_format: str = 'pdf', add_stamp: bool = True,
-                   timeout: int = 600, add_psmapfile: bool = False,
-                   P_dvips_flag: bool = False, dvips_layout: str = 'letter',
-                   D_dvips_flag: bool = False,
-                   id_for_decryption: Optional[str] = None,
-                   tex_tree_timestamp = None,
-                   verbose: bool = True) \
-        -> Tuple[Optional[str], Optional[str], Optional[str]]:
+def _run(source: SourcePackage, output_format: Format = Format.PDF,
+         add_stamp: bool = True, timeout: int = 600,
+         add_psmapfile: bool = False, P_dvips_flag: bool = False,
+         dvips_layout: str = 'letter', D_dvips_flag: bool = False,
+         id_for_decryption: Optional[str] = None,
+         tex_tree_timestamp: Optional[str] = None,
+         verbose: bool = True) -> Tuple[Optional[str], Optional[str]]:
     """Compile a TeX source package."""
     # We need the path to the directory container the source package on the
     # host machine, so that we can correctly mount the volume in the
     # converter container. We are assuming that the image is not running in
     # the same container as this worker application.
-    source_dir, fname = os.path.split(source.stream)
+    source_dir, fname = os.path.split(source.path)
     image = current_app.config['COMPILER_DOCKER_IMAGE']
     host_source_root = current_app.config['HOST_SOURCE_ROOT']
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
     host_source_dir = os.path.join(host_source_root, leaf_path)
-    logger.debug('source_dir: %s', source_dir)
-    logger.debug('host_source_root: %s', host_source_root)
-    logger.debug('container_source_root: %s', container_source_root)
-    logger.debug('leaf_path: %s', leaf_path)
-    logger.debug('host_source_dir: %s', host_source_dir)
-    logger.debug('got image %s', image)
 
     args = [
         '-S /autotex',
-        f'-p {source.source_id}',
-        f'-f {output_format}',  # This doesn't do what we think it does.
+        f'-p 1901.00123',   # TODO: this should be changed to submission ID.
+        f'-f {output_format.value}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
         '-q',
@@ -317,8 +348,11 @@ def compile_source(source: SourcePackage,
         args.append(f'-U {tex_tree_timestamp}')
 
     logger.debug('run image %s with args %s', image, args)
-    run_docker(image, args=args,
-               volumes=[(host_source_dir, '/autotex')])
+    code, stdout, stderr = run_docker(image, args=args,
+                                      volumes=[(host_source_dir, '/autotex')])
+    # TODO: not sure about this.
+    # if "Removing leading `/' from member names" in stderr:
+    #     raise CorruptedSource("Source package has member with absolute path")
 
     # Now we have to figure out what went right or wrong.
     ext = Format(output_format).ext
@@ -329,22 +363,23 @@ def compile_source(source: SourcePackage,
         # version affix). But at the end of the day there should be only one
         # file in the format that we requested, so that's as specific as we
         # should need to be.
-        cache_results = [fp for fp in os.listdir(cache) if fp.endswith(f'.{ext}')]
+        cache_results = [f for f in os.listdir(cache) if f.endswith(f'.{ext}')]
         oname = cache_results[0]
-        output_path = os.path.join(cache, oname)
+        out_path = os.path.join(cache, oname)
     except IndexError:  # The expected output isn't here.
         # Normally I'd prefer to raise an exception if the compilation failed,
         # but we still have work to do.
-        output_path = None
+        out_path = None
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
     # to ignore that output.
-    tex_log_path = os.path.join(source_dir, 'tex_logs', 'auto_gen_ps.log')
-    return output_path, tex_log_path if os.path.exists(tex_log_path) else None
+    tex_log_path = os.path.join(source_dir, 'tex_logs', 'autotex.log')
+    return out_path, tex_log_path if os.path.exists(tex_log_path) else None
 
 
-def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: List[str] = [], daemon: bool = False) -> None:
+def run_docker(image: str, volumes: list = [],
+               ports: list = [], args: List[str] = [],
+               daemon: bool = False) -> Tuple[int, str, str]:
     """
     Run a generic docker image.
 
@@ -362,6 +397,16 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
         Arguments to the image's run cmd (set by Dockerfile CMD)
     daemon : boolean
         If True, launches the task to be run forever
+
+    Returns
+    -------
+    int
+        Compilation exit code.
+    str
+        STDOUT from compilation.
+    str
+        STDERR from compilation.
+
     """
     # we are only running strings formatted by us, so let's build the command
     # then split it so that it can be run by subprocess
@@ -378,8 +423,11 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
     logger.error('Docker exited with %i', result.returncode)
     logger.error('STDOUT: %s', result.stdout)
     logger.error('STDERR: %s', result.stderr)
+    return (result.returncode,
+            result.stdout.decode('utf-8'),
+            result.stderr.decode('utf-8'))
 
 
-def get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
+def _get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
     return f"{source_id}::{checksum}::{output_format.value}"

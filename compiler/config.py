@@ -34,7 +34,8 @@ FILE_MANAGER_ENDPOINT = os.environ.get(
     f'/{FILE_MANAGER_PATH}'
 )
 FILE_MANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
-FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH')
+FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH',
+                                           '/{source_id}/content')
 
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)

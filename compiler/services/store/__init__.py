@@ -27,7 +27,8 @@ from flask import Flask
 from arxiv.base import logging
 from arxiv.base.globals import get_application_global, get_application_config
 
-from ...domain import CompilationStatus, CompilationProduct, Format, Status
+from ...domain import CompilationStatus, CompilationProduct, Format, Status, \
+    Reason
 
 
 logger = logging.getLogger(__name__)
@@ -126,6 +127,7 @@ class StoreSession(object):
         data = json.loads(response['Body'].read().decode('utf-8'))
         data['output_format'] = Format(data['output_format'])
         data['status'] = Status(data['status'])
+        data['reason'] = Reason(data['reason'])
         return CompilationStatus(**data)
 
     def set_status(self, status: CompilationStatus, bucket: str = 'arxiv') \
@@ -218,8 +220,8 @@ class StoreSession(object):
             )
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {format} product for {source_id} in'
-                                   f' bucket {bucket}') from e
+                raise DoesNotExist(f'No {output_format} product for'
+                                   f' {source_id} in bucket {bucket}') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         return CompilationProduct(stream=response['Body'],
                                   checksum=response['ETag'][1:-1])
@@ -282,6 +284,7 @@ class StoreSession(object):
         """
         _key = self._key(source_id, checksum, output_format)
         key = f'{_key}/{source_id}.{Format(output_format).ext}.log'
+        print(key)
         try:
             response = self.client.get_object(
                 Bucket=self._get_bucket(bucket),
@@ -289,8 +292,8 @@ class StoreSession(object):
             )
         except botocore.exceptions.ClientError as e:
             if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {format} product for {source_id} in'
-                                   f' bucket {bucket}') from e
+                raise DoesNotExist(f'No {output_format} product for'
+                                   f' {source_id} in bucket {bucket}') from e
             raise RuntimeError(f'Unhandled exception: {e}') from e
         return CompilationProduct(stream=response['Body'],
                                   checksum=response['ETag'][1:-1])
