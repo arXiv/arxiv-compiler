@@ -326,7 +326,7 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
 
     args = [
         '-S /autotex',
-        f'-p 1901.00123',   # {source.source_id}
+        f'-p 1901.00123',   # TODO: this should be changed to submission ID.
         f'-f {output_format.value}',  # This doesn't do what we think it does.
         f'-T {timeout}',
         f'-t {dvips_layout}',
