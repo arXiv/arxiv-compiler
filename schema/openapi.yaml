@@ -24,7 +24,7 @@ components:
       required: true
       schema:
         type: string
-    format:
+    output_format:
       name: output_format
       in: path
       description: The compilation output format.
@@ -69,7 +69,7 @@ paths:
                 type: string
 
 
-  /{source_id}/{checksum}/{format}:
+  /{source_id}/{checksum}/{output_format}:
     description: |
       This resource represents the compilation and its products. This should
       tell the client about the compilation task itself (e.g. when it started,
@@ -78,7 +78,7 @@ paths:
     parameters:
     - $ref: '#/components/parameters/source_id'
     - $ref: '#/components/parameters/checksum'
-    - $ref: '#/components/parameters/format'
+    - $ref: '#/components/parameters/output_format'
     get:
       operationId: getCompilationStatus
       responses:
@@ -94,27 +94,27 @@ paths:
           description: No compilation has been requested.
 
 
-  /{source_id}/{checksum}/{format}/log:
+  /{source_id}/{checksum}/{output_format}/log:
     description: |
       The log bytestream itself.
       TODO: add text/plain mime-type, etc. to response description.
     parameters:
     - $ref: '#/components/parameters/source_id'
     - $ref: '#/components/parameters/checksum'
-    - $ref: '#/components/parameters/format'
+    - $ref: '#/components/parameters/output_format'
     get:
       operationId: getCompilationLog
       responses:
         '200':
           description: OK
 
-  /{source_id}/{checksum}/{format}/product:
+  /{source_id}/{checksum}/{output_format}/product:
     description: |
       The product bytestream; e.g. application/pdf, application/ps
     parameters:
     - $ref: '#/components/parameters/source_id'
     - $ref: '#/components/parameters/checksum'
-    - $ref: '#/components/parameters/format'
+    - $ref: '#/components/parameters/output_format'
     get:
       operationId: getCompilationProduct
       responses:
