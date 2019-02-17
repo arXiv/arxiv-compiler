@@ -171,13 +171,6 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
     backend.store_result(headers['id'], None, "SENT")
 
 
-def to_dict(func: Callable) -> Callable:
-    @wraps(func)
-    def inner(*args, **kwargs) -> dict:
-        return func(*args, **kwargs).to_dict()
-    return inner
-
-
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',

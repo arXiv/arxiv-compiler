@@ -4,6 +4,7 @@ import io
 from tempfile import TemporaryDirectory, mkstemp, mkdtemp
 from unittest import TestCase, mock
 import shutil
+import tempfile
 from operator import itemgetter
 
 import os.path
@@ -20,6 +21,99 @@ from .. import domain, util
 from ..services import filemanager
 
 data_dir = os.path.join(os.path.dirname(__file__), 'data')
+
+
+class TestStartCompilation(TestCase):
+    """Test :func:`start_compilation`."""
+
+    @mock.patch(f'{compiler.__name__}.do_compile', mock.MagicMock())
+    def test_start_compilation_ok(self):
+        """Compilation starts succesfully."""
+        task_id = compiler.start_compilation('1234', 'asdf1234=',
+                                             output_format=domain.Format.PDF,
+                                             token='footoken')
+        self.assertEqual(task_id, "1234::asdf1234=::pdf", "Returns task ID")
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_start_compilation_errs(self, mock_do_compile):
+        """An error occurs when starting compilation."""
+        def raise_runtimeerror(*args, **kwargs):
+            raise RuntimeError('Some error occurred')
+
+        mock_do_compile.apply_async.side_effect = raise_runtimeerror
+        with self.assertRaises(compiler.TaskCreationFailed):
+            compiler.start_compilation('1234', 'asdf1234=',
+                                       output_format=domain.Format.PDF,
+                                       token='footoken')
+
+
+class TestGetTask(TestCase):
+    """Test :func:`get_task`."""
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_nonexistant_task(self, mock_do):
+        """There is no such task."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(status='PENDING')
+
+        with self.assertRaises(compiler.NoSuchTask):
+            compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_unstarted_task(self, mock_do):
+        """Task exists, but has not started."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(status='SENT')
+        task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+        self.assertEqual(task.status, domain.Status.IN_PROGRESS)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_started_task(self, mock_do):
+        """Task exists and has started."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(status='STARTED')
+        task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+        self.assertEqual(task.status, domain.Status.IN_PROGRESS)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_retry_task(self, mock_do):
+        """Task exists and is being retried."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(status='RETRY')
+        task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+        self.assertEqual(task.status, domain.Status.IN_PROGRESS)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_failed(self, mock_do):
+        """Task exists and failed."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(status='FAILURE')
+        task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+        self.assertEqual(task.status, domain.Status.FAILED)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_succeeded(self, mock_do):
+        """Task exists and succeeded."""
+        # We set the status to SENT when we create the task.
+        mock_do.AsyncResult.return_value = mock.MagicMock(
+            status='SUCCESS',
+            result={}
+        )
+        task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+        self.assertEqual(task.status, domain.Status.COMPLETED)
+        self.assertEqual(task.reason, domain.Reason.NONE)
+
+    @mock.patch(f'{compiler.__name__}.do_compile')
+    def test_get_failed_gracefully(self, mock_do):
+        """Task exists and failed gracefully."""
+        for reason in domain.Reason:
+            mock_do.AsyncResult.return_value = mock.MagicMock(
+                status='SUCCESS',
+                result={'status': 'failed', 'reason': reason.value}
+            )
+            task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
+            self.assertEqual(task.status, domain.Status.FAILED)
+            self.assertEqual(task.reason, reason)
 
 
 class TestDoCompile(TestCase):
@@ -298,7 +392,63 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    
+
+class TestRun(TestCase):
+    """Tests for :func:`.compiler._run`."""
+
+    @mock.patch(f'{compiler.__name__}.run_docker')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_run(self, mock_current_app, mock_dock):
+        """Compilation is successful."""
+        source_dir = tempfile.mkdtemp()
+        root, _ = os.path.split(source_dir)
+        source_path = os.path.join(source_dir, 'foo.tar.gz')
+        open(source_path, 'a').close()
+        cache_dir = os.path.join(source_dir, 'tex_cache')
+        log_dir = os.path.join(source_dir, 'tex_logs')
+        os.makedirs(cache_dir)
+        os.makedirs(log_dir)
+        open(os.path.join(cache_dir, 'foo.pdf'), 'a').close()
+        open(os.path.join(log_dir, 'autotex.log'), 'a').close()
+
+        mock_current_app.config = {
+            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': root
+        }
+        mock_dock.return_value = (0, 'wooooo', '')
+        pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
+        out_path, log_path = compiler._run(pkg)
+        self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
+        self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
+        shutil.rmtree(source_dir)   # Cleanup.
+
+    @mock.patch(f'{compiler.__name__}.run_docker')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_run_fails(self, mock_current_app, mock_dock):
+        """Compilation fails."""
+        source_dir = tempfile.mkdtemp()
+        root, _ = os.path.split(source_dir)
+        source_path = os.path.join(source_dir, 'foo.tar.gz')
+        open(source_path, 'a').close()
+        cache_dir = os.path.join(source_dir, 'tex_cache')
+        log_dir = os.path.join(source_dir, 'tex_logs')
+        os.makedirs(cache_dir)
+        os.makedirs(log_dir)
+        open(os.path.join(log_dir, 'autotex.log'), 'a').close()
+
+        mock_current_app.config = {
+            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': root
+        }
+        mock_dock.return_value = (0, 'wooooo', '')
+        pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
+        out_path, log_path = compiler._run(pkg)
+        self.assertIsNone(out_path)
+        self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
+        shutil.rmtree(source_dir)   # Cleanup.
+
 #
 # class TestCompile(TestCase):
 #     """Tests for :func:`compiler.start_compilation`."""
