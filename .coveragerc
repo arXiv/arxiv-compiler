@@ -1,6 +1,7 @@
 [run]
 omit =
     */app.py
+    */bootstrap.py
     */wsgi.py
     */config.py
     docs/*
