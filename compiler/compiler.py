@@ -159,7 +159,7 @@ def get_task(source_id: str, checksum: str,
             data['status'] = Status(_result['status'])
         else:
             data['status'] = Status.COMPLETED
-        data['reason'] = _result.get('reason')
+        data['reason'] = Reason(_result.get('reason'))
     return CompilationStatus(task_id=task_id, **data)
 
 

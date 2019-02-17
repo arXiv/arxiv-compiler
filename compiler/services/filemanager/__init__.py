@@ -140,8 +140,6 @@ class FileManagementService(object):
             raise RequestUnauthorized(f'Not authorized: {resp.content}')
         elif resp.status_code == status.HTTP_403_FORBIDDEN:
             raise RequestForbidden(f'Forbidden: {resp.content}')
-        elif resp.status_code == status.HTTP_413_REQUEST_ENTITY_TOO_LARGE:
-            raise Oversize(f'Too large: {resp.content}')
         elif resp.status_code == status.HTTP_404_NOT_FOUND:
             raise NotFound(f'No such upload workspace: {path}')
         elif resp.status_code >= status.HTTP_400_BAD_REQUEST:
@@ -165,13 +163,10 @@ class FileManagementService(object):
         """
         resp = self._make_request(method, path, expected_code, **kw)
 
-        # There should be nothing in a 204 response.
-        if resp.status_code is status.HTTP_204_NO_CONTENT:
-            return {}, resp.headers
         try:
             return resp.json(), resp.headers
         except json.decoder.JSONDecodeError as e:
-            raise BadResponse('Could not decode: {resp.content}') from e
+            raise BadResponse(f'Could not decode: {resp.content}') from e
 
     def set_auth_token(self, token: str) -> None:
         """Set the authn/z token to use in subsequent requests."""
@@ -253,7 +248,7 @@ class FileManagementService(object):
 
         """
         logger.debug('Get upload info for: %s', source_id)
-        response, headers = self.request('head', f'/{source_id}/content')
+        response, headers = self.request('get', f'/{source_id}/content')
         logger.debug('Got response with etag %s', headers['ETag'])
         return SourcePackageInfo(source_id=source_id, etag=headers['ETag'])
 
@@ -304,3 +299,9 @@ def get_source_content(source_id: str, save_to: str = '/tmp') -> SourcePackage:
 def get_upload_info(source_id: str) -> SourcePackageInfo:
     """See :meth:`FileManagementService.upload_package`."""
     return current_session().get_upload_info(source_id)
+
+
+@wraps(FileManagementService.get_service_status)
+def get_service_status() -> dict:
+    """See :meth:`FileManagementService.get_service_status`."""
+    return current_session().get_service_status()

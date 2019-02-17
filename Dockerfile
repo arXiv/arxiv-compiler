@@ -25,6 +25,7 @@ ENV ARXIV_HOME "https://arxiv.org"
 # Add the code in this repo.
 ADD compiler /opt/arxiv/compiler/
 ADD wsgi.py /opt/arxiv/
+ADD bootstrap.py /opt/arxiv/
 ADD app.py /opt/arxiv/
 ADD bin/start_worker.sh /opt/arxiv/
 ADD bin/start_api.sh /opt/arxiv/
@@ -40,5 +41,6 @@ CMD ["/opt/arxiv/start_api.sh", \
      "--threads", "1", \
      "--async", "100", \
      "--ugreen", \
+     "--wsgi-disable-file-wrapper", \
      "--mount", "/compiler=wsgi.py", \
      "--logformat", "%(addr) %(addr) - %(user_id)|%(session_id) [%(rtime)] [%(uagent)] \"%(method) %(uri) %(proto)\" %(status) %(size) %(micros) %(ttfb)"]
