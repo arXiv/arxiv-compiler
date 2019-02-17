@@ -25,7 +25,7 @@ components:
       schema:
         type: string
     format:
-      name: format
+      name: output_format
       in: path
       description: The compilation output format.
       required: true

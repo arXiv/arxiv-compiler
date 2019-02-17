@@ -324,28 +324,21 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
     leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
     host_source_dir = os.path.join(host_source_root, leaf_path)
 
-    args = [
-        '-S /autotex',
-        f'-p 1901.00123',   # TODO: this should be changed to submission ID.
-        f'-f {output_format.value}',  # This doesn't do what we think it does.
-        f'-T {timeout}',
-        f'-t {dvips_layout}',
-        '-q',
+    options = [
+        (True, '-S /autotex'),
+        (True, '-p 1901.00123'),   # TODO: should be changed to submission ID.
+        (True, f'-f {output_format.value}'),  # Doesn't do what it seems.
+        (True, f'-T {timeout}'),
+        (True, f'-t {dvips_layout}'),
+        (True, '-q'),
+        (verbose, '-v'),
+        (not add_stamp, '-s'),
+        (add_psmapfile, '-u'),
+        (P_dvips_flag, '-P'),
+        (id_for_decryption is not None, f'-d {id_for_decryption}'),
+        (tex_tree_timestamp is not None, f'-U {tex_tree_timestamp}')
     ]
-    if verbose:
-        args.append('-v')
-    if not add_stamp:
-        args.append('-s')
-    if add_psmapfile:
-        args.append('-u')
-    if P_dvips_flag:
-        args.append('-P')
-    if D_dvips_flag:
-        args.append('-D')
-    if id_for_decryption is not None:
-        args.append(f'-d {id_for_decryption}')
-    if tex_tree_timestamp is not None:
-        args.append(f'-U {tex_tree_timestamp}')
+    args = [arg for opt, arg in options if opt]
 
     logger.debug('run image %s with args %s', image, args)
     code, stdout, stderr = run_docker(image, args=args,

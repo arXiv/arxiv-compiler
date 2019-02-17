@@ -16,8 +16,9 @@ from . import routes
 
 
 def jsonify_exception(error):
-    """Render the base 404 error page."""
+    """Render exceptions as JSON."""
     exc_resp = error.get_response()
+    print('!!', error.args)
     response = jsonify(reason=error.description)
     response.status_code = exc_resp.status_code
     return response

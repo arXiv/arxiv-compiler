@@ -82,8 +82,10 @@ def compile(request_data: MultiDict, token: str) -> Response:
     source_id = request_data.get('source_id', None)
     checksum = request_data.get('checksum', None)
     if source_id is None:
+        logger.debug('Missing required parameter: source_id')
         raise BadRequest('Missing required parameter: source_id')
     if checksum is None:
+        logger.debug('Missing required parameter: checksum')
         raise BadRequest('Missing required parameter: checksum')
 
     force = request_data.get('force', False)
