@@ -7,7 +7,10 @@ from ..services import store, filemanager
 
 
 class TestCompilerApp(TestCase):
+    """The the app API."""
+
     def setUp(self):
+        """Create a test app and client."""
         self.app = factory.create_app()
         self.client = self.app.test_client()
 

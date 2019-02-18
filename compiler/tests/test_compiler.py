@@ -127,6 +127,8 @@ class TestDoCompile(TestCase):
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
         _, log_path = mkstemp()
+        with open(out_path, 'a') as f:
+            f.write('something is not nothing')
         mock_run.return_value = (out_path, log_path)
         app = Flask('test')
         app.config.update({
@@ -143,7 +145,8 @@ class TestDoCompile(TestCase):
                     'task_id': '1234::asdf::pdf',
                     'status': 'completed',
                     'reason': None,
-                    'description': ''
+                    'description': '',
+                    'size_bytes': 24
                 }
             )
 
@@ -179,7 +182,8 @@ class TestDoCompile(TestCase):
                     'status': 'failed',
                     'reason': 'auth_error',
                     'description': 'There was a problem authorizing your'
-                                   ' request.'
+                                   ' request.',
+                    'size_bytes': 0
                 }
             )
 
@@ -215,7 +219,8 @@ class TestDoCompile(TestCase):
                     'status': 'failed',
                     'reason': 'auth_error',
                     'description': 'There was a problem authorizing your'
-                                   ' request.'
+                                   ' request.',
+                    'size_bytes': 0
                 }
             )
 
@@ -253,7 +258,8 @@ class TestDoCompile(TestCase):
                     'status': 'failed',
                     'reason': 'network_error',
                     'description': 'There was a problem retrieving your source'
-                                   ' files.'
+                                   ' files.',
+                    'size_bytes': 0
                 }
             )
 
@@ -292,7 +298,8 @@ class TestDoCompile(TestCase):
                     'status': 'failed',
                     'reason': 'missing_source',
                     'description': 'Could not retrieve a matching source'
-                                   ' package'
+                                   ' package',
+                    'size_bytes': 0
                 }
             )
 
@@ -325,7 +332,8 @@ class TestDoCompile(TestCase):
                     'task_id': '1234::asdf::pdf',
                     'status': 'failed',
                     'reason': 'corrupted_source',
-                    'description': ''
+                    'description': '',
+                    'size_bytes': 0
                 }
             )
 
@@ -354,7 +362,8 @@ class TestDoCompile(TestCase):
                     'task_id': '1234::asdf::pdf',
                     'status': 'failed',
                     'reason': 'compilation_errors',
-                    'description': ''
+                    'description': '',
+                    'size_bytes': 0
                 }
             )
 
@@ -388,7 +397,8 @@ class TestDoCompile(TestCase):
                     'task_id': '1234::asdf::pdf',
                     'status': 'failed',
                     'reason': 'storage',
-                    'description': 'Failed to store result'
+                    'description': 'Failed to store result',
+                    'size_bytes': 0
                 }
             )
 
@@ -477,9 +487,9 @@ class TestRun(TestCase):
 #         self.assertEqual(data['output_format'], 'pdf')
 #
 #         stored_product = mock_store.store.call_args[0][0]
-#         self.assertEqual(stored_product.status.status,
+#         self.assertEqual(stored_product.task.status,
 #                          domain.Status.COMPLETED)
-#         self.assertEqual(stored_product.status.format,
+#         self.assertEqual(stored_product.task.format,
 #                          domain.Format.PDF)
-#         self.assertEqual(stored_product.status.checksum,
+#         self.assertEqual(stored_product.task.checksum,
 #                          checksum)

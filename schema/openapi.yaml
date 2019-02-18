@@ -51,7 +51,7 @@ paths:
         to check the existance/status of a compilation. If it does not exist,
         create an asynchronous task using the source_id, checksum, and format
         as a joint key and as call parameters. In either case, redirect (303)
-        to getCompilationStatus.
+        to getTask.
       operationId: requestCompilation
       requestBody:
         required: true
@@ -80,7 +80,7 @@ paths:
     - $ref: '#/components/parameters/checksum'
     - $ref: '#/components/parameters/output_format'
     get:
-      operationId: getCompilationStatus
+      operationId: getTask
       responses:
         '200':
           description: OK
@@ -116,7 +116,7 @@ paths:
     - $ref: '#/components/parameters/checksum'
     - $ref: '#/components/parameters/output_format'
     get:
-      operationId: getCompilationProduct
+      operationId: getProduct
       responses:
         '200':
           description: OK

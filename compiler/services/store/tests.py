@@ -28,7 +28,7 @@ class TestStore(TestCase):
     def test_set_get_compilation_status(self):
         """Test setting and getting compilation status."""
         store.current_session().create_bucket()
-        status_pdf = domain.CompilationStatus(
+        status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
             checksum='abc123checksum',
@@ -51,7 +51,7 @@ class TestStore(TestCase):
                              domain.Format.PS)
 
         # New format for same upload ID/checksum.
-        status_ps = domain.CompilationStatus(
+        status_ps = domain.Task(
             source_id='12345',
             output_format=domain.Format.PS,
             checksum='abc123checksum',
@@ -68,7 +68,7 @@ class TestStore(TestCase):
         self.assertEqual(status_ps, retrieved_ps)
 
         # Change the status of the existing format/checksum.
-        status_ps_failed = domain.CompilationStatus(
+        status_ps_failed = domain.Task(
             source_id='12345',
             output_format=domain.Format.PS,
             checksum='abc123checksum',
@@ -81,7 +81,7 @@ class TestStore(TestCase):
         self.assertEqual(status_ps_failed, retrieved_ps)
 
         # Same format, new checksum.
-        status_ps_alt = domain.CompilationStatus(
+        status_ps_alt = domain.Task(
             source_id='12345',
             output_format=domain.Format.PS,
             checksum='someotherchecksum1234',
@@ -100,14 +100,15 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation products."""
         content = io.BytesIO(b'somepdfcontent')
         store.current_session().create_bucket()
-        status_pdf = domain.CompilationStatus(
+        status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
             checksum='abc123checksum',
             task_id='foo-task-1234-6789',
+            size_bytes=309192,
             status=domain.Status.COMPLETED
         )
-        product = domain.CompilationProduct(stream=content, status=status_pdf)
+        product = domain.Product(stream=content, task=status_pdf)
         store.store(product)
 
         rstatus_pdf = store.get_status('12345', 'abc123checksum',
@@ -128,14 +129,15 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation logs."""
         content = io.BytesIO(b'some log output')
         store.current_session().create_bucket()
-        status_pdf = domain.CompilationStatus(
+        status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
             checksum='abc123checksum',
             task_id='foo-task-1234-6789',
+            size_bytes=0,
             status=domain.Status.COMPLETED
         )
-        product = domain.CompilationProduct(stream=content, status=status_pdf)
+        product = domain.Product(stream=content, task=status_pdf)
         store.store_log(product)
 
         returned = store.retrieve_log('12345', 'abc123checksum',

@@ -8,7 +8,7 @@ from werkzeug.exceptions import NotFound, BadRequest
 
 from arxiv import status
 
-from ..domain import CompilationStatus, CompilationProduct, Format, Status
+from ..domain import Task, Product, Format, Status
 from .. import controllers, compiler
 from ..services import store
 
@@ -72,7 +72,7 @@ class TestRequestCompilation(TestCase):
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         token = "footoken"
-        mock_store.get_status.return_value = CompilationStatus(
+        mock_store.get_status.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.COMPLETED,
@@ -90,7 +90,7 @@ class TestRequestCompilation(TestCase):
         self.assertIn(request_data['output_format'], headers['Location'])
 
 
-class TestGetCompilationStatus(TestCase):
+class TestGetTask(TestCase):
     """Tests for :func:`controllers.get_status`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
@@ -101,7 +101,7 @@ class TestGetCompilationStatus(TestCase):
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.COMPLETED,
@@ -121,7 +121,7 @@ class TestGetCompilationStatus(TestCase):
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.IN_PROGRESS,
@@ -154,7 +154,7 @@ class TestGetCompilationStatus(TestCase):
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.COMPLETED,
@@ -174,7 +174,7 @@ class TestGetCompilationStatus(TestCase):
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = Format.PDF
-        mock_compiler.get_task.return_value = CompilationStatus(
+        mock_compiler.get_task.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.IN_PROGRESS,
@@ -187,7 +187,7 @@ class TestGetCompilationStatus(TestCase):
         self.assertEqual(code, status.HTTP_200_OK)
 
 
-class TestGetCompilationProduct(TestCase):
+class TestGetProduct(TestCase):
     """Tests for :func:`controllers.get_product`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
@@ -199,10 +199,10 @@ class TestGetCompilationProduct(TestCase):
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
-        mock_store.retrieve.return_value = CompilationProduct(
+        mock_store.retrieve.return_value = Product(
             stream=io.BytesIO(b'foocontent'),
             checksum=product_checksum,
-            status=CompilationStatus(
+            task=Task(
                 source_id=source_id,
                 output_format=Format.PDF,
                 status=Status.COMPLETED,
@@ -230,7 +230,7 @@ class TestGetCompilationProduct(TestCase):
         mock_store.retrieve.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
-            controllers.get_product(source_id, checksum,output_format)
+            controllers.get_product(source_id, checksum, output_format)
 
 
 class TestGetCompilationLog(TestCase):
@@ -245,10 +245,10 @@ class TestGetCompilationLog(TestCase):
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
-        mock_store.retrieve_log.return_value = CompilationProduct(
+        mock_store.retrieve_log.return_value = Product(
             stream=io.BytesIO(b'foolog'),
             checksum=product_checksum,
-            status=CompilationStatus(
+            task=Task(
                 source_id=source_id,
                 output_format=Format.PDF,
                 status=Status.COMPLETED,

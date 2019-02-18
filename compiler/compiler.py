@@ -10,12 +10,13 @@ Parameters supported by autotex "converter" image.
  -h print usage
  -k do not delete temporary directory
  -P pass through for -P dvips flag
- -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+ -p id of paper to process (pre 2007 archive/papernum or new numerical id
+    yymm.\\d{4,5}) (required!)
  -d id to use for decrytion (overrides default to -p id)
  -s do not add stamp to PostScript
  -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
  -v verbose logging, that is, print log messages to STDOUT
- (they are always logged to auto_gen_ps.log)
+    (they are always logged to auto_gen_ps.log)
  -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
  -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
  -X cache DVI file (default: no)
@@ -26,8 +27,10 @@ Parameters supported by autotex "converter" image.
 
 We're going to use:
 
-- -f output format, only sensible use is -f fInm for pdf generation (fInm, dvi, ps)
-- -p id of paper to process (pre 2007 archive/papernum or new numerical id yymm.\\d{4,5}) (required!)
+- -f output format, only sensible use is -f fInm for pdf generation (fInm, dvi,
+  ps)
+- -p id of paper to process (pre 2007 archive/papernum or new numerical id
+  yymm.\\d{4,5}) (required!)
 - -s do not add stamp to PostScript
 - -T override the default AUTOTEX_TIMEOUT setting with user value
 
@@ -61,11 +64,13 @@ from celery.signals import after_task_publish
 from arxiv.base import logging
 
 from .celery import celery_app
-from .domain import CompilationProduct, CompilationStatus, Format, Status, \
+from .domain import Product, Task, Format, Status, \
     SourcePackage, Reason
 from .services import filemanager, store
 
 logger = logging.getLogger(__name__)
+
+ProcessResult = Tuple[int, str, str]
 
 
 class NoSuchTask(RuntimeError):
@@ -121,7 +126,7 @@ def start_compilation(source_id: str, checksum: str,
 
 
 def get_task(source_id: str, checksum: str,
-             output_format: Format = Format.PDF) -> CompilationStatus:
+             output_format: Format = Format.PDF) -> Task:
     """
     Get the status of an extraction task.
 
@@ -137,7 +142,7 @@ def get_task(source_id: str, checksum: str,
 
     Returns
     -------
-    :class:`CompilationStatus`
+    :class:`Task`
 
     """
     task_id = _get_task_id(source_id, checksum, output_format)
@@ -160,7 +165,7 @@ def get_task(source_id: str, checksum: str,
         else:
             data['status'] = Status.COMPLETED
         data['reason'] = Reason(_result.get('reason'))
-    return CompilationStatus(task_id=task_id, **data)
+    return Task(task_id=task_id, **data)
 
 
 @after_task_publish.connect
@@ -210,7 +215,7 @@ def do_compile(source_id: str, checksum: str,
     out_path: Optional[str] = None
     log_path: Optional[str] = None
 
-    status = {
+    info = {
         'task_id': task_id,
         'source_id': source_id,
         'output_format': output_format,
@@ -223,23 +228,22 @@ def do_compile(source_id: str, checksum: str,
         logger.debug(f"{source_id} etag: {source.etag}")
     except (filemanager.RequestUnauthorized, filemanager.RequestForbidden):
         description = "There was a problem authorizing your request."
-        stat = CompilationStatus(status=Status.FAILED,
-                                 reason=Reason.AUTHORIZATION,
-                                 description=description, **status)
+        stat = Task(status=Status.FAILED, reason=Reason.AUTHORIZATION,
+                    description=description, **info)
     except filemanager.ConnectionFailed:
         description = "There was a problem retrieving your source files."
-        stat = CompilationStatus(status=Status.FAILED, reason=Reason.NETWORK,
-                                 description=description, **status)
+        stat = Task(status=Status.FAILED, reason=Reason.NETWORK,
+                    description=description, **info)
     except filemanager.NotFound:
         description = 'Could not retrieve a matching source package'
-        stat = CompilationStatus(status=Status.FAILED, reason=Reason.MISSING,
-                                 description=description, **status)
+        stat = Task(status=Status.FAILED, reason=Reason.MISSING,
+                    description=description, **info)
 
     """
     if source.etag != checksum:
         logger.debug('source: %s; expected: %s', source.etag, checksum)
         reason = 'Source etag does not match requested etag'
-        stat = CompilationStatus(status=Status.FAILED, reason=reason, **status)
+        stat = Task(status=Status.FAILED, reason=reason, **status)
         return stat.to_dict()
     """
 
@@ -248,22 +252,22 @@ def do_compile(source_id: str, checksum: str,
         try:
             out_path, log_path = _run(source, output_format=output_format,
                                       verbose=verbose)
+            if out_path is not None:
+                info['size_bytes'] = _file_size(out_path)
         except CorruptedSource:
-            stat = CompilationStatus(status=Status.FAILED,
-                                     reason=Reason.CORRUPTED, **status)
+            stat = Task(status=Status.FAILED, reason=Reason.CORRUPTED, **info)
 
     if not stat:
         if out_path is not None:
-            stat = CompilationStatus(status=Status.COMPLETED, **status)
+            stat = Task(status=Status.COMPLETED, **info)
         else:
-            stat = CompilationStatus(status=Status.FAILED, reason=Reason.ERROR,
-                                     **status)
+            stat = Task(status=Status.FAILED, reason=Reason.ERROR, **info)
     # Store the result.
     try:
         _store_compilation_result(stat, out_path, log_path)
     except RuntimeError as e:
-        stat = CompilationStatus(status=Status.FAILED, reason=Reason.STORAGE,
-                                 description=str(e), **status)
+        stat = Task(status=Status.FAILED, reason=Reason.STORAGE,
+                    description=str(e), **info)
 
     # Clean up!
     try:
@@ -274,22 +278,21 @@ def do_compile(source_id: str, checksum: str,
     return stat.to_dict()
 
 
-def _store_compilation_result(status: CompilationStatus,
-                              out_path: Optional[str],
+def _store_compilation_result(status: Task, out_path: Optional[str],
                               log_path: Optional[str]) -> None:
     """Store the status and output (including log) of compilation."""
     logger.debug('_store_compilation_result: %s %s', out_path, log_path)
     if out_path is not None:
         try:
             with open(out_path, 'rb') as f:
-                store.store(CompilationProduct(stream=f, status=status))
+                store.store(Product(stream=f, task=status))
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
 
     if log_path is not None:
         try:
             with open(log_path, 'rb') as f:
-                store.store_log(CompilationProduct(stream=f, status=status))
+                store.store_log(Product(stream=f, task=status))
         except Exception as e:  # TODO: look at exceptions in object store.
             raise RuntimeError('Failed to store result') from e
     store.set_status(status)
@@ -363,9 +366,8 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
     return out_path, tex_log_path if os.path.exists(tex_log_path) else None
 
 
-def run_docker(image: str, volumes: list = [],
-               ports: list = [], args: List[str] = [],
-               daemon: bool = False) -> Tuple[int, str, str]:
+def run_docker(image: str, volumes: list = [], ports: list = [],
+               args: List[str] = [], daemon: bool = False) -> ProcessResult:
     """
     Run a generic docker image.
 
@@ -417,3 +419,7 @@ def run_docker(image: str, volumes: list = [],
 def _get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
     return f"{source_id}::{checksum}::{output_format.value}"
+
+
+def _file_size(path: str) -> int:
+    return os.path.getsize(path)

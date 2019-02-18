@@ -27,7 +27,7 @@ from flask import Flask
 from arxiv.base import logging
 from arxiv.base.globals import get_application_global, get_application_config
 
-from ...domain import CompilationStatus, CompilationProduct, Format, Status, \
+from ...domain import Task, Product, Format, Status, \
     Reason
 
 
@@ -46,9 +46,12 @@ def hash_content(body: bytes) -> str:
 class StoreSession(object):
     """Represents an object store session."""
 
+    LOG_KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}.log'
+    KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}'
+    STATUS_KEY = '{src_id}/{chk}/{out_fmt}/status.json'
+
     def __init__(self, buckets: List[Tuple[str, str]], version: str,
-                 verify: bool = False,
-                 region_name: Optional[str] = None,
+                 verify: bool = False, region_name: Optional[str] = None,
                  endpoint_url: Optional[str] = None,
                  aws_access_key_id: Optional[str] = None,
                  aws_secret_access_key: Optional[str] = None) -> None:
@@ -70,40 +73,30 @@ class StoreSession(object):
         # credentials files.
         params: Dict[str, Any] = dict(region_name=region_name)
         if aws_access_key_id and aws_secret_access_key:
-            params.update(dict(
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key
-            ))
+            params.update(dict(aws_access_key_id=aws_access_key_id,
+                               aws_secret_access_key=aws_secret_access_key))
         if endpoint_url:
-            params.update(dict(
-                endpoint_url=endpoint_url,
-                verify=verify
-            ))
+            params.update(dict(endpoint_url=endpoint_url, verify=verify))
         self.client = boto3.client('s3', **params)
 
-    def _key(self, source_id: str, checksum: str,
-             output_format: Format) -> str:
-        return f'{source_id}/{checksum}/{output_format.value}'
-
-    def get_status(self, source_id: str, checksum: str,
-                   output_format: Format,
-                   bucket: str = 'arxiv') -> CompilationStatus:
+    def get_status(self, src_id: str, chk: str, out_fmt: Format,
+                   bucket: str = 'arxiv') -> Task:
         """
         Get the status of a compilation.
 
         Parameters
         ----------
-        source_id : str
+        src_id : str
             The unique identifier of the source package.
-        output_format: str
+        out_fmt: str
             Compilation format. See :attr:`Format`.
-        checksum : str
+        chk : str
             Base64-encoded MD5 hash of the source package.
         bucket : str
 
         Returns
         -------
-        :class:`CompilationStatus`
+        :class:`Task`
 
         Raises
         ------
@@ -111,95 +104,58 @@ class StoreSession(object):
             Raised if no status exists for the provided parameters.
 
         """
-        _key = self._key(source_id, checksum, output_format)
-        key = f'{_key}/status.json'
-        logger.debug('Get status for upload %s with key %s', source_id, key)
-        try:
-            response = self.client.get_object(
-                Bucket=self._get_bucket(bucket),
-                Key=key
-            )
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No status data for {source_id} in bucket'
-                                   f' {bucket}.') from e
-            raise RuntimeError(f'Unhandled exception: {e}') from e
-        data = json.loads(response['Body'].read().decode('utf-8'))
-        data['output_format'] = Format(data['output_format'])
-        data['status'] = Status(data['status'])
-        data['reason'] = Reason(data['reason'])
-        return CompilationStatus(**data)
+        key = self.STATUS_KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt)
+        resp = self._get(key, bucket)
+        data = json.loads(resp['Body'].read().decode('utf-8'))
+        return Task.from_dict(data)
 
-    def set_status(self, status: CompilationStatus, bucket: str = 'arxiv') \
-            -> None:
+    def set_status(self, task: Task, bucket: str = 'arxiv') -> None:
         """
         Update the status of a compilation.
 
         Parameters
         ----------
-        status : :class:`CompilationStatus`
+        task : :class:`Task`
         bucket : str
 
         """
-        _key = self._key(status.source_id, status.checksum,
-                         status.output_format)
-        key = f'{_key}/status.json'
-        body = json.dumps(status.to_dict()).encode('utf-8')
-        try:
-            self.client.put_object(
-                Body=body,
-                Bucket=self._get_bucket(bucket),
-                ContentMD5=hash_content(body),
-                ContentType='application/json',
-                Key=key
-            )
-        except botocore.exceptions.ClientError as e:
-            raise RuntimeError(f'Unhandled exception: {e}') from e
+        body = json.dumps(task.to_dict()).encode('utf-8')
+        key = self.STATUS_KEY.format(src_id=task.source_id, chk=task.checksum,
+                                     out_fmt=task.output_format)
+        self._put(key, body, 'application/json', bucket)
 
-    def store(self, product: CompilationProduct, bucket: str = 'arxiv') \
-            -> None:
+    def store(self, product: Product, bucket: str = 'arxiv') -> None:
         """
         Store a compilation product.
 
         Parameters
         ----------
-        product : :class:`CompilationProduct`
+        product : :class:`Product`
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
             to determine the S3 bucket where this content should be stored.
 
         """
-        if product.status is None or product.status.source_id is None:
+        if product.task is None or product.task.source_id is None:
             raise ValueError('source_id must be set')
 
-        body = product.stream.read()
-        status = product.status
-        _key = self._key(status.source_id, status.checksum,
-                         status.output_format)
-        key = f'{_key}/{status.source_id}.{status.ext}'
-        try:
-            self.client.put_object(
-                Body=body,
-                Bucket=self._get_bucket(bucket),
-                ContentMD5=hash_content(body),
-                ContentType=product.status.content_type,
-                Key=key,
-            )
-        except botocore.exceptions.ClientError as e:
-            raise RuntimeError(f'Unhandled exception: {e}') from e
-        self.set_status(status, bucket=bucket)
+        k = self.KEY.format(src_id=product.task.source_id,
+                            chk=product.task.checksum,
+                            out_fmt=product.task.output_format,
+                            ext=product.task.output_format.ext)
+        self._put(k, product.stream.read(), product.task.content_type, bucket)
+        self.set_status(product.task, bucket=bucket)
 
-    def retrieve(self, source_id: str, checksum: str,
-                 output_format: Format,
-                 bucket: str = 'arxiv') -> CompilationProduct:
+    def retrieve(self, src_id: str, chk: str, out_fmt: Format,
+                 bucket: str = 'arxiv') -> Product:
         """
         Retrieve a compilation product.
 
         Parameters
         ----------
-        source_id : str
-        checksum : str
-        output_format : enum
+        src_id : str
+        chk : str
+        out_fmt : enum
             One of :attr:`Format`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
@@ -208,69 +164,46 @@ class StoreSession(object):
 
         Returns
         -------
-        :class:`CompilationProduct`
+        :class:`Product`
 
         """
-        _key = self._key(source_id, checksum, output_format)
-        key = f'{_key}/{source_id}.{Format(output_format).ext}'
-        try:
-            response = self.client.get_object(
-                Bucket=self._get_bucket(bucket),
-                Key=key
-            )
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {output_format} product for'
-                                   f' {source_id} in bucket {bucket}') from e
-            raise RuntimeError(f'Unhandled exception: {e}') from e
-        return CompilationProduct(stream=response['Body'],
-                                  checksum=response['ETag'][1:-1])
+        key = self.KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt,
+                              ext=out_fmt.ext)
+        resp = self._get(key, bucket)
+        return Product(stream=resp['Body'], checksum=resp['ETag'][1:-1])
 
-    def store_log(self, product: CompilationProduct, bucket: str = 'arxiv') \
-            -> None:
+    def store_log(self, product: Product, bucket: str = 'arxiv') -> None:
         """
         Store a compilation log.
 
         Parameters
         ----------
-        product : :class:`CompilationProduct`
+        product : :class:`Product`
             Stream should be log content.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
             to determine the S3 bucket where this content should be stored.
 
         """
-        if product.status is None or product.status.source_id is None:
+        if product.task is None or product.task.source_id is None:
             raise ValueError('source_id must be set')
+        key = self.LOG_KEY.format(src_id=product.task.source_id,
+                                  chk=product.task.checksum,
+                                  out_fmt=product.task.output_format,
+                                  ext=product.task.output_format.ext)
+        self._put(key, product.stream.read(), 'text/plain', bucket)
+        self.set_status(product.task, bucket=bucket)
 
-        body = product.stream.read()
-        status = product.status
-        _key = self._key(status.source_id, status.checksum,
-                         status.output_format)
-        key = f'{_key}/{status.source_id}.{status.ext}.log'
-        try:
-            self.client.put_object(
-                Body=body,
-                Bucket=self._get_bucket(bucket),
-                ContentMD5=hash_content(body),
-                ContentType='text/plain',
-                Key=key,
-            )
-        except botocore.exceptions.ClientError as e:
-            raise RuntimeError(f'Unhandled exception: {e}') from e
-        self.set_status(status, bucket=bucket)
-
-    def retrieve_log(self, source_id: str, checksum: str,
-                     output_format: Format,
-                     bucket: str = 'arxiv') -> CompilationProduct:
+    def retrieve_log(self, src_id: str, chk: str, out_fmt: Format,
+                     bucket: str = 'arxiv') -> Product:
         """
         Retrieve a compilation log.
 
         Parameters
         ----------
-        source_id : str
-        checksum : str
-        output_format : enum
+        src_id : str
+        chk : str
+        out_fmt : enum
             One of :attr:`Format`.
         bucket : str
             Default is ``'arxiv'``. Used in conjunction with :attr:`.buckets`
@@ -279,31 +212,38 @@ class StoreSession(object):
 
         Returns
         -------
-        :class:`CompilationProduct`
+        :class:`Product`
 
         """
-        _key = self._key(source_id, checksum, output_format)
-        key = f'{_key}/{source_id}.{Format(output_format).ext}.log'
-        print(key)
-        try:
-            response = self.client.get_object(
-                Bucket=self._get_bucket(bucket),
-                Key=key
-            )
-        except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "NoSuchKey":
-                raise DoesNotExist(f'No {output_format} product for'
-                                   f' {source_id} in bucket {bucket}') from e
-            raise RuntimeError(f'Unhandled exception: {e}') from e
-        return CompilationProduct(stream=response['Body'],
-                                  checksum=response['ETag'][1:-1])
+        key = self.LOG_KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt,
+                                  ext=out_fmt.ext)
+        resp = self._get(key, bucket)
+        return Product(stream=resp['Body'], checksum=resp['ETag'][1:-1])
 
     def create_bucket(self) -> None:
         """Create S3 buckets. This is just for testing."""
         for key, bucket in self.buckets:
             self.client.create_bucket(Bucket=bucket)
 
-    def _get_bucket(self, bucket: str) -> str:
+    def _get(self, key: str, bucket: str = 'arxiv') -> dict:
+        try:
+            resp = self.client.get_object(Bucket=self._bucket(bucket), Key=key)
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == "NoSuchKey":
+                raise DoesNotExist(f'No such object in bucket {bucket}') from e
+            raise RuntimeError(f'Unhandled exception: {e}') from e
+        return resp
+
+    def _put(self, key: str, body: bytes, content_type: str,
+             bucket: str = 'arxiv') -> None:
+        try:
+            self.client.put_object(Body=body, Bucket=self._bucket(bucket),
+                                   ContentMD5=hash_content(body),
+                                   ContentType=content_type, Key=key)
+        except botocore.exceptions.ClientError as e:
+            raise RuntimeError(f'Unhandled exception: {e}') from e
+
+    def _bucket(self, bucket: str) -> str:
         try:
             name: str = dict(self.buckets)[bucket]
         except KeyError as e:
@@ -313,54 +253,47 @@ class StoreSession(object):
 
 @wraps(StoreSession.create_bucket)
 def create_bucket() -> None:
+    """Create the bucket(s) required to store content."""
     current_session().create_bucket()
 
 
 @wraps(StoreSession.get_status)
-def get_status(source_id: str, checksum: str,
-               output_format: Format,
-               bucket: str = 'arxiv') \
-        -> CompilationStatus:
+def get_status(src_id: str, chk: str, out_fmt: Format,
+               bucket: str = 'arxiv') -> Task:
     """See :func:`StoreSession.get_status`."""
-    s = current_session()
-    return s.get_status(source_id, checksum, output_format,
-                        bucket=bucket)
+    return current_session().get_status(src_id, chk, out_fmt, bucket=bucket)
 
 
 @wraps(StoreSession.set_status)
-def set_status(status: CompilationStatus, bucket: str = 'arxiv') -> None:
+def set_status(task: Task, bucket: str = 'arxiv') -> None:
     """See :func:`StoreSession.get_status`."""
-    return current_session().set_status(status, bucket=bucket)
+    return current_session().set_status(task, bucket=bucket)
 
 
 @wraps(StoreSession.store)
-def store(product: CompilationProduct, bucket: str = 'arxiv') -> None:
+def store(product: Product, bucket: str = 'arxiv') -> None:
     """See :func:`StoreSession.store`."""
     return current_session().store(product, bucket=bucket)
 
 
 @wraps(StoreSession.store_log)
-def store_log(product: CompilationProduct, bucket: str = 'arxiv') -> None:
+def store_log(product: Product, bucket: str = 'arxiv') -> None:
     """See :func:`StoreSession.store_log`."""
     return current_session().store_log(product, bucket=bucket)
 
 
 @wraps(StoreSession.retrieve)
-def retrieve(source_id: str, checksum: str,
-             output_format: Format,
-             bucket: str = 'arxiv') -> CompilationProduct:
+def retrieve(src_id: str, chk: str, out_fmt: Format,
+             bucket: str = 'arxiv') -> Product:
     """See :func:`StoreSession.retrieve`."""
-    return current_session().retrieve(source_id, checksum,
-                                      output_format, bucket=bucket)
+    return current_session().retrieve(src_id, chk, out_fmt, bucket=bucket)
 
 
 @wraps(StoreSession.retrieve_log)
-def retrieve_log(source_id: str, checksum: str,
-                 output_format: Format,
-                 bucket: str = 'arxiv') -> CompilationProduct:
+def retrieve_log(src_id: str, chk: str, out_fmt: Format,
+                 bucket: str = 'arxiv') -> Product:
     """See :func:`StoreSession.retrieve_log`."""
-    return current_session().retrieve_log(source_id, checksum,
-                                          output_format, bucket=bucket)
+    return current_session().retrieve_log(src_id, chk, out_fmt, bucket=bucket)
 
 
 def init_app(app: Flask) -> None:

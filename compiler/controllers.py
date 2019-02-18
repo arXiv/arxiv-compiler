@@ -12,7 +12,7 @@ from arxiv.base import logging
 
 from .services import store
 from . import compiler
-from .domain import CompilationStatus, CompilationProduct, Status, Format
+from .domain import Task, Product, Status, Format
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +20,8 @@ Response = Tuple[dict, int, dict]
 
 
 def _status_from_store(source_id: str, checksum: str,
-                       output_format: Format) -> Optional[CompilationStatus]:
-    """Get a :class:`.CompilationStatus` from storage."""
+                       output_format: Format) -> Optional[Task]:
+    """Get a :class:`.Task` from storage."""
     try:
         stat = store.get_status(source_id, checksum, output_format)
         logger.debug('Got status from store: %s', stat)
@@ -34,8 +34,8 @@ def _status_from_store(source_id: str, checksum: str,
 
 
 def _status_from_task(source_id: str, checksum: str,
-                      output_format: Format) -> Optional[CompilationStatus]:
-    """Get a :class:`.CompilationStatus` from the task queue."""
+                      output_format: Format) -> Optional[Task]:
+    """Get a :class:`.Task` from the task queue."""
     try:
         stat = compiler.get_task(source_id, checksum, output_format)
         logger.debug('Got status from previous task: %s', stat)

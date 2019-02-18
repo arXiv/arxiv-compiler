@@ -52,7 +52,7 @@ class Reason(Enum):
     NONE = None
 
 
-class CompilationStatus(NamedTuple):
+class Task(NamedTuple):
     """Represents the state of a compilation product in the store."""
 
     # These are intended as fixed class attributes, not slots.
@@ -93,6 +93,9 @@ class CompilationStatus(NamedTuple):
     description: str = ""
     """A description of the outcome."""
 
+    size_bytes: int = 0
+    """Size of the product."""
+
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
@@ -113,17 +116,27 @@ class CompilationStatus(NamedTuple):
             'task_id': self.task_id,
             'status': self.status.value if self.status else None,
             'reason': self.reason.value if self.reason else None,
-            'description': self.description
+            'description': self.description,
+            'size_bytes': self.size_bytes
         }
 
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Task':
+        """Generate a :class:`.Task` instance from raw data."""
+        data['output_format'] = Format(data['output_format'])
+        data['status'] = Status(data['status'])
+        data['reason'] = Reason(data['reason'])
+        data['size_bytes'] = data['size_bytes']
+        return cls(**data)
 
-class CompilationProduct(NamedTuple):
+
+class Product(NamedTuple):
     """Content of a compilation product itself."""
 
     stream: io.BytesIO
     """Readable buffer with the product content."""
 
-    status: Optional[CompilationStatus] = None
+    task: Optional[Task] = None
     """Status information about the product."""
 
     checksum: Optional[str] = None
