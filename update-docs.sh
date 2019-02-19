@@ -1,6 +1,6 @@
 #!/bin/bash
 SRCDOCS=`pwd`/docs/_build/html
-REPO=cul-it/arxiv-compiler
+REPO=arxiv/arxiv-compiler
 echo $SRCDOCS
 
 cd `pwd`/docs
