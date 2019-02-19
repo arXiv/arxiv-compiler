@@ -1,0 +1,394 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>compiler.domain module &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="compiler.factory module" href="compiler.factory.html" />
+    <link rel="prev" title="compiler.config module" href="compiler.config.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="compiler-domain-module">
+<h1>compiler.domain module<a class="headerlink" href="#compiler-domain-module" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div><span class="target" id="module-compiler.domain"></span><p>Domain class for the compiler service.</p>
+<dl class="class">
+<dt id="compiler.domain.Format">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Format</code><a class="reference internal" href="../_modules/compiler/domain.html#Format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Format" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<p>Compilation formats supported by this service.</p>
+<dl class="attribute">
+<dt id="compiler.domain.Format.DVI">
+<code class="descname">DVI</code><em class="property"> = 'dvi'</em><a class="headerlink" href="#compiler.domain.Format.DVI" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Format.PDF">
+<code class="descname">PDF</code><em class="property"> = 'pdf'</em><a class="headerlink" href="#compiler.domain.Format.PDF" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Format.PS">
+<code class="descname">PS</code><em class="property"> = 'ps'</em><a class="headerlink" href="#compiler.domain.Format.PS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Format.content_type">
+<code class="descname">content_type</code><a class="headerlink" href="#compiler.domain.Format.content_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>The mime-type for this format.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Format.ext">
+<code class="descname">ext</code><a class="headerlink" href="#compiler.domain.Format.ext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filename extension for the compilation product.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.Product">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Product</code><a class="reference internal" href="../_modules/compiler/domain.html#Product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<p>Content of a compilation product itself.</p>
+<dl class="attribute">
+<dt id="compiler.domain.Product.checksum">
+<code class="descname">checksum</code><a class="headerlink" href="#compiler.domain.Product.checksum" title="Permalink to this definition">¶</a></dt>
+<dd><p>The B64-encoded MD5 hash of the compilation product.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Product.stream">
+<code class="descname">stream</code><a class="headerlink" href="#compiler.domain.Product.stream" title="Permalink to this definition">¶</a></dt>
+<dd><p>Readable buffer with the product content.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Product.task">
+<code class="descname">task</code><a class="headerlink" href="#compiler.domain.Product.task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Status information about the product.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.Reason">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Reason</code><a class="reference internal" href="../_modules/compiler/domain.html#Reason"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Reason" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<p>Specific reasons for a (usually failure) outcome.</p>
+<dl class="attribute">
+<dt id="compiler.domain.Reason.AUTHORIZATION">
+<code class="descname">AUTHORIZATION</code><em class="property"> = 'auth_error'</em><a class="headerlink" href="#compiler.domain.Reason.AUTHORIZATION" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.CANCELLED">
+<code class="descname">CANCELLED</code><em class="property"> = 'cancelled'</em><a class="headerlink" href="#compiler.domain.Reason.CANCELLED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.CORRUPTED">
+<code class="descname">CORRUPTED</code><em class="property"> = 'corrupted_source'</em><a class="headerlink" href="#compiler.domain.Reason.CORRUPTED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.ERROR">
+<code class="descname">ERROR</code><em class="property"> = 'compilation_errors'</em><a class="headerlink" href="#compiler.domain.Reason.ERROR" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.MISSING">
+<code class="descname">MISSING</code><em class="property"> = 'missing_source'</em><a class="headerlink" href="#compiler.domain.Reason.MISSING" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.NETWORK">
+<code class="descname">NETWORK</code><em class="property"> = 'network_error'</em><a class="headerlink" href="#compiler.domain.Reason.NETWORK" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.NONE">
+<code class="descname">NONE</code><em class="property"> = None</em><a class="headerlink" href="#compiler.domain.Reason.NONE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.SOURCE_TYPE">
+<code class="descname">SOURCE_TYPE</code><em class="property"> = 'invalid_source_type'</em><a class="headerlink" href="#compiler.domain.Reason.SOURCE_TYPE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Reason.STORAGE">
+<code class="descname">STORAGE</code><em class="property"> = 'storage'</em><a class="headerlink" href="#compiler.domain.Reason.STORAGE" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.SourcePackage">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">SourcePackage</code><a class="reference internal" href="../_modules/compiler/domain.html#SourcePackage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.SourcePackage" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<p>Source package content, retrieved from file management service.</p>
+<dl class="attribute">
+<dt id="compiler.domain.SourcePackage.etag">
+<code class="descname">etag</code><a class="headerlink" href="#compiler.domain.SourcePackage.etag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Etag returned with the source package content; MD5 checksum.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.SourcePackage.path">
+<code class="descname">path</code><a class="headerlink" href="#compiler.domain.SourcePackage.path" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to the retrieved source package.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.SourcePackage.source_id">
+<code class="descname">source_id</code><a class="headerlink" href="#compiler.domain.SourcePackage.source_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>The identifier of the source package (upload workspace).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.SourcePackageInfo">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">SourcePackageInfo</code><a class="reference internal" href="../_modules/compiler/domain.html#SourcePackageInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.SourcePackageInfo" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<p>Current state of the source package in the file managment service.</p>
+<dl class="attribute">
+<dt id="compiler.domain.SourcePackageInfo.etag">
+<code class="descname">etag</code><a class="headerlink" href="#compiler.domain.SourcePackageInfo.etag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.SourcePackageInfo.source_id">
+<code class="descname">source_id</code><a class="headerlink" href="#compiler.domain.SourcePackageInfo.source_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 0</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.Status">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Status</code><a class="reference internal" href="../_modules/compiler/domain.html#Status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<p>Represents the status of a requested compilation.</p>
+<dl class="attribute">
+<dt id="compiler.domain.Status.COMPLETED">
+<code class="descname">COMPLETED</code><em class="property"> = 'completed'</em><a class="headerlink" href="#compiler.domain.Status.COMPLETED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Status.FAILED">
+<code class="descname">FAILED</code><em class="property"> = 'failed'</em><a class="headerlink" href="#compiler.domain.Status.FAILED" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Status.IN_PROGRESS">
+<code class="descname">IN_PROGRESS</code><em class="property"> = 'in_progress'</em><a class="headerlink" href="#compiler.domain.Status.IN_PROGRESS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.domain.Task">
+<em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Task</code><a class="reference internal" href="../_modules/compiler/domain.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<p>Represents the state of a compilation product in the store.</p>
+<dl class="attribute">
+<dt id="compiler.domain.Task.Formats">
+<code class="descname">Formats</code><a class="headerlink" href="#compiler.domain.Task.Formats" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#compiler.domain.Format" title="compiler.domain.Format"><code class="xref py py-class docutils literal notranslate"><span class="pre">Format</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.Statuses">
+<code class="descname">Statuses</code><a class="headerlink" href="#compiler.domain.Task.Statuses" title="Permalink to this definition">¶</a></dt>
+<dd><p>alias of <a class="reference internal" href="#compiler.domain.Status" title="compiler.domain.Status"><code class="xref py py-class docutils literal notranslate"><span class="pre">Status</span></code></a></p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.checksum">
+<code class="descname">checksum</code><a class="headerlink" href="#compiler.domain.Task.checksum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Checksum of the source tarball from the file management service.</p>
+<p>This is likely to be a checksum of some kind, but may be something else.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.content_type">
+<code class="descname">content_type</code><a class="headerlink" href="#compiler.domain.Task.content_type" title="Permalink to this definition">¶</a></dt>
+<dd><p>Mime type for the output format of this compilation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.description">
+<code class="descname">description</code><a class="headerlink" href="#compiler.domain.Task.description" title="Permalink to this definition">¶</a></dt>
+<dd><p>A description of the outcome.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.ext">
+<code class="descname">ext</code><a class="headerlink" href="#compiler.domain.Task.ext" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filename extension for the compilation product.</p>
+</dd></dl>
+
+<dl class="classmethod">
+<dt id="compiler.domain.Task.from_dict">
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>data: dict</em><span class="sig-paren">)</span> &#x2192; compiler.domain.Task<a class="reference internal" href="../_modules/compiler/domain.html#Task.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.from_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a <a class="reference internal" href="#compiler.domain.Task" title="compiler.domain.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a> instance from raw data.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.output_format">
+<code class="descname">output_format</code><a class="headerlink" href="#compiler.domain.Task.output_format" title="Permalink to this definition">¶</a></dt>
+<dd><p>The target format of the compilation.</p>
+<p>One of <code class="xref py py-attr docutils literal notranslate"><span class="pre">PDF</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">DVI</span></code>, or <code class="xref py py-attr docutils literal notranslate"><span class="pre">PS</span></code>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.reason">
+<code class="descname">reason</code><a class="headerlink" href="#compiler.domain.Task.reason" title="Permalink to this definition">¶</a></dt>
+<dd><p>An explanation of the current status. E.g. why did it fail.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.size_bytes">
+<code class="descname">size_bytes</code><a class="headerlink" href="#compiler.domain.Task.size_bytes" title="Permalink to this definition">¶</a></dt>
+<dd><p>Size of the product.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.source_id">
+<code class="descname">source_id</code><a class="headerlink" href="#compiler.domain.Task.source_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>Alias for field number 1</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.status">
+<code class="descname">status</code><a class="headerlink" href="#compiler.domain.Task.status" title="Permalink to this definition">¶</a></dt>
+<dd><p>The status of the compilation.</p>
+<p>If <a class="reference internal" href="#compiler.domain.Status.COMPLETED" title="compiler.domain.Status.COMPLETED"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Status.COMPLETED</span></code></a>, the current file corresponding to the format
+of this compilation status is the product of this compilation.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.task_id">
+<code class="descname">task_id</code><a class="headerlink" href="#compiler.domain.Task.task_id" title="Permalink to this definition">¶</a></dt>
+<dd><p>If a task exists for this compilation, the unique task ID.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.domain.Task.to_dict">
+<code class="descname">to_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; dict<a class="reference internal" href="../_modules/compiler/domain.html#Task.to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.to_dict" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a dict representation of this object.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div></blockquote>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">compiler</a><ul>
+  <li><a href="compiler.html">compiler package</a><ul>
+      <li>Previous: <a href="compiler.config.html" title="previous chapter">compiler.config module</a></li>
+      <li>Next: <a href="compiler.factory.html" title="next chapter">compiler.factory module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/compiler.domain.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

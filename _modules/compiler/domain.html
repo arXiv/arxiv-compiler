@@ -13,7 +13,7 @@
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
     <script type="text/javascript" src="../../_static/doctools.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
    
@@ -39,84 +39,157 @@
 <span class="kn">import</span> <span class="nn">io</span>
 <span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
 <span class="kn">from</span> <span class="nn">.util</span> <span class="k">import</span> <span class="n">ResponseStream</span>
+<span class="kn">from</span> <span class="nn">enum</span> <span class="k">import</span> <span class="n">Enum</span>
 
 
-<div class="viewcode-block" id="CompilationStatus"><a class="viewcode-back" href="../../compiler.domain.html#compiler.domain.CompilationStatus">[docs]</a><span class="k">class</span> <span class="nc">CompilationStatus</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Format"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Format">[docs]</a><span class="k">class</span> <span class="nc">Format</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Compilation formats supported by this service.&quot;&quot;&quot;</span>
+
+    <span class="n">PDF</span> <span class="o">=</span> <span class="s2">&quot;pdf&quot;</span>
+    <span class="n">DVI</span> <span class="o">=</span> <span class="s2">&quot;dvi&quot;</span>
+    <span class="n">PS</span> <span class="o">=</span> <span class="s2">&quot;ps&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ext</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Filename extension for the compilation product.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">content_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The mime-type for this format.&quot;&quot;&quot;</span>
+        <span class="n">_ctypes</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PDF</span><span class="p">:</span> <span class="s1">&#39;application/pdf&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">DVI</span><span class="p">:</span> <span class="s1">&#39;application/x-dvi&#39;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">PS</span><span class="p">:</span> <span class="s1">&#39;application/postscript&#39;</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">_ctypes</span><span class="p">[</span><span class="bp">self</span><span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="Status"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Status">[docs]</a><span class="k">class</span> <span class="nc">Status</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>      <span class="c1"># type: ignore</span>
+    <span class="sd">&quot;&quot;&quot;Represents the status of a requested compilation.&quot;&quot;&quot;</span>
+
+    <span class="n">COMPLETED</span> <span class="o">=</span> <span class="s2">&quot;completed&quot;</span>
+    <span class="n">IN_PROGRESS</span> <span class="o">=</span> <span class="s2">&quot;in_progress&quot;</span>
+    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span></div>
+
+
+<div class="viewcode-block" id="Reason"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Reason">[docs]</a><span class="k">class</span> <span class="nc">Reason</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Specific reasons for a (usually failure) outcome.&quot;&quot;&quot;</span>
+
+    <span class="n">AUTHORIZATION</span> <span class="o">=</span> <span class="s2">&quot;auth_error&quot;</span>
+    <span class="n">MISSING</span> <span class="o">=</span> <span class="s2">&quot;missing_source&quot;</span>
+    <span class="n">SOURCE_TYPE</span> <span class="o">=</span> <span class="s2">&quot;invalid_source_type&quot;</span>
+    <span class="n">CORRUPTED</span> <span class="o">=</span> <span class="s2">&quot;corrupted_source&quot;</span>
+    <span class="n">STORAGE</span> <span class="o">=</span> <span class="s2">&quot;storage&quot;</span>
+    <span class="n">CANCELLED</span> <span class="o">=</span> <span class="s2">&quot;cancelled&quot;</span>
+    <span class="n">ERROR</span> <span class="o">=</span> <span class="s2">&quot;compilation_errors&quot;</span>
+    <span class="n">NETWORK</span> <span class="o">=</span> <span class="s2">&quot;network_error&quot;</span>
+    <span class="n">NONE</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="Task"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Task">[docs]</a><span class="k">class</span> <span class="nc">Task</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Represents the state of a compilation product in the store.&quot;&quot;&quot;</span>
 
     <span class="c1"># These are intended as fixed class attributes, not slots.</span>
-    <span class="n">PDF</span> <span class="o">=</span> <span class="s2">&quot;pdf&quot;</span>   <span class="c1"># type: ignore</span>
-    <span class="n">DVI</span> <span class="o">=</span> <span class="s2">&quot;dvi&quot;</span>   <span class="c1"># type: ignore</span>
-    <span class="n">PS</span> <span class="o">=</span> <span class="s2">&quot;ps&quot;</span>   <span class="c1"># type: ignore</span>
-
-    <span class="n">CURRENT</span> <span class="o">=</span> <span class="s2">&quot;current&quot;</span>   <span class="c1"># type: ignore</span>
-    <span class="n">IN_PROGRESS</span> <span class="o">=</span> <span class="s2">&quot;in_progress&quot;</span>   <span class="c1"># type: ignore</span>
-    <span class="n">FAILED</span> <span class="o">=</span> <span class="s2">&quot;failed&quot;</span>   <span class="c1"># type: ignore</span>
+    <span class="n">Formats</span> <span class="o">=</span> <span class="n">Format</span>
+    <span class="n">Statuses</span> <span class="o">=</span> <span class="n">Status</span>
 
     <span class="c1"># Here are the actual slots/fields.</span>
-    <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">Status</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The status of the compilation.</span>
 
-    <span class="nb">format</span><span class="p">:</span> <span class="nb">str</span>
+<span class="sd">    If :attr:`Status.COMPLETED`, the current file corresponding to the format</span>
+<span class="sd">    of this compilation status is the product of this compilation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">source_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="n">output_format</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Format</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    The target format of the compilation.</span>
 
 <span class="sd">    One of :attr:`PDF`, :attr:`DVI`, or :attr:`PS`.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
-    <span class="n">source_checksum</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;Checksum of the source tarball from the file management service.&quot;&quot;&quot;</span>
+    <span class="n">checksum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checksum of the source tarball from the file management service.</span>
 
-    <span class="n">task_id</span><span class="p">:</span> <span class="nb">str</span>
+<span class="sd">    This is likely to be a checksum of some kind, but may be something else.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">task_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="sd">&quot;&quot;&quot;If a task exists for this compilation, the unique task ID.&quot;&quot;&quot;</span>
 
-    <span class="n">status</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    The status of the compilation.</span>
+    <span class="n">reason</span><span class="p">:</span> <span class="n">Reason</span> <span class="o">=</span> <span class="n">Reason</span><span class="o">.</span><span class="n">NONE</span>
+    <span class="sd">&quot;&quot;&quot;An explanation of the current status. E.g. why did it fail.&quot;&quot;&quot;</span>
 
-<span class="sd">    One of :attr:`CURRENT`, :attr:`IN_PROGRESS`, or :attr:`FAILED`.</span>
+    <span class="n">description</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="sd">&quot;&quot;&quot;A description of the outcome.&quot;&quot;&quot;</span>
 
-<span class="sd">    If :attr:`CURRENT`, the current file corresponding to the format of this</span>
-<span class="sd">    compilation status is the product of this compilation.</span>
-<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">size_bytes</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="sd">&quot;&quot;&quot;Size of the product.&quot;&quot;&quot;</span>
 
     <span class="nd">@property</span>
     <span class="k">def</span> <span class="nf">ext</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Filename extension for the compilation product.&quot;&quot;&quot;</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_format</span><span class="o">.</span><span class="n">ext</span>
 
-<div class="viewcode-block" id="CompilationStatus.to_dict"><a class="viewcode-back" href="../../compiler.domain.html#compiler.domain.CompilationStatus.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">content_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Mime type for the output format of this compilation.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_format</span><span class="o">.</span><span class="n">content_type</span>
+
+<div class="viewcode-block" id="Task.to_dict"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Task.to_dict">[docs]</a>    <span class="k">def</span> <span class="nf">to_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
         <span class="sd">&quot;&quot;&quot;Generate a dict representation of this object.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
-            <span class="s1">&#39;format&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">format</span><span class="p">,</span>
-            <span class="s1">&#39;source_checksum&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">source_checksum</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_format</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_format</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">checksum</span><span class="p">,</span>
             <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">task_id</span><span class="p">,</span>
-            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span>
-        <span class="p">}</span></div></div>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">status</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">reason</span><span class="o">.</span><span class="n">value</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reason</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">description</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">size_bytes</span>
+        <span class="p">}</span></div>
+
+<div class="viewcode-block" id="Task.from_dict"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Task.from_dict">[docs]</a>    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_dict</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;Task&#39;</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Generate a :class:`.Task` instance from raw data.&quot;&quot;&quot;</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;output_format&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Format</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;output_format&#39;</span><span class="p">])</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Status</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">])</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">Reason</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;reason&#39;</span><span class="p">])</span>
+        <span class="n">data</span><span class="p">[</span><span class="s1">&#39;size_bytes&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s1">&#39;size_bytes&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="o">**</span><span class="n">data</span><span class="p">)</span></div></div>
 
 
-<div class="viewcode-block" id="CompilationProduct"><a class="viewcode-back" href="../../compiler.domain.html#compiler.domain.CompilationProduct">[docs]</a><span class="k">class</span> <span class="nc">CompilationProduct</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<div class="viewcode-block" id="Product"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.Product">[docs]</a><span class="k">class</span> <span class="nc">Product</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Content of a compilation product itself.&quot;&quot;&quot;</span>
 
     <span class="n">stream</span><span class="p">:</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span>
     <span class="sd">&quot;&quot;&quot;Readable buffer with the product content.&quot;&quot;&quot;</span>
 
+    <span class="n">task</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Task</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="sd">&quot;&quot;&quot;Status information about the product.&quot;&quot;&quot;</span>
+
     <span class="n">checksum</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;The B64-encoded MD5 hash of the compilation product.&quot;&quot;&quot;</span>
-
-    <span class="n">status</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">CompilationStatus</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
-    <span class="sd">&quot;&quot;&quot;Status information about the product.&quot;&quot;&quot;</span></div>
+    <span class="sd">&quot;&quot;&quot;The B64-encoded MD5 hash of the compilation product.&quot;&quot;&quot;</span></div>
 
 
-<div class="viewcode-block" id="SourcePackage"><a class="viewcode-back" href="../../compiler.domain.html#compiler.domain.SourcePackage">[docs]</a><span class="k">class</span> <span class="nc">SourcePackage</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<div class="viewcode-block" id="SourcePackage"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.SourcePackage">[docs]</a><span class="k">class</span> <span class="nc">SourcePackage</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Source package content, retrieved from file management service.&quot;&quot;&quot;</span>
 
     <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span>
-    <span class="n">stream</span><span class="p">:</span> <span class="n">ResponseStream</span>
-    <span class="n">etag</span><span class="p">:</span> <span class="nb">str</span></div>
+    <span class="sd">&quot;&quot;&quot;The identifier of the source package (upload workspace).&quot;&quot;&quot;</span>
+    <span class="n">path</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Path to the retrieved source package.&quot;&quot;&quot;</span>
+    <span class="n">etag</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="sd">&quot;&quot;&quot;Etag returned with the source package content; MD5 checksum.&quot;&quot;&quot;</span></div>
 
 
-<div class="viewcode-block" id="SourcePackageInfo"><a class="viewcode-back" href="../../compiler.domain.html#compiler.domain.SourcePackageInfo">[docs]</a><span class="k">class</span> <span class="nc">SourcePackageInfo</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
+<div class="viewcode-block" id="SourcePackageInfo"><a class="viewcode-back" href="../../api/compiler.domain.html#compiler.domain.SourcePackageInfo">[docs]</a><span class="k">class</span> <span class="nc">SourcePackageInfo</span><span class="p">(</span><span class="n">NamedTuple</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Current state of the source package in the file managment service.&quot;&quot;&quot;</span>
 
     <span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span>
@@ -141,7 +214,7 @@
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../compiler.domain.html">compiler.domain module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/modules.html">compiler</a></li>
 </ul>
 
 <div class="relations">
@@ -165,6 +238,14 @@
     </div>
 </div>
 <script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
         </div>
       </div>
       <div class="clearer"></div>
@@ -173,8 +254,8 @@
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.1</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>
 

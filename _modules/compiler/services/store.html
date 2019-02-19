@@ -1,0 +1,437 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>compiler.services.store &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for compiler.services.store</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Content store for compiled representation of paper.</span>
+
+<span class="sd">Uses S3 as the underlying storage facility.</span>
+
+<span class="sd">The intended use pattern is that a client (e.g. API controller) can check for</span>
+<span class="sd">a compilation using the source ID (e.g. file manager source_id), the format,</span>
+<span class="sd">and the checksum of the source package (as reported by the FM service) before</span>
+<span class="sd">taking any IO-intensive actions. See :meth:`StoreSession.get_status`.</span>
+
+<span class="sd">Similarly, if a client needs to verify that a compilation product is available</span>
+<span class="sd">for a specific source checksum, they would use :meth:`StoreSession.get_status`</span>
+<span class="sd">before calling :meth:`StoreSession.retrieve`. For that reason,</span>
+<span class="sd">:meth:`StoreSession.retrieve` is agnostic about checksums. This cuts down on</span>
+<span class="sd">an extra GET request to S3 every time we want to get a compiled resource.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Mapping</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="k">import</span> <span class="n">wraps</span>
+<span class="kn">from</span> <span class="nn">hashlib</span> <span class="k">import</span> <span class="n">md5</span>
+<span class="kn">from</span> <span class="nn">base64</span> <span class="k">import</span> <span class="n">b64encode</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">defaultdict</span>
+<span class="kn">import</span> <span class="nn">boto3</span>
+<span class="kn">import</span> <span class="nn">botocore</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="n">Flask</span>
+
+<span class="kn">from</span> <span class="nn">arxiv.base</span> <span class="k">import</span> <span class="n">logging</span>
+<span class="kn">from</span> <span class="nn">arxiv.base.globals</span> <span class="k">import</span> <span class="n">get_application_global</span><span class="p">,</span> <span class="n">get_application_config</span>
+
+<span class="kn">from</span> <span class="nn">...domain</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Product</span><span class="p">,</span> <span class="n">Format</span><span class="p">,</span> <span class="n">Status</span><span class="p">,</span> \
+    <span class="n">Reason</span>
+
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="DoesNotExist"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.DoesNotExist">[docs]</a><span class="k">class</span> <span class="nc">DoesNotExist</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The requested content does not exist.&quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="hash_content"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.hash_content">[docs]</a><span class="k">def</span> <span class="nf">hash_content</span><span class="p">(</span><span class="n">body</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Generate an encoded MD5 hash of a bytes.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">b64encode</span><span class="p">(</span><span class="n">md5</span><span class="p">(</span><span class="n">body</span><span class="p">)</span><span class="o">.</span><span class="n">digest</span><span class="p">())</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="StoreSession"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession">[docs]</a><span class="k">class</span> <span class="nc">StoreSession</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Represents an object store session.&quot;&quot;&quot;</span>
+
+    <span class="n">LOG_KEY</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{src_id}</span><span class="s1">/</span><span class="si">{chk}</span><span class="s1">/</span><span class="si">{out_fmt}</span><span class="s1">/</span><span class="si">{src_id}</span><span class="s1">.</span><span class="si">{ext}</span><span class="s1">.log&#39;</span>
+    <span class="n">KEY</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{src_id}</span><span class="s1">/</span><span class="si">{chk}</span><span class="s1">/</span><span class="si">{out_fmt}</span><span class="s1">/</span><span class="si">{src_id}</span><span class="s1">.</span><span class="si">{ext}</span><span class="s1">&#39;</span>
+    <span class="n">STATUS_KEY</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="si">{src_id}</span><span class="s1">/</span><span class="si">{chk}</span><span class="s1">/</span><span class="si">{out_fmt}</span><span class="s1">/status.json&#39;</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buckets</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]],</span> <span class="n">version</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                 <span class="n">verify</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">region_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">endpoint_url</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">aws_access_key_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">aws_secret_access_key</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Initialize with connection config parameters.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buckets</span> <span class="o">=</span> <span class="n">buckets</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">version</span> <span class="o">=</span> <span class="n">version</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">region_name</span> <span class="o">=</span> <span class="n">region_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">endpoint_url</span> <span class="o">=</span> <span class="n">endpoint_url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aws_access_key_id</span> <span class="o">=</span> <span class="n">aws_access_key_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">aws_secret_access_key</span> <span class="o">=</span> <span class="n">aws_secret_access_key</span>
+
+        <span class="c1"># Compilation status is cached here, in case we&#39;re taking several</span>
+        <span class="c1"># status-related actions in one request/execution context. Saves us</span>
+        <span class="c1"># GET requests, which saves $$$.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_status</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]]]</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="c1"># Only add credentials to the client if they are explicitly set.</span>
+        <span class="c1"># If they are not set, boto3 falls back to environment variables and</span>
+        <span class="c1"># credentials files.</span>
+        <span class="n">params</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">region_name</span><span class="o">=</span><span class="n">region_name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">aws_access_key_id</span> <span class="ow">and</span> <span class="n">aws_secret_access_key</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">aws_access_key_id</span><span class="o">=</span><span class="n">aws_access_key_id</span><span class="p">,</span>
+                               <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="n">aws_secret_access_key</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">endpoint_url</span><span class="p">:</span>
+            <span class="n">params</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span><span class="n">endpoint_url</span><span class="o">=</span><span class="n">endpoint_url</span><span class="p">,</span> <span class="n">verify</span><span class="o">=</span><span class="n">verify</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">params</span><span class="p">)</span>
+
+<div class="viewcode-block" id="StoreSession.get_status"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.get_status">[docs]</a>    <span class="k">def</span> <span class="nf">get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+                   <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the status of a compilation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_id : str</span>
+<span class="sd">            The unique identifier of the source package.</span>
+<span class="sd">        out_fmt: str</span>
+<span class="sd">            Compilation format. See :attr:`Format`.</span>
+<span class="sd">        chk : str</span>
+<span class="sd">            Base64-encoded MD5 hash of the source package.</span>
+<span class="sd">        bucket : str</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :class:`Task`</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        :class:`DoesNotExist`</span>
+<span class="sd">            Raised if no status exists for the provided parameters.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="o">=</span><span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="o">=</span><span class="n">out_fmt</span><span class="p">)</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;Body&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">data</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StoreSession.set_status"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.set_status">[docs]</a>    <span class="k">def</span> <span class="nf">set_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the status of a compilation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        task : :class:`Task`</span>
+<span class="sd">        bucket : str</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">body</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">STATUS_KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">chk</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">checksum</span><span class="p">,</span>
+                                     <span class="n">out_fmt</span><span class="o">=</span><span class="n">task</span><span class="o">.</span><span class="n">output_format</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_put</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">body</span><span class="p">,</span> <span class="s1">&#39;application/json&#39;</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StoreSession.store"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.store">[docs]</a>    <span class="k">def</span> <span class="nf">store</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">:</span> <span class="n">Product</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Store a compilation product.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        product : :class:`Product`</span>
+<span class="sd">        bucket : str</span>
+<span class="sd">            Default is ``&#39;arxiv&#39;``. Used in conjunction with :attr:`.buckets`</span>
+<span class="sd">            to determine the S3 bucket where this content should be stored.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">product</span><span class="o">.</span><span class="n">task</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">source_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;source_id must be set&#39;</span><span class="p">)</span>
+
+        <span class="n">k</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+                            <span class="n">chk</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">checksum</span><span class="p">,</span>
+                            <span class="n">out_fmt</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">output_format</span><span class="p">,</span>
+                            <span class="n">ext</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">output_format</span><span class="o">.</span><span class="n">ext</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_put</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="n">product</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StoreSession.retrieve"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.retrieve">[docs]</a>    <span class="k">def</span> <span class="nf">retrieve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+                 <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Product</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve a compilation product.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_id : str</span>
+<span class="sd">        chk : str</span>
+<span class="sd">        out_fmt : enum</span>
+<span class="sd">            One of :attr:`Format`.</span>
+<span class="sd">        bucket : str</span>
+<span class="sd">            Default is ``&#39;arxiv&#39;``. Used in conjunction with :attr:`.buckets`</span>
+<span class="sd">            to determine the S3 bucket from which the content should be</span>
+<span class="sd">            retrieved</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :class:`Product`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="o">=</span><span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="o">=</span><span class="n">out_fmt</span><span class="p">,</span>
+                              <span class="n">ext</span><span class="o">=</span><span class="n">out_fmt</span><span class="o">.</span><span class="n">ext</span><span class="p">)</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;Body&#39;</span><span class="p">],</span> <span class="n">checksum</span><span class="o">=</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;ETag&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="StoreSession.store_log"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.store_log">[docs]</a>    <span class="k">def</span> <span class="nf">store_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">product</span><span class="p">:</span> <span class="n">Product</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Store a compilation log.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        product : :class:`Product`</span>
+<span class="sd">            Stream should be log content.</span>
+<span class="sd">        bucket : str</span>
+<span class="sd">            Default is ``&#39;arxiv&#39;``. Used in conjunction with :attr:`.buckets`</span>
+<span class="sd">            to determine the S3 bucket where this content should be stored.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">product</span><span class="o">.</span><span class="n">task</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">source_id</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;source_id must be set&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LOG_KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span>
+                                  <span class="n">chk</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">checksum</span><span class="p">,</span>
+                                  <span class="n">out_fmt</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">output_format</span><span class="p">,</span>
+                                  <span class="n">ext</span><span class="o">=</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="o">.</span><span class="n">output_format</span><span class="o">.</span><span class="n">ext</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_put</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">product</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">product</span><span class="o">.</span><span class="n">task</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="StoreSession.retrieve_log"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.retrieve_log">[docs]</a>    <span class="k">def</span> <span class="nf">retrieve_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+                     <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Product</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve a compilation log.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        src_id : str</span>
+<span class="sd">        chk : str</span>
+<span class="sd">        out_fmt : enum</span>
+<span class="sd">            One of :attr:`Format`.</span>
+<span class="sd">        bucket : str</span>
+<span class="sd">            Default is ``&#39;arxiv&#39;``. Used in conjunction with :attr:`.buckets`</span>
+<span class="sd">            to determine the S3 bucket from which the content should be</span>
+<span class="sd">            retrieved</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        :class:`Product`</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">LOG_KEY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">src_id</span><span class="o">=</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="o">=</span><span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="o">=</span><span class="n">out_fmt</span><span class="p">,</span>
+                                  <span class="n">ext</span><span class="o">=</span><span class="n">out_fmt</span><span class="o">.</span><span class="n">ext</span><span class="p">)</span>
+        <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">bucket</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;Body&#39;</span><span class="p">],</span> <span class="n">checksum</span><span class="o">=</span><span class="n">resp</span><span class="p">[</span><span class="s1">&#39;ETag&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="StoreSession.create_bucket"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.StoreSession.create_bucket">[docs]</a>    <span class="k">def</span> <span class="nf">create_bucket</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Create S3 buckets. This is just for testing.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">bucket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">buckets</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get_object</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="p">(</span><span class="n">bucket</span><span class="p">),</span> <span class="n">Key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">botocore</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ClientError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">response</span><span class="p">[</span><span class="s1">&#39;Error&#39;</span><span class="p">][</span><span class="s1">&#39;Code&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;NoSuchKey&quot;</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">DoesNotExist</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;No such object in bucket </span><span class="si">{bucket}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unhandled exception: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="n">resp</span>
+
+    <span class="k">def</span> <span class="nf">_put</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">body</span><span class="p">:</span> <span class="nb">bytes</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+             <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="n">Body</span><span class="o">=</span><span class="n">body</span><span class="p">,</span> <span class="n">Bucket</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_bucket</span><span class="p">(</span><span class="n">bucket</span><span class="p">),</span>
+                                   <span class="n">ContentMD5</span><span class="o">=</span><span class="n">hash_content</span><span class="p">(</span><span class="n">body</span><span class="p">),</span>
+                                   <span class="n">ContentType</span><span class="o">=</span><span class="n">content_type</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">botocore</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ClientError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Unhandled exception: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+
+    <span class="k">def</span> <span class="nf">_bucket</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buckets</span><span class="p">)[</span><span class="n">bucket</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;No such bucket: </span><span class="si">{bucket}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">return</span> <span class="n">name</span></div>
+
+
+<div class="viewcode-block" id="create_bucket"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.create_bucket">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">create_bucket</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Create the bucket(s) required to store content.&quot;&quot;&quot;</span>
+    <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="get_status"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.get_status">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">get_status</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">get_status</span><span class="p">(</span><span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+               <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Task</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.get_status`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="set_status"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.set_status">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">set_status</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">set_status</span><span class="p">(</span><span class="n">task</span><span class="p">:</span> <span class="n">Task</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.get_status`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">task</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="store"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.store">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">store</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">store</span><span class="p">(</span><span class="n">product</span><span class="p">:</span> <span class="n">Product</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.store`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="store_log"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.store_log">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">store_log</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">store_log</span><span class="p">(</span><span class="n">product</span><span class="p">:</span> <span class="n">Product</span><span class="p">,</span> <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.store_log`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">store_log</span><span class="p">(</span><span class="n">product</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="retrieve"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.retrieve">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">retrieve</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">retrieve</span><span class="p">(</span><span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+             <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Product</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.retrieve`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="retrieve_log"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.retrieve_log">[docs]</a><span class="nd">@wraps</span><span class="p">(</span><span class="n">StoreSession</span><span class="o">.</span><span class="n">retrieve_log</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">retrieve_log</span><span class="p">(</span><span class="n">src_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">chk</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
+                 <span class="n">bucket</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;arxiv&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Product</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;See :func:`StoreSession.retrieve_log`.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">current_session</span><span class="p">()</span><span class="o">.</span><span class="n">retrieve_log</span><span class="p">(</span><span class="n">src_id</span><span class="p">,</span> <span class="n">chk</span><span class="p">,</span> <span class="n">out_fmt</span><span class="p">,</span> <span class="n">bucket</span><span class="o">=</span><span class="n">bucket</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="init_app"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.init_app">[docs]</a><span class="k">def</span> <span class="nf">init_app</span><span class="p">(</span><span class="n">app</span><span class="p">:</span> <span class="n">Flask</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Set defaults for required configuration parameters.&quot;&quot;&quot;</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;AWS_REGION&#39;</span><span class="p">,</span> <span class="s1">&#39;us-east-1&#39;</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;AWS_ACCESS_KEY_ID&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;AWS_SECRET_ACCESS_KEY&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;S3_ENDPOINT&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;S3_VERIFY&#39;</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;S3_BUCKET&#39;</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;VERSION&#39;</span><span class="p">,</span> <span class="s2">&quot;0.0&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_session"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.get_session">[docs]</a><span class="k">def</span> <span class="nf">get_session</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StoreSession</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Create a new :class:`botocore.client.S3` session.&quot;&quot;&quot;</span>
+    <span class="n">config</span> <span class="o">=</span> <span class="n">get_application_config</span><span class="p">()</span>
+    <span class="n">access_key</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;AWS_ACCESS_KEY_ID&#39;</span><span class="p">)</span>
+    <span class="n">secret_key</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;AWS_SECRET_ACCESS_KEY&#39;</span><span class="p">)</span>
+    <span class="n">endpoint</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;S3_ENDPOINT&#39;</span><span class="p">)</span>
+    <span class="n">verify</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;S3_VERIFY&#39;</span><span class="p">)</span>
+    <span class="n">region</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;AWS_REGION&#39;</span><span class="p">)</span>
+    <span class="n">buckets</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;S3_BUCKETS&#39;</span><span class="p">)</span>
+    <span class="n">version</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;VERSION&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">StoreSession</span><span class="p">(</span><span class="n">buckets</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">verify</span><span class="p">,</span> <span class="n">region</span><span class="p">,</span>
+                        <span class="n">endpoint</span><span class="p">,</span> <span class="n">access_key</span><span class="p">,</span> <span class="n">secret_key</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="current_session"><a class="viewcode-back" href="../../../api/compiler.services.store.html#compiler.services.store.current_session">[docs]</a><span class="k">def</span> <span class="nf">current_session</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">StoreSession</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Get the current store session for this application.&quot;&quot;&quot;</span>
+    <span class="n">g</span> <span class="o">=</span> <span class="n">get_application_global</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s1">&#39;store&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">g</span><span class="p">:</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">store</span> <span class="o">=</span> <span class="n">get_session</span><span class="p">()</span>
+    <span class="n">store</span><span class="p">:</span> <span class="n">StoreSession</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">store</span>
+    <span class="k">return</span> <span class="n">store</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
