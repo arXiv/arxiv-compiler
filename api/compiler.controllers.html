@@ -1,0 +1,210 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>compiler.controllers module &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="compiler.domain module" href="compiler.domain.html" />
+    <link rel="prev" title="compiler.config module" href="compiler.config.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="compiler-controllers-module">
+<h1>compiler.controllers module<a class="headerlink" href="#compiler-controllers-module" title="Permalink to this headline">¶</a></h1>
+<blockquote>
+<div><span class="target" id="module-compiler.controllers"></span><p>Request controllers.</p>
+<dl class="function">
+<dt id="compiler.controllers.compile">
+<code class="descclassname">compiler.controllers.</code><code class="descname">compile</code><span class="sig-paren">(</span><em>request_data: werkzeug.datastructures.MultiDict</em>, <em>token: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#compile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.compile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start compilation of an upload workspace.</p>
+<dl class="docutils">
+<dt>request_data <span class="classifier-delimiter">:</span> <span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiDict</span></code></span></dt>
+<dd>Data payload from the request.</dd>
+<dt>token <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Auth token to be used for subrequests (e.g. to file management
+service).</dd>
+</dl>
+<dl class="docutils">
+<dt>dict</dt>
+<dd>Response data.</dd>
+<dt>int</dt>
+<dd>HTTP status code.</dd>
+<dt>dict</dt>
+<dd>Headers to add to response.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="compiler.controllers.get_log">
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_log</code><span class="sig-paren">(</span><em>source_id: int</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get a compilation log.</p>
+<dl class="docutils">
+<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Identifier for the source package.</dd>
+<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Checksum of the source package to compile.</dd>
+<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
+</dl>
+<dl class="docutils">
+<dt>dict</dt>
+<dd>Response data.</dd>
+<dt>int</dt>
+<dd>HTTP status code.</dd>
+<dt>dict</dt>
+<dd>Headers to add to response.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="compiler.controllers.get_product">
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_product</code><span class="sig-paren">(</span><em>source_id: int</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the product of a compilation.</p>
+<dl class="docutils">
+<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Identifier for the source package.</dd>
+<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Checksum of the source package to compile.</dd>
+<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
+</dl>
+<dl class="docutils">
+<dt>dict</dt>
+<dd>Response data.</dd>
+<dt>int</dt>
+<dd>HTTP status code.</dd>
+<dt>dict</dt>
+<dd>Headers to add to response.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
+<dt id="compiler.controllers.get_status">
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_status</code><span class="sig-paren">(</span><em>source_id: str</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get the status of a compilation.</p>
+<p>See <code class="docutils literal notranslate"><span class="pre">schema/resources/compilationStatus.json</span></code>.</p>
+<dl class="docutils">
+<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
+<dd>Identifier for the source package.</dd>
+<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Checksum of the source package to compile.</dd>
+<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
+<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
+</dl>
+<dl class="docutils">
+<dt>dict</dt>
+<dd>Response data.</dd>
+<dt>int</dt>
+<dd>HTTP status code.</dd>
+<dt>dict</dt>
+<dd>Headers to add to response.</dd>
+</dl>
+</dd></dl>
+
+</div></blockquote>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">compiler</a><ul>
+  <li><a href="compiler.html">compiler package</a><ul>
+      <li>Previous: <a href="compiler.config.html" title="previous chapter">compiler.config module</a></li>
+      <li>Next: <a href="compiler.domain.html" title="next chapter">compiler.domain module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/compiler.controllers.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

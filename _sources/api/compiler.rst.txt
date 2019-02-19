@@ -25,9 +25,7 @@ Submodules
     compiler.config
     compiler.controllers
     compiler.domain
-    compiler.exceptions
     compiler.factory
-    compiler.filters
     compiler.routes
     compiler.util
     compiler.worker
