@@ -50,6 +50,7 @@ Always do this:
 import os
 from typing import List, Dict, Optional, Tuple, Callable
 from functools import wraps
+from itertools import chain
 import subprocess
 import tarfile
 import shutil
@@ -62,11 +63,14 @@ from celery.result import AsyncResult
 from celery.signals import after_task_publish
 
 from arxiv.base import logging
+from arxiv.integration.api import exceptions
 
+from celery.task.control import inspect
 from .celery import celery_app
 from .domain import Product, Task, Format, Status, \
     SourcePackage, Reason
-from .services import filemanager, store
+from .services import store
+from .services import FileManager
 
 logger = logging.getLogger(__name__)
 
@@ -85,10 +89,15 @@ class CorruptedSource(RuntimeError):
     """"The source content is corrupted."""
 
 
+class AuthorizationFailed(RuntimeError):
+    """The request was not authorized."""
+
+
 def start_compilation(source_id: str, checksum: str,
                       output_format: Format = Format.PDF,
                       preferred_compiler: Optional[str] = None,
-                      token: Optional[str] = None) -> str:
+                      token: Optional[str] = None,
+                      owner: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -109,20 +118,47 @@ def start_compilation(source_id: str, checksum: str,
         The identifier for the created compilation task.
 
     """
+    try:
+        logger.debug('Check for source')
+        if not FileManager.exists(source_id, checksum, token):
+            logger.debug('No such source')
+            raise TaskCreationFailed('No such source')
+    except (exceptions.RequestForbidden, exceptions.RequestUnauthorized):
+        logger.debug('Not authorized to check source')
+        raise AuthorizationFailed('Not authorized to access source')
+
     task_id = _get_task_id(source_id, checksum, output_format)
     try:
         do_compile.apply_async(
             (source_id, checksum),
             {'output_format': output_format.value,
              'preferred_compiler': preferred_compiler,
-             'token': token},
+             'token': token,
+             'owner': owner},
             task_id=task_id
         )
         logger.info('compile: started processing as %s' % task_id)
     except Exception as e:
         logger.error('Failed to create task: %s', e)
         raise TaskCreationFailed('Failed to create task: %s', e) from e
+
+    store.set_status(Task(**{
+        'source_id': source_id,
+        'checksum': checksum,
+        'output_format': output_format,
+        'status': Status.IN_PROGRESS,
+        'task_id': _get_task_id(source_id, checksum, output_format),
+        'owner': owner
+    }))
     return task_id
+
+
+def _get_task_kwargs(task_id: str) -> dict:
+    i = inspect()
+    for t in chain(i.active(), i.reserved(), i.scheduled()):
+        if i['id'] == task_id:
+            return i['kwargs']
+    raise RuntimeError('Task not found')
 
 
 def get_task(source_id: str, checksum: str,
@@ -150,7 +186,8 @@ def get_task(source_id: str, checksum: str,
     data = {
         'source_id': source_id,
         'checksum': checksum,
-        'output_format': output_format
+        'output_format': output_format,
+        'task_id': _get_task_id(source_id, checksum, output_format)
     }
     if result.status == 'PENDING':
         raise NoSuchTask('No such task')
@@ -165,6 +202,8 @@ def get_task(source_id: str, checksum: str,
         else:
             data['status'] = Status.COMPLETED
         data['reason'] = Reason(_result.get('reason'))
+        if 'owner' in _result:
+            data['owner'] = _result['owner']
     return Task(task_id=task_id, **data)
 
 
@@ -180,7 +219,8 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
 def do_compile(source_id: str, checksum: str,
                output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None,
-               token: Optional[str] = None) -> dict:
+               token: Optional[str] = None,
+               owner: Optional[str] = None) -> dict:
     """
     Retrieve a source package, compile to something, and store the result.
 
@@ -219,22 +259,23 @@ def do_compile(source_id: str, checksum: str,
         'task_id': task_id,
         'source_id': source_id,
         'output_format': output_format,
-        'checksum': checksum
+        'checksum': checksum,
+        'owner': owner
     }
     stat = None
     try:
-        filemanager.set_auth_token(token)
-        source = filemanager.get_source_content(source_id, save_to=source_dir)
+        source = FileManager.get_source_content(source_id, token,
+                                                save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
-    except (filemanager.RequestUnauthorized, filemanager.RequestForbidden):
+    except (exceptions.RequestUnauthorized, exceptions.RequestForbidden):
         description = "There was a problem authorizing your request."
         stat = Task(status=Status.FAILED, reason=Reason.AUTHORIZATION,
                     description=description, **info)
-    except filemanager.ConnectionFailed:
+    except exceptions.ConnectionFailed:
         description = "There was a problem retrieving your source files."
         stat = Task(status=Status.FAILED, reason=Reason.NETWORK,
                     description=description, **info)
-    except filemanager.NotFound:
+    except exceptions.NotFound:
         description = 'Could not retrieve a matching source package'
         stat = Task(status=Status.FAILED, reason=Reason.MISSING,
                     description=description, **info)
@@ -299,6 +340,7 @@ def _store_compilation_result(status: Task, out_path: Optional[str],
     logger.debug('_store_compilation_result: ok')
 
 
+# TODO: use ``docker`` Python API instead of subprocess.
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
 def _run(source: SourcePackage, output_format: Format = Format.PDF,
@@ -418,7 +460,7 @@ def run_docker(image: str, volumes: list = [], ports: list = [],
 
 def _get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
     """Generate a key for a source_id/checksum/format combination."""
-    return f"{source_id}::{checksum}::{output_format.value}"
+    return f"{source_id}/{checksum}/{output_format.value}"
 
 
 def _file_size(path: str) -> int:

@@ -33,10 +33,18 @@ class TestRequestCompilation(TestCase):
     def test_request_missing_parameter(self):
         """Request for a new compilation with missing parameter."""
         with self.assertRaises(BadRequest):
-            controllers.compile(MultiDict({'checksum': 'as12345'}), 'footoken')
+            controllers.compile(
+                MultiDict({'checksum': 'as12345'}),
+                'footoken',
+                mock.MagicMock()
+            )
 
         with self.assertRaises(BadRequest):
-            controllers.compile(MultiDict({'source_id': 1234}), 'footoken')
+            controllers.compile(
+                MultiDict({'source_id': 1234}),
+                'footoken',
+                mock.MagicMock()
+            )
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
@@ -54,7 +62,11 @@ class TestRequestCompilation(TestCase):
             'checksum': 'asdf12345zxcv',
             'output_format': 'pdf'
         })
-        response_data = controllers.compile(request_data, token)
+        response_data = controllers.compile(
+            request_data,
+            token,
+            mock.MagicMock()
+        )
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_202_ACCEPTED)
         self.assertIn('Location', headers)
@@ -81,7 +93,8 @@ class TestRequestCompilation(TestCase):
         )
         request_data = MultiDict({'source_id': source_id, 'checksum': checksum,
                                   'output_format': output_format})
-        response_data = controllers.compile(request_data, token)
+        mock_session = mock.MagicMock()
+        response_data = controllers.compile(request_data, token, mock_session)
         data, code, headers = response_data
         self.assertEqual(code, status.HTTP_303_SEE_OTHER)
         self.assertIn('Location', headers)

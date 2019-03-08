@@ -13,7 +13,7 @@ import subprocess
 from importlib_resources import read_binary
 
 from flask import Flask
-from arxiv import status
+from arxiv.integration.api import exceptions, status
 
 from ..factory import create_app
 from .. import compiler
@@ -26,14 +26,16 @@ data_dir = os.path.join(os.path.dirname(__file__), 'data')
 class TestStartCompilation(TestCase):
     """Test :func:`start_compilation`."""
 
+    @mock.patch(f'{compiler.__name__}.FileManager', mock.MagicMock())
     @mock.patch(f'{compiler.__name__}.do_compile', mock.MagicMock())
     def test_start_compilation_ok(self):
         """Compilation starts succesfully."""
         task_id = compiler.start_compilation('1234', 'asdf1234=',
                                              output_format=domain.Format.PDF,
                                              token='footoken')
-        self.assertEqual(task_id, "1234::asdf1234=::pdf", "Returns task ID")
+        self.assertEqual(task_id, "1234/asdf1234=/pdf", "Returns task ID")
 
+    @mock.patch(f'{compiler.__name__}.FileManager', mock.MagicMock())
     @mock.patch(f'{compiler.__name__}.do_compile')
     def test_start_compilation_errs(self, mock_do_compile):
         """An error occurs when starting compilation."""
@@ -119,7 +121,7 @@ class TestGetTask(TestCase):
 class TestDoCompile(TestCase):
     """Test main compilation routine."""
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_do_compile_success(self, mock_store, mock_run, mock_filemanager):
@@ -142,7 +144,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'completed',
                     'reason': None,
                     'description': '',
@@ -150,7 +152,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_unauthorized(self, mock_store, mock_run, mock_filemanager):
@@ -160,10 +162,8 @@ class TestDoCompile(TestCase):
         _, log_path = mkstemp()
 
         def raise_unauthorized(*args, **kwargs):
-            raise filemanager.RequestUnauthorized('Nope!')
+            raise exceptions.RequestUnauthorized('Nope!', mock.MagicMock())
 
-        mock_filemanager.RequestUnauthorized = filemanager.RequestUnauthorized
-        mock_filemanager.RequestForbidden = filemanager.RequestForbidden
         mock_filemanager.get_source_content.side_effect = raise_unauthorized
 
         app = Flask('test')
@@ -178,7 +178,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'auth_error',
                     'description': 'There was a problem authorizing your'
@@ -187,7 +187,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_forbidden(self, mock_store, mock_run, mock_filemanager):
@@ -197,10 +197,8 @@ class TestDoCompile(TestCase):
         _, log_path = mkstemp()
 
         def raise_forbidden(*args, **kwargs):
-            raise filemanager.RequestForbidden('Nope!')
+            raise exceptions.RequestForbidden('Nope!', mock.MagicMock())
 
-        mock_filemanager.RequestUnauthorized = filemanager.RequestUnauthorized
-        mock_filemanager.RequestForbidden = filemanager.RequestForbidden
         mock_filemanager.get_source_content.side_effect = raise_forbidden
 
         app = Flask('test')
@@ -215,7 +213,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'auth_error',
                     'description': 'There was a problem authorizing your'
@@ -224,7 +222,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_connection_failed(self, mock_store, mock_run, mock_filemanager):
@@ -234,11 +232,7 @@ class TestDoCompile(TestCase):
         _, log_path = mkstemp()
 
         def raise_conn_failed(*args, **kwargs):
-            raise filemanager.ConnectionFailed('Nope!')
-
-        mock_filemanager.RequestUnauthorized = filemanager.RequestUnauthorized
-        mock_filemanager.RequestForbidden = filemanager.RequestForbidden
-        mock_filemanager.ConnectionFailed = filemanager.ConnectionFailed
+            raise exceptions.ConnectionFailed('Nope!', mock.MagicMock())
 
         mock_filemanager.get_source_content.side_effect = raise_conn_failed
 
@@ -254,7 +248,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'network_error',
                     'description': 'There was a problem retrieving your source'
@@ -263,7 +257,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_not_found(self, mock_store, mock_run, mock_filemanager):
@@ -273,12 +267,7 @@ class TestDoCompile(TestCase):
         _, log_path = mkstemp()
 
         def raise_not_found(*args, **kwargs):
-            raise filemanager.NotFound('Nope!')
-
-        mock_filemanager.RequestUnauthorized = filemanager.RequestUnauthorized
-        mock_filemanager.RequestForbidden = filemanager.RequestForbidden
-        mock_filemanager.ConnectionFailed = filemanager.ConnectionFailed
-        mock_filemanager.NotFound = filemanager.NotFound
+            raise exceptions.NotFound('Nope!', mock.MagicMock())
 
         mock_filemanager.get_source_content.side_effect = raise_not_found
 
@@ -294,7 +283,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'missing_source',
                     'description': 'Could not retrieve a matching source'
@@ -303,7 +292,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_source_corrupted(self, mock_store, mock_run, mock_filemanager):
@@ -313,7 +302,7 @@ class TestDoCompile(TestCase):
         _, log_path = mkstemp()
 
         def raise_corrupted(*args, **kwargs):
-            raise compiler.CorruptedSource('yuck')
+            raise compiler.CorruptedSource('yuck', mock.MagicMock())
 
         mock_run.side_effect = raise_corrupted
 
@@ -329,7 +318,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'corrupted_source',
                     'description': '',
@@ -337,7 +326,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_no_output(self, mock_store, mock_run, mock_filemanager):
@@ -359,7 +348,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'compilation_errors',
                     'description': '',
@@ -367,7 +356,7 @@ class TestDoCompile(TestCase):
                 }
             )
 
-    @mock.patch(f'{compiler.__name__}.filemanager')
+    @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
     @mock.patch(f'{compiler.__name__}.store')
     def test_cannot_save(self, mock_store, mock_run, mock_filemanager):
@@ -378,7 +367,7 @@ class TestDoCompile(TestCase):
         mock_run.return_value = (out_path, log_path)
 
         def raise_runtimeerror(*args, **kwargs):
-            raise RuntimeError('yuck')
+            raise RuntimeError('yuck', mock.MagicMock())
 
         mock_store.store.side_effect = raise_runtimeerror
 
@@ -394,7 +383,7 @@ class TestDoCompile(TestCase):
                     'source_id': '1234',
                     'output_format': 'pdf',
                     'checksum': 'asdf',
-                    'task_id': '1234::asdf::pdf',
+                    'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'storage',
                     'description': 'Failed to store result',
@@ -464,7 +453,7 @@ class TestRun(TestCase):
 #     """Tests for :func:`compiler.start_compilation`."""
 #
 #     @mock.patch(f'{compiler.__name__}.store')
-#     @mock.patch(f'{compiler.__name__}.filemanager.get_source_content')
+#     @mock.patch(f'{compiler.__name__}.FileManager.get_source_content')
 #     def test_real_compiler(self, mock_get_source_content, mock_store):
 #         """The compilation succeeds, and storage works without a hitch."""
 #         source_id = '1902.00123'

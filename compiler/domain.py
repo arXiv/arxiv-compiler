@@ -96,6 +96,9 @@ class Task(NamedTuple):
     size_bytes: int = 0
     """Size of the product."""
 
+    owner: str = ""
+    """The owner of this resource."""
+
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
@@ -117,7 +120,8 @@ class Task(NamedTuple):
             'status': self.status.value if self.status else None,
             'reason': self.reason.value if self.reason else None,
             'description': self.description,
-            'size_bytes': self.size_bytes
+            'size_bytes': self.size_bytes,
+            'owner': self.owner
         }
 
     @classmethod

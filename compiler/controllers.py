@@ -1,13 +1,15 @@
 """Request controllers."""
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable
 
 from werkzeug import MultiDict
-from werkzeug.exceptions import BadRequest, NotFound, InternalServerError
+from werkzeug.exceptions import BadRequest, NotFound, InternalServerError, \
+    Forbidden
 
 from flask import url_for
 
 from arxiv import status
+from arxiv.users.domain import Session
 from arxiv.base import logging
 
 from .services import store
@@ -33,18 +35,6 @@ def _status_from_store(source_id: str, checksum: str,
     return None
 
 
-def _status_from_task(source_id: str, checksum: str,
-                      output_format: Format) -> Optional[Task]:
-    """Get a :class:`.Task` from the task queue."""
-    try:
-        stat = compiler.get_task(source_id, checksum, output_format)
-        logger.debug('Got status from previous task: %s', stat)
-        return stat
-    except compiler.NoSuchTask as e:
-        logger.debug('No such compilation task: %s', e)
-    return None
-
-
 def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
                         code: int = status.HTTP_303_SEE_OTHER) -> Response:
     """Redirect to the status endpoint."""
@@ -53,7 +43,8 @@ def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
     return {}, code, {'Location': location}
 
 
-def compile(request_data: MultiDict, token: str) -> Response:
+def compile(request_data: MultiDict, token: str, session: Session,
+            is_authorized: Callable = lambda task: True) -> Response:
     """
     Start compilation of an upload workspace.
 
@@ -88,18 +79,20 @@ def compile(request_data: MultiDict, token: str) -> Response:
         logger.debug('Missing required parameter: checksum')
         raise BadRequest('Missing required parameter: checksum')
 
+    # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
     logger.debug('%s: request compilation with %s', __name__, request_data)
     if not force:
-        if _status_from_store(source_id, checksum, output_format) is not None:
+        info = _status_from_store(source_id, checksum, output_format)
+        if info is not None:
+            if not is_authorized(info):
+                raise Forbidden('Not authorized to compile this resource')
             logger.debug('compilation exists, redirecting')
             return _redirect_to_status(source_id, checksum, output_format)
-        if _status_from_task(source_id, checksum, output_format) is not None:
-            logger.debug('compilation exists, redirecting')
-            return _redirect_to_status(source_id, checksum, output_format)
+
     try:
         compiler.start_compilation(source_id, checksum, output_format,
-                                   token=token)
+                                   token=token, owner=session.user.user_id)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
@@ -107,7 +100,8 @@ def compile(request_data: MultiDict, token: str) -> Response:
                                status.HTTP_202_ACCEPTED)
 
 
-def get_status(source_id: str, checksum: str, output_format: str) -> Response:
+def get_status(source_id: str, checksum: str, output_format: str,
+               is_authorized: Callable = lambda task: True) -> Response:
     """
     Get the status of a compilation.
 
@@ -139,14 +133,16 @@ def get_status(source_id: str, checksum: str, output_format: str) -> Response:
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
     info = _status_from_store(source_id, checksum, product_format)
+    # Verify that the requester is authorized to view this resource.
     if info is None:
-        info = _status_from_task(source_id, checksum, product_format)
-    if info is None:
-        raise NotFound('No such compilation')
+        raise NotFound('No such resource')
+    if not is_authorized(info):
+        raise Forbidden('Access denied')
     return info.to_dict(), status.HTTP_200_OK, {}
 
 
-def get_product(source_id: int, checksum: str, output_format: str) -> Response:
+def get_product(source_id: int, checksum: str, output_format: str,
+                is_authorized: Callable = lambda task: True) -> Response:
     """
     Get the product of a compilation.
 
@@ -173,22 +169,28 @@ def get_product(source_id: int, checksum: str, output_format: str) -> Response:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
         raise BadRequest('Invalid format')
+
+    # Verify that the requester is authorized to view this resource.
+    info = _status_from_store(source_id, checksum, product_format)
+    if info is None:
+        raise NotFound('No such resource')
+    if not is_authorized(info):
+        raise Forbidden('Access denied')
+
     try:
         product = store.retrieve(source_id, checksum, product_format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
-    except Exception as e:
-        logger.error('Unhandled exception: %s', e)
-        raise InternalServerError('Unhandled exception: %s' % e)
     data = {
         'stream': product.stream,
         'content_type': product_format.content_type,
-        'filename': f'{source_id}.{product_format.ext}'
+        'filename': f'{source_id}.{product_format.ext}',
     }
     return data, status.HTTP_200_OK, {'ETag': product.checksum}
 
 
-def get_log(source_id: int, checksum: str, output_format: str) -> Response:
+def get_log(source_id: int, checksum: str, output_format: str,
+            is_authorized: Callable = lambda task: True) -> Response:
     """
     Get a compilation log.
 
@@ -215,13 +217,21 @@ def get_log(source_id: int, checksum: str, output_format: str) -> Response:
         product_format = Format(output_format)
     except ValueError:  # Not a valid format.
         raise BadRequest('Invalid format')
+
+    # Verify that the requester is authorized to view this resource.
+    info = _status_from_store(source_id, checksum, product_format)
+    if info is None:
+        raise NotFound('No such resource')
+    if not is_authorized(info):
+        raise Forbidden('Access denied')
+
     try:
         product = store.retrieve_log(source_id, checksum, product_format)
     except store.DoesNotExist as e:
         raise NotFound('No such compilation product') from e
     data = {
         'stream': product.stream,
-        'content_type': product_format.content_type,
+        'content_type': 'text/plain',
         'filename': f'{source_id}.{product_format.ext}'
     }
     return data, status.HTTP_200_OK, {'ETag': product.checksum}

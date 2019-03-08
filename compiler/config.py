@@ -28,12 +28,12 @@ FILE_MANAGER_HOST = os.environ.get('FILE_MANAGER_HOST', 'arxiv.org')
 FILE_MANAGER_PORT = os.environ.get('FILE_MANAGER_PORT', '443')
 FILE_MANAGER_PROTO = os.environ.get('FILE_MANAGER_PROTO', 'https')
 FILE_MANAGER_PATH = os.environ.get('FILE_MANAGER_PATH', '')
-FILE_MANAGER_ENDPOINT = os.environ.get(
+FILEMANAGER_ENDPOINT = os.environ.get(
     'FILE_MANAGER_ENDPOINT',
     f'{FILE_MANAGER_PROTO}://{FILE_MANAGER_HOST}:{FILE_MANAGER_PORT}'
     f'/{FILE_MANAGER_PATH}'
 )
-FILE_MANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
+FILEMANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
 FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH',
                                            '/{source_id}/content')
 
@@ -60,3 +60,7 @@ CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
 
 VERBOSE_COMPILE = bool(int(os.environ.get('VERBOSE_COMPILE', 0)))
 """If 1 (True), converter image is run in verbose mode."""
+
+AUTH_UPDATED_SESSION_REF = True
+
+LOGLEVEL = 20
