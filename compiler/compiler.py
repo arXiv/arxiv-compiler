@@ -204,7 +204,7 @@ def get_task(source_id: str, checksum: str,
         data['reason'] = Reason(_result.get('reason'))
         if 'owner' in _result:
             data['owner'] = _result['owner']
-    return Task(task_id=task_id, **data)
+    return Task(**data)
 
 
 @after_task_publish.connect

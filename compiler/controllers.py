@@ -30,8 +30,8 @@ def _status_from_store(source_id: str, checksum: str,
         return stat
     except store.DoesNotExist as e:
         logger.debug('No such compilation: %s', e)
-    except Exception as e:
-        logger.debug('No such compilation: %s', e)
+    # except Exception as e:
+    #     logger.debug('No such compilation: %s', e)
     return None
 
 

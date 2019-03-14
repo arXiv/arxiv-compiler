@@ -107,14 +107,14 @@ class TestGetTask(TestCase):
     """Tests for :func:`controllers.get_status`."""
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_info_completed(self, mock_compiler):
+    @mock.patch(f'{controllers.__name__}.store')
+    def test_get_info_completed(self, mock_store):
         """Request for a completed compilation."""
         task_id = '123::asdf12345zxcv::pdf'
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = Task(
+        mock_store.get_status.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.COMPLETED,
@@ -127,14 +127,14 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.HTTP_200_OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_info_in_progress(self, mock_compiler):
+    @mock.patch(f'{controllers.__name__}.store')
+    def test_get_info_in_progress(self, mock_store):
         """Request for a compilation in progress."""
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = Task(
+        mock_store.get_status.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.IN_PROGRESS,
@@ -147,27 +147,27 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.HTTP_200_OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_info_nonexistant(self, mock_compiler):
+    @mock.patch(f'{controllers.__name__}.store')
+    def test_get_info_nonexistant(self, mock_store):
         """Request for a nonexistant compilation."""
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.NoSuchTask = compiler.NoSuchTask
-        mock_compiler.get_task.side_effect = raise_no_such_task
+        mock_store.DoesNotExist = store.DoesNotExist
+        mock_store.get_status.side_effect = raise_store_does_not_exist
 
         with self.assertRaises(NotFound):
             controllers.get_status(source_id, checksum, output_format)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_status_completed(self, mock_compiler):
+    @mock.patch(f'{controllers.__name__}.store')
+    def test_get_status_completed(self, mock_store):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_compiler.get_task.return_value = Task(
+        mock_store.get_status.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.COMPLETED,
@@ -180,14 +180,14 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.HTTP_200_OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.compiler')
-    def test_get_status_in_progress(self, mock_compiler):
+    @mock.patch(f'{controllers.__name__}.store')
+    def test_get_status_in_progress(self, mock_store):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = 1234
         checksum = 'asdf12345zxcv'
         output_format = Format.PDF
-        mock_compiler.get_task.return_value = Task(
+        mock_store.get_status.return_value = Task(
             source_id=source_id,
             output_format=Format.PDF,
             status=Status.IN_PROGRESS,

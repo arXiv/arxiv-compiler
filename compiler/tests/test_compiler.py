@@ -28,6 +28,7 @@ class TestStartCompilation(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager', mock.MagicMock())
     @mock.patch(f'{compiler.__name__}.do_compile', mock.MagicMock())
+    @mock.patch(f'{compiler.__name__}.store', mock.MagicMock())
     def test_start_compilation_ok(self):
         """Compilation starts succesfully."""
         task_id = compiler.start_compilation('1234', 'asdf1234=',
@@ -143,6 +144,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'completed',
@@ -177,6 +179,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -212,6 +215,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -247,6 +251,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -282,6 +287,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -317,6 +323,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -347,6 +354,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
@@ -382,6 +390,7 @@ class TestDoCompile(TestCase):
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
+                    'owner': None,
                     'checksum': 'asdf',
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
