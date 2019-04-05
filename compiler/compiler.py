@@ -401,11 +401,22 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
         # Normally I'd prefer to raise an exception if the compilation failed,
         # but we still have work to do.
         out_path = None
+
     # There are all kinds of ways in which compilation can fail. In many cases,
     # we'll have log output even if the compilation failed, and we don't want
     # to ignore that output.
     tex_log_path = os.path.join(source_dir, 'tex_logs', 'autotex.log')
-    return out_path, tex_log_path if os.path.exists(tex_log_path) else None
+
+    # Sometimes the log file does not get written, in which case we can fall
+    # back to the stdout from the converter subprocess.
+    if not os.path.exists(tex_log_path):
+        log_dir = os.path.split(tex_log_path)[0]
+        if not os.path.exists(log_dir):
+            os.makedirs(log_dir)
+        with open(tex_log_path, 'w') as f:
+            f.write(stdout)
+
+    return out_path, tex_log_path
 
 
 def run_docker(image: str, volumes: list = [], ports: list = [],
