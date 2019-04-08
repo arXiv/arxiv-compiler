@@ -1,0 +1,74 @@
+# Application profile
+
+application:
+  slug: compiler     # image: arxiv/filemanager
+  type:  wsgi           # exposes port 8000
+  subsystem: submission-moderation
+  service_group: backend
+  resources:
+    memory:
+      min: 128Mi
+      max: 256Mi
+    cpu:
+      min: 100m
+      max: 300m
+  dependencies:
+  - name: compilation-submission
+    type: s3
+    description: Contains compilation products.
+  - name: task-queue
+    type: redis
+    description: Task queue and result backend for Celery.
+  secrets:
+  - name: JWT_SECRET
+    type: generic
+  - name: write-compilation-submission
+    type: aws
+    resources:
+    - action:
+      - s3:GetObject
+      - s3:PutObject
+      - s3:ListBucket
+      - s3:DeleteObject
+      resource: s3
+      name: compilation-submission
+
+
+application:
+  slug: compiler-worker     # image: arxiv/filemanager
+  type:  worker           # exposes port 8000
+  subsystem: submission-moderation
+  service_group: backend
+  resources:
+    memory:
+      min: 128Mi
+      max: 256Mi
+    cpu:
+      min: 100m
+      max: 300m
+  dependencies:
+  - name: compilation-submission
+    type: s3
+    description: Contains compilation products.
+  - name: converter-image
+    type: image
+    var: COMPILER_DOCKER_IMAGE
+    value: 626657773168.dkr.ecr.us-east-1.amazonaws.com/arxiv/converter:0.8
+    description: Image to be executed within DinD container.
+  - name: task-queue
+    type: redis
+    description: Task queue and result backend for Celery.
+  secrets:
+  - name: jwt-secret
+    type: generic
+    var: JWT_SECRET
+  - name: write-compilation-submission
+    type: aws
+    resources:
+    - action:
+      - s3:GetObject
+      - s3:PutObject
+      - s3:ListBucket
+      - s3:DeleteObject
+      resource: s3
+      name: compilation-submission

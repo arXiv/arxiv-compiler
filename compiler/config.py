@@ -42,7 +42,7 @@ S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 S3_BUCKETS = [
     ('arxiv', 'arxiv-compiler'),
-    ('submission', 'arxiv-compiler-submission')
+    ('submission', os.environ.get('S3_SUBMISSION_BUCKET'))
 ]
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)

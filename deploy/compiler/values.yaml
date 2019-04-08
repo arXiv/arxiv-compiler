@@ -1,0 +1,24 @@
+labels:
+  subsystem: submission-moderation
+  service_group: backend
+redis:
+  host: task-queue-development
+  port: 6379
+namespace: development
+image:
+  tag: latest
+
+deployment.name: compiler-development
+service.name: compiler-development
+
+redis:
+  url: changeme
+
+vault:
+  host: changeme
+  port: changeme
+  role: compiler-worker
+
+s3:
+  bucket: changeme
+  region: us-east-1
