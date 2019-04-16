@@ -13,16 +13,16 @@ application:
       min: 100m
       max: 300m
   dependencies:
-  - name: compilation-submission
+  - name: compiler-submission
     type: s3
-    description: Contains compilation products.
+    description: Contains compiler products.
   - name: task-queue
     type: redis
     description: Task queue and result backend for Celery.
   secrets:
   - name: JWT_SECRET
     type: generic
-  - name: write-compilation-submission
+  - name: write-compiler-submission
     type: aws
     resources:
     - action:
@@ -31,7 +31,7 @@ application:
       - s3:ListBucket
       - s3:DeleteObject
       resource: s3
-      name: compilation-submission
+      name: compiler-submission
 
 
 application:
@@ -47,9 +47,9 @@ application:
       min: 100m
       max: 300m
   dependencies:
-  - name: compilation-submission
+  - name: compiler-submission
     type: s3
-    description: Contains compilation products.
+    description: Contains compiler products.
   - name: converter-image
     type: image
     var: COMPILER_DOCKER_IMAGE
@@ -62,7 +62,7 @@ application:
   - name: jwt-secret
     type: generic
     var: JWT_SECRET
-  - name: write-compilation-submission
+  - name: write-compiler-submission
     type: aws
     resources:
     - action:
@@ -71,4 +71,15 @@ application:
       - s3:ListBucket
       - s3:DeleteObject
       resource: s3
-      name: compilation-submission
+      name: compiler-submission
+    - action:
+      - "ecr:GetAuthorizationToken"
+      - "ecr:BatchCheckLayerAvailability"
+      - "ecr:GetDownloadUrlForLayer"
+      - "ecr:GetRepositoryPolicy"
+      - "ecr:DescribeRepositories"
+      - "ecr:ListImages"
+      - "ecr:DescribeImages"
+      - "ecr:BatchGetImage"
+      resource: ecr
+      name: converter-image

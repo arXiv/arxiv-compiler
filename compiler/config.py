@@ -63,4 +63,21 @@ VERBOSE_COMPILE = bool(int(os.environ.get('VERBOSE_COMPILE', 0)))
 
 AUTH_UPDATED_SESSION_REF = True
 
-LOGLEVEL = 20
+LOGLEVEL = 10
+
+KUBE_TOKEN = os.environ.get('KUBE_TOKEN', 'fookubetoken')
+VAULT_HOST = os.environ.get('VAULT_HOST', 'foovaulthost')
+VAULT_PORT = os.environ.get('VAULT_PORT', '1234')
+VAULT_ROLE = os.environ.get('VAULT_ROLE', 'compiler')
+VAULT_CERT = os.environ.get('VAULT_CERT')
+VAULT_REQUESTS = [
+    {'type': 'generic',
+     'name': 'JWT_SECRET',
+     'mount_point': 'secret-development/',
+     'path': 'jwt',
+     'key': 'jwt-secret',
+     'minimum_ttl': 60},
+    {'type': 'aws',
+     'name': 'AWS_S3_CREDENTIAL',
+     'role': os.environ.get('VAULT_CREDENTIAL')}
+]

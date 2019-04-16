@@ -14,6 +14,8 @@ from arxiv.base.middleware import wrap, request_logs
 from .services import store, FileManager
 from . import routes
 
+from arxiv import vault
+
 
 def jsonify_exception(error):
     """Render exceptions as JSON."""
@@ -40,6 +42,7 @@ def create_app() -> Flask:
     app.errorhandler(InternalServerError)(jsonify_exception)
     app.errorhandler(NotFound)(jsonify_exception)
 
-    wrap(app, [auth.middleware.AuthMiddleware])
+    wrap(app, [vault.middleware.VaultMiddleware,
+               auth.middleware.AuthMiddleware])
 
     return app
