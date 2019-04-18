@@ -81,6 +81,12 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
+
+    # Support label and link for PS/PDF Stamping
+    # Test
+    stamp_label = request_data.get('stamp_label', None) # or is '' better?
+    stamp_link = request_data.get('stamp_link', None)
+
     logger.debug('%s: request compilation with %s', __name__, request_data)
     if not force:
         info = _status_from_store(source_id, checksum, output_format)
@@ -91,7 +97,9 @@ def compile(request_data: MultiDict, token: str, session: Session,
             return _redirect_to_status(source_id, checksum, output_format)
 
     try:
-        compiler.start_compilation(source_id, checksum, output_format,
+        compiler.start_compilation(source_id, checksum,
+                                   stamp_label, stamp_link,
+                                   output_format,
                                    token=token, owner=session.user.user_id)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
