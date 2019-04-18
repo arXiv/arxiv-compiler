@@ -94,6 +94,7 @@ class AuthorizationFailed(RuntimeError):
 
 
 def start_compilation(source_id: str, checksum: str,
+                      stamp_label: str, stamp_link: str,
                       output_format: Format = Format.PDF,
                       preferred_compiler: Optional[str] = None,
                       token: Optional[str] = None,
@@ -132,6 +133,8 @@ def start_compilation(source_id: str, checksum: str,
         do_compile.apply_async(
             (source_id, checksum),
             {'output_format': output_format.value,
+             'stamp_label': stamp_label,
+             'stamp_link': stamp_link,
              'preferred_compiler': preferred_compiler,
              'token': token,
              'owner': owner},
@@ -217,6 +220,8 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
 
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
+               stamp_label: str,
+               stamp_link: str,
                output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None,
                token: Optional[str] = None,
@@ -291,7 +296,9 @@ def do_compile(source_id: str, checksum: str,
     # 2. Generate the compiled files
     if not stat:
         try:
-            out_path, log_path = _run(source, output_format=output_format,
+            out_path, log_path = _run(source,
+                                      stamp_label=stamp_label, stamp_link=stamp_link,
+                                      output_format=output_format,
                                       verbose=verbose)
             if out_path is not None:
                 info['size_bytes'] = _file_size(out_path)
@@ -343,7 +350,9 @@ def _store_compilation_result(status: Task, out_path: Optional[str],
 # TODO: use ``docker`` Python API instead of subprocess.
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
-def _run(source: SourcePackage, output_format: Format = Format.PDF,
+def _run(source: SourcePackage,
+         stamp_label: str, stamp_link: str,
+         output_format: Format = Format.PDF,
          add_stamp: bool = True, timeout: int = 600,
          add_psmapfile: bool = False, P_dvips_flag: bool = False,
          dvips_layout: str = 'letter', D_dvips_flag: bool = False,
@@ -364,7 +373,7 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
 
     options = [
         (True, '-S /autotex'),
-        (True, '-p 1901.00123'),   # TODO: should be changed to submission ID.
+        (True, f'-p {source.source_id}'),
         (True, f'-f {output_format.value}'),  # Doesn't do what it seems.
         (True, f'-T {timeout}'),
         (True, f'-t {dvips_layout}'),
@@ -376,6 +385,11 @@ def _run(source: SourcePackage, output_format: Format = Format.PDF,
         (id_for_decryption is not None, f'-d {id_for_decryption}'),
         (tex_tree_timestamp is not None, f'-U {tex_tree_timestamp}')
     ]
+    if stamp_label:
+        options.append((True, f'-l "{stamp_label}"'))
+    if stamp_link:
+        options.append((True, f'-L "{stamp_link}"'))
+
     args = [arg for opt, arg in options if opt]
 
     logger.debug('run image %s with args %s', image, args)
