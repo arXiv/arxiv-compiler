@@ -444,10 +444,11 @@ class TestRun(TestCase):
         }
         mock_dock.return_value = (0, 'wooooo', '')
         pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg)
+        out_path, log_path = compiler._run(pkg, "arXiv:1234",
+                                           "http://arxiv.org/abs/1234")
         self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
-        shutil.rmtree(source_dir)   # Cleanup.
+        shutil.rmtree(source_dir)  # Cleanup.
 
     @mock.patch(f'{compiler.__name__}.run_docker')
     @mock.patch(f'{compiler.__name__}.current_app')
@@ -470,7 +471,8 @@ class TestRun(TestCase):
         }
         mock_dock.return_value = (0, 'wooooo', '')
         pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg)
+        out_path, log_path = compiler._run(pkg, "arXiv:1234",
+                                           "http://arxiv.org/abs/1234")
         self.assertIsNone(out_path)
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
         shutil.rmtree(source_dir)   # Cleanup.
