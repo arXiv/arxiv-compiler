@@ -220,8 +220,8 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
 
 @celery_app.task
 def do_compile(source_id: str, checksum: str,
-               stamp_label: str,
-               stamp_link: str,
+               stamp_label: Optional[str],
+               stamp_link: Optional[str],
                output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None,
                token: Optional[str] = None,
@@ -351,7 +351,7 @@ def _store_compilation_result(status: Task, out_path: Optional[str],
 # TODO: rename []_dvips_flag parameters when we figure out what they mean.
 # TODO: can we get rid of any of these?
 def _run(source: SourcePackage,
-         stamp_label: str, stamp_link: str,
+         stamp_label: Optional[str], stamp_link: Optional[str],
          output_format: Format = Format.PDF,
          add_stamp: bool = True, timeout: int = 600,
          add_psmapfile: bool = False, P_dvips_flag: bool = False,
@@ -375,6 +375,8 @@ def _run(source: SourcePackage,
         (True, '-S /autotex'),
         (True, f'-p {source.source_id}'),
         (True, f'-f {output_format.value}'),  # Doesn't do what it seems.
+        (stamp_label is not None, f'-l "{stamp_label}"'),
+        (stamp_link is not None, f'-L "{stamp_link}"'),
         (True, f'-T {timeout}'),
         (True, f'-t {dvips_layout}'),
         (True, '-q'),
@@ -385,10 +387,6 @@ def _run(source: SourcePackage,
         (id_for_decryption is not None, f'-d {id_for_decryption}'),
         (tex_tree_timestamp is not None, f'-U {tex_tree_timestamp}')
     ]
-    if stamp_label:
-        options.append((True, f'-l "{stamp_label}"'))
-    if stamp_link:
-        options.append((True, f'-L "{stamp_link}"'))
 
     args = [arg for opt, arg in options if opt]
 
