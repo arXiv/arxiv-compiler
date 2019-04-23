@@ -84,7 +84,7 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     # Support label and link for PS/PDF Stamping
     # Test
-    stamp_label = request_data.get('stamp_label', None) # or is '' better?
+    stamp_label = request_data.get('stamp_label', None)
     stamp_link = request_data.get('stamp_link', None)
 
     logger.debug('%s: request compilation with %s', __name__, request_data)
