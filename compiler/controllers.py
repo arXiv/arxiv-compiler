@@ -1,6 +1,7 @@
 """Request controllers."""
 
 from typing import Tuple, Optional, Callable
+from http import HTTPStatus as status
 
 from werkzeug import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound, InternalServerError, \
@@ -8,7 +9,6 @@ from werkzeug.exceptions import BadRequest, NotFound, InternalServerError, \
 
 from flask import url_for
 
-from arxiv import status
 from arxiv.users.domain import Session
 from arxiv.base import logging
 
@@ -36,7 +36,7 @@ def _status_from_store(source_id: str, checksum: str,
 
 
 def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
-                        code: int = status.HTTP_303_SEE_OTHER) -> Response:
+                        code: int = status.SEE_OTHER) -> Response:
     """Redirect to the status endpoint."""
     location = url_for('api.get_status', source_id=source_id,
                        checksum=checksum, output_format=output_format.value)
@@ -50,8 +50,8 @@ def service_status(*args, **kwargs) -> Response:
     response_data['compiler'] = compiler.is_available()
     response_data['filemanager'] = FileManager.is_available()
     if not all(response_data.values()):
-        return response_data, status.HTTP_503_SERVICE_UNAVAILABLE, {}
-    return response_data, status.HTTP_200_OK, {}
+        return response_data, status.SERVICE_UNAVAILABLE, {}
+    return response_data, status.OK, {}
 
 
 def compile(request_data: MultiDict, token: str, session: Session,
@@ -92,6 +92,12 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
+
+    # Support label and link for PS/PDF Stamping
+    # Test
+    stamp_label = request_data.get('stamp_label', None)
+    stamp_link = request_data.get('stamp_link', None)
+
     logger.debug('%s: request compilation with %s', __name__, request_data)
     if not force:
         info = _status_from_store(source_id, checksum, output_format)
@@ -102,13 +108,15 @@ def compile(request_data: MultiDict, token: str, session: Session,
             return _redirect_to_status(source_id, checksum, output_format)
 
     try:
-        compiler.start_compilation(source_id, checksum, output_format,
-                                   token=token)
+        compiler.start_compilation(source_id, checksum,
+                                   stamp_label, stamp_link,
+                                   output_format,
+                                   token=token, owner=session.user.user_id)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
     return _redirect_to_status(source_id, checksum, output_format,
-                               status.HTTP_202_ACCEPTED)
+                               status.ACCEPTED)
 
 
 def get_status(source_id: str, checksum: str, output_format: str,
@@ -149,7 +157,7 @@ def get_status(source_id: str, checksum: str, output_format: str,
         raise NotFound('No such resource')
     if not is_authorized(info):
         raise Forbidden('Access denied')
-    return info.to_dict(), status.HTTP_200_OK, {'ARXIV-OWNER': info.owner}
+    return info.to_dict(), status.OK, {'ARXIV-OWNER': info.owner}
 
 
 def get_product(source_id: int, checksum: str, output_format: str,
@@ -198,7 +206,7 @@ def get_product(source_id: int, checksum: str, output_format: str,
         'filename': f'{source_id}.{product_format.ext}',
     }
     headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
-    return data, status.HTTP_200_OK, headers
+    return data, status.OK, headers
 
 
 def get_log(source_id: int, checksum: str, output_format: str,
@@ -247,4 +255,4 @@ def get_log(source_id: int, checksum: str, output_format: str,
         'filename': f'{source_id}.{product_format.ext}'
     }
     headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
-    return data, status.HTTP_200_OK, headers
+    return data, status.OK, headers

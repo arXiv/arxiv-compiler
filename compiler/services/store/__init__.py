@@ -43,7 +43,7 @@ def hash_content(body: bytes) -> str:
     return b64encode(md5(body).digest()).decode('utf-8')
 
 
-class StoreSession(object):
+class StoreSession:
     """Represents an object store session."""
 
     LOG_KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}.log'
@@ -88,6 +88,7 @@ class StoreSession(object):
         except botocore.exceptions.ClientError as e:
             logger.error('Error when calling store: %s', e)
             return False
+        logger.debug('S3 is available')
         return True
 
     def get_status(self, src_id: str, chk: str, out_fmt: Format,

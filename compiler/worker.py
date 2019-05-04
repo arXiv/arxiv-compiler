@@ -14,7 +14,10 @@ from .celery import celery_app
 app = create_app()
 app.app_context().push()
 
-__secrets__ = None
+if app.config['VAULT_ENABLED']:
+    __secrets__ = ConfigManager(app.config)
+else:
+    __secrets__ = None
 
 
 @celeryd_init.connect
@@ -23,10 +26,6 @@ def get_secrets(*args: Any, **kwargs: Any) -> None:
     if not app.config['VAULT_ENABLED']:
         print('Vault not enabled; skipping')
         return
-
-    global __secrets__
-    if __secrets__ is None:
-        __secrets__ = ConfigManager(app.config)
     for key, value in __secrets__.yield_secrets():
         app.config[key] = value
     print('updated secrets')
@@ -57,10 +56,6 @@ def verify_secrets_up_to_date(*args: Any, **kwargs: Any) -> None:
     if not app.config['VAULT_ENABLED']:
         print('Vault not enabled; skipping')
         return
-
-    global __secrets__
-    if __secrets__ is None:
-        __secrets__ = ConfigManager(app.config)
     for key, value in __secrets__.yield_secrets():
         app.config[key] = value
     print('updated secrets')

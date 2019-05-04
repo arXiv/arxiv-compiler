@@ -31,7 +31,8 @@ class TestStartCompilation(TestCase):
     @mock.patch(f'{compiler.__name__}.store', mock.MagicMock())
     def test_start_compilation_ok(self):
         """Compilation starts succesfully."""
-        task_id = compiler.start_compilation('1234', 'asdf1234=',
+        task_id = compiler.start_compilation('1234', 'asdf1234=', 'arXiv:1234',
+                                             'http://arxiv.org/abs/1234',
                                              output_format=domain.Format.PDF,
                                              token='footoken')
         self.assertEqual(task_id, "1234/asdf1234=/pdf", "Returns task ID")
@@ -46,6 +47,7 @@ class TestStartCompilation(TestCase):
         mock_do_compile.apply_async.side_effect = raise_runtimeerror
         with self.assertRaises(compiler.TaskCreationFailed):
             compiler.start_compilation('1234', 'asdf1234=',
+                                       'arXiv:1234', 'http://arxiv.org/abs/1234',
                                        output_format=domain.Format.PDF,
                                        token='footoken')
 
@@ -140,7 +142,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -175,7 +179,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -211,7 +217,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -247,7 +255,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -283,7 +293,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -319,7 +331,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -350,7 +364,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -386,7 +402,9 @@ class TestDoCompile(TestCase):
         })
         with app.app_context():
             self.assertDictEqual(
-                compiler.do_compile("1234", "asdf", "pdf", token="footoken"),
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
                 {
                     'source_id': '1234',
                     'output_format': 'pdf',
@@ -426,10 +444,11 @@ class TestRun(TestCase):
         }
         mock_dock.return_value = (0, 'wooooo', '')
         pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg)
+        out_path, log_path = compiler._run(pkg, "arXiv:1234",
+                                           "http://arxiv.org/abs/1234")
         self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
-        shutil.rmtree(source_dir)   # Cleanup.
+        shutil.rmtree(source_dir)  # Cleanup.
 
     @mock.patch(f'{compiler.__name__}.run_docker')
     @mock.patch(f'{compiler.__name__}.current_app')
@@ -452,7 +471,8 @@ class TestRun(TestCase):
         }
         mock_dock.return_value = (0, 'wooooo', '')
         pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg)
+        out_path, log_path = compiler._run(pkg, "arXiv:1234",
+                                           "http://arxiv.org/abs/1234")
         self.assertIsNone(out_path)
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
         shutil.rmtree(source_dir)   # Cleanup.

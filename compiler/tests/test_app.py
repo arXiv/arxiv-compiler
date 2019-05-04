@@ -3,7 +3,7 @@
 from unittest import TestCase, mock
 import io
 
-from arxiv.integration.api import status
+from arxiv.integration.api import status, service
 from arxiv.users.helpers import generate_token
 from arxiv.users.auth import scopes
 
@@ -22,6 +22,10 @@ class TestCompilerApp(TestCase):
         self.app = factory.create_app()
         self.client = self.app.test_client()
         self.app.config['JWT_SECRET'] = 'foosecret'
+        self.app.config['S3_BUCKETS'] = [
+            # ('arxiv', 'arxiv-compiler'),
+            ('submission', 'test-submission-bucket')
+        ]
         self.user_id = '123'
         with self.app.app_context():
             self.token = generate_token(self.user_id, 'foo@user.com',
@@ -39,18 +43,22 @@ class TestCompilerApp(TestCase):
         """Raise :class:`compiler.NoSuchTask`."""
         raise compiler.NoSuchTask('Nada')
 
-    def test_get_status(self):
+    @mock.patch(f'{compiler.__name__}.do_nothing', mock.MagicMock())
+    @mock.patch(f'{service.__name__}.requests.Session')
+    @mock.patch(f'{store.__name__}.boto3.client', mock.MagicMock())
+    def test_get_status(self, mock_session):
         """GET the ``getServiceStatus`` endpoint."""
+        mock_session.return_value.get.return_value.status_code = status.OK
         response = self.client.get('/status')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
 
     def test_get_nonexistant(self):
         """GET a nonexistant endpoint."""
         response = self.client.get('/nowhere')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
         self.assertEqual(
             response.json,
-            {'reason': 'The requested URL was not found on the server.  If you'
+            {'reason': 'The requested URL was not found on the server. If you'
                        ' entered the URL manually please check your spelling'
                        ' and try again.'}
         )
@@ -59,7 +67,7 @@ class TestCompilerApp(TestCase):
     def test_post_bad_request(self):
         """POST the ``requestCompilation`` endpoint without data."""
         response = self.client.post('/', headers={'Authorization': self.token})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
         self.assertEqual(
             response.json,
             {'reason': 'The browser (or proxy) sent a request that this server'
@@ -85,7 +93,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.status_code, status.ACCEPTED)
         self.assertEqual(response.headers['Location'],
                          'http://localhost/54/a1b2c3d4%3D/pdf')
 
@@ -123,7 +131,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_303_SEE_OTHER)
+        self.assertEqual(response.status_code, status.SEE_OTHER)
         self.assertEqual(response.headers['Location'],
                          f'http://localhost/{source_id}/a1b2c3d4%3D/{fmt}')
 
@@ -161,7 +169,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -189,7 +197,7 @@ class TestCompilerApp(TestCase):
         )
 
         self.assertEqual(response.status_code,
-                         status.HTTP_500_INTERNAL_SERVER_ERROR)
+                         status.INTERNAL_SERVER_ERROR)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -221,7 +229,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertDictEqual(response.json, comp_status.to_dict())
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
@@ -254,7 +262,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+        self.assertEqual(response.status_code, status.FORBIDDEN,
                          'Forbidden user gets a 403 Forbidden response.')
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
@@ -277,7 +285,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -292,7 +300,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -326,7 +334,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertEqual(response.data, b'foologcontent',
                          "Returns the raw log content")
         self.assertEqual(response.headers['Content-Type'],
@@ -364,7 +372,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -385,7 +393,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -401,7 +409,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -438,7 +446,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertEqual(response.data, b'fooproductcontents',
                          "Returns the raw product content")
         self.assertEqual(response.headers['Content-Type'], 'application/pdf')
@@ -474,7 +482,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -495,7 +503,7 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
@@ -511,4 +519,4 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)

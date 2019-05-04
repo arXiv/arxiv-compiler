@@ -2,11 +2,10 @@
 
 from unittest import TestCase, mock
 import io
+from http import HTTPStatus as status
 
 from werkzeug import MultiDict
 from werkzeug.exceptions import NotFound, BadRequest
-
-from arxiv import status
 
 from ..domain import Task, Product, Format, Status
 from .. import controllers, compiler
@@ -68,7 +67,7 @@ class TestRequestCompilation(TestCase):
             mock.MagicMock()
         )
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(code, status.ACCEPTED)
         self.assertIn('Location', headers)
         self.assertIn(str(request_data['source_id']), headers['Location'])
         self.assertIn(request_data['checksum'], headers['Location'])
@@ -96,7 +95,7 @@ class TestRequestCompilation(TestCase):
         mock_session = mock.MagicMock()
         response_data = controllers.compile(request_data, token, mock_session)
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_303_SEE_OTHER)
+        self.assertEqual(code, status.SEE_OTHER)
         self.assertIn('Location', headers)
         self.assertIn(str(request_data['source_id']), headers['Location'])
         self.assertIn(request_data['checksum'], headers['Location'])
@@ -124,7 +123,7 @@ class TestGetTask(TestCase):
         response_data = controllers.get_status(source_id, checksum,
                                                output_format)
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
@@ -144,7 +143,7 @@ class TestGetTask(TestCase):
         response_data = controllers.get_status(source_id, checksum,
                                                output_format)
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
@@ -177,7 +176,7 @@ class TestGetTask(TestCase):
         response_data = controllers.get_status(source_id, checksum,
                                                output_format)
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.store')
@@ -197,7 +196,7 @@ class TestGetTask(TestCase):
         response_data = controllers.get_status(source_id, checksum,
                                                output_format)
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
 
 
 class TestGetProduct(TestCase):
@@ -229,7 +228,7 @@ class TestGetProduct(TestCase):
             output_format
         )
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
         self.assertEqual(headers['ETag'], product_checksum)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
@@ -275,7 +274,7 @@ class TestGetCompilationLog(TestCase):
             output_format
         )
         data, code, headers = response_data
-        self.assertEqual(code, status.HTTP_200_OK)
+        self.assertEqual(code, status.OK)
         self.assertEqual(headers['ETag'], product_checksum)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)

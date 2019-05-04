@@ -16,8 +16,17 @@ REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
 broker_url = "redis://%s:6379/0" % REDIS_ENDPOINT
 result_backend = "redis://%s:6379/0" % REDIS_ENDPOINT
 broker_transport_options = {
-    # 'region': os.environ.get('AWS_REGION', 'us-east-1'),
     'queue_name_prefix': 'compiler-',
+    'max_retries': 5,
+    'interval_start': 0,
+    'interval_step': 0.5,
+    'interval_max': 3,
 }
 worker_prefetch_multiplier = 1
 task_acks_late = True
+task_publish_retry_policy = {
+    'max_retries': 5,
+    'interval_start': 0,
+    'interval_max': 1,
+    'interval_step': 0.2
+}

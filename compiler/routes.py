@@ -2,6 +2,7 @@
 
 from typing import Callable, Union
 from functools import wraps
+from http import HTTPStatus as status
 from werkzeug.exceptions import Unauthorized, Forbidden, BadRequest
 from flask.json import jsonify
 from flask import Blueprint, current_app, redirect, request, g, Response, \
@@ -9,7 +10,6 @@ from flask import Blueprint, current_app, redirect, request, g, Response, \
 
 from arxiv.users.auth.decorators import scoped
 from arxiv.users.auth import scopes
-from arxiv import status
 from arxiv.base import logging
 from arxiv.users.domain import Session, Scope
 from arxiv.users.auth import scopes
@@ -68,7 +68,7 @@ def get_status(source_id: str, checksum: int, output_format: str) -> Response:
     data, code, head = controllers.get_status(source_id, checksum,
                                               output_format,
                                               authorizer(scopes.READ_COMPILE))
-    if code in [status.HTTP_303_SEE_OTHER, status.HTTP_302_FOUND]:
+    if code in [status.SEE_OTHER, status.FOUND]:
         return redirect(head['Location'], code=code)
     return jsonify(data), code, head
 
