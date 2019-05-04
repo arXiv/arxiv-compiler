@@ -6,7 +6,7 @@ redis:
   port: 6379
 namespace: development
 image:
-  tag: 0.0.1
+  tag: "0.0"
 
 deployment:
   name: compiler
@@ -28,3 +28,8 @@ s3:
     region: us-east-1
   bucket: compiler-submission
   region: us-east-1
+
+
+converter.image: arxiv/converter:0.9
+
+loglevel: 10

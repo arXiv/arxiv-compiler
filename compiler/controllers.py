@@ -12,7 +12,7 @@ from arxiv import status
 from arxiv.users.domain import Session
 from arxiv.base import logging
 
-from .services import store
+from .services import store, FileManager
 from . import compiler
 from .domain import Task, Product, Status, Format
 
@@ -41,6 +41,17 @@ def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
     location = url_for('api.get_status', source_id=source_id,
                        checksum=checksum, output_format=output_format.value)
     return {}, code, {'Location': location}
+
+
+def service_status(*args, **kwargs) -> Response:
+    """Exercise dependencies and verify operational status."""
+    response_data = {}
+    response_data['store'] = store.is_available()
+    response_data['compiler'] = compiler.is_available()
+    response_data['filemanager'] = FileManager.is_available()
+    if not all(response_data.values()):
+        return response_data, status.HTTP_503_SERVICE_UNAVAILABLE, {}
+    return response_data, status.HTTP_200_OK, {}
 
 
 def compile(request_data: MultiDict, token: str, session: Session,
@@ -92,7 +103,7 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     try:
         compiler.start_compilation(source_id, checksum, output_format,
-                                   token=token, owner=session.user.user_id)
+                                   token=token)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
@@ -138,7 +149,7 @@ def get_status(source_id: str, checksum: str, output_format: str,
         raise NotFound('No such resource')
     if not is_authorized(info):
         raise Forbidden('Access denied')
-    return info.to_dict(), status.HTTP_200_OK, {}
+    return info.to_dict(), status.HTTP_200_OK, {'ARXIV-OWNER': info.owner}
 
 
 def get_product(source_id: int, checksum: str, output_format: str,
@@ -186,7 +197,8 @@ def get_product(source_id: int, checksum: str, output_format: str,
         'content_type': product_format.content_type,
         'filename': f'{source_id}.{product_format.ext}',
     }
-    return data, status.HTTP_200_OK, {'ETag': product.checksum}
+    headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
+    return data, status.HTTP_200_OK, headers
 
 
 def get_log(source_id: int, checksum: str, output_format: str,
@@ -234,4 +246,5 @@ def get_log(source_id: int, checksum: str, output_format: str,
         'content_type': 'text/plain',
         'filename': f'{source_id}.{product_format.ext}'
     }
-    return data, status.HTTP_200_OK, {'ETag': product.checksum}
+    headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
+    return data, status.HTTP_200_OK, headers

@@ -79,6 +79,17 @@ class StoreSession(object):
             params.update(dict(endpoint_url=endpoint_url, verify=verify))
         self.client = boto3.client('s3', **params)
 
+    def is_available(self) -> bool:
+        """Check whether we can write to the S3 buckets."""
+        try:
+            for key, bucket in self.buckets:
+                logger.error('trying bucket %s', bucket)
+                self.client.put_object(Body=b'test', Bucket=bucket, Key='stat')
+        except botocore.exceptions.ClientError as e:
+            logger.error('Error when calling store: %s', e)
+            return False
+        return True
+
     def get_status(self, src_id: str, chk: str, out_fmt: Format,
                    bucket: str = 'arxiv') -> Task:
         """
@@ -294,6 +305,12 @@ def retrieve_log(src_id: str, chk: str, out_fmt: Format,
                  bucket: str = 'arxiv') -> Product:
     """See :func:`StoreSession.retrieve_log`."""
     return current_session().retrieve_log(src_id, chk, out_fmt, bucket=bucket)
+
+
+@wraps(StoreSession.is_available)
+def is_available() -> bool:
+    """See :func:`StoreSession.is_available`."""
+    return current_session().is_available()
 
 
 def init_app(app: Flask) -> None:

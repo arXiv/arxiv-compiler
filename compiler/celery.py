@@ -1,8 +1,7 @@
 """Initialize the Celery application."""
 
-from celery import Celery
-
 from . import celeryconfig
+from celery import Celery
 
 celery_app = Celery('compiler',
                     results=celeryconfig.result_backend,

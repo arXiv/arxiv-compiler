@@ -16,8 +16,9 @@ arxiv-auth = "==0.3.2rc6"
 redis = "==2.10.6"
 jsonschema = "==2.6.0"
 hvac = "*"
-arxiv-vault = "==0.0.13"
+arxiv-vault = "==0.0.19"
 dataclasses = "==0.6"
+docker = "*"
 
 [dev-packages]
 moto = "==1.3.4"

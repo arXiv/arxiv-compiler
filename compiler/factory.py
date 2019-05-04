@@ -10,6 +10,7 @@ from flask import Flask, jsonify
 from arxiv.base import Base
 from arxiv.users import auth
 from arxiv.base.middleware import wrap, request_logs
+from arxiv import vault
 
 from .services import store, FileManager
 from . import routes
@@ -42,7 +43,9 @@ def create_app() -> Flask:
     app.errorhandler(InternalServerError)(jsonify_exception)
     app.errorhandler(NotFound)(jsonify_exception)
 
-    wrap(app, [vault.middleware.VaultMiddleware,
-               auth.middleware.AuthMiddleware])
+    middleware = [auth.middleware.AuthMiddleware]
+    if app.config['VAULT_ENABLED']:
+        middleware.insert(0, vault.middleware.VaultMiddleware)
+    wrap(app, middleware)
 
     return app

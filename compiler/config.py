@@ -24,10 +24,10 @@ cookie as path value.
 JWT_SECRET = os.environ.get('JWT_SECRET', 'foosecret')
 SECRET_KEY = os.environ.get('FLASK_SECRET', 'fooflasksecret')
 
-FILE_MANAGER_HOST = os.environ.get('FILE_MANAGER_HOST', 'arxiv.org')
-FILE_MANAGER_PORT = os.environ.get('FILE_MANAGER_PORT', '443')
-FILE_MANAGER_PROTO = os.environ.get('FILE_MANAGER_PROTO', 'https')
-FILE_MANAGER_PATH = os.environ.get('FILE_MANAGER_PATH', '')
+FILE_MANAGER_HOST = os.environ.get('FILEMANAGER_SERVICE_HOST', 'arxiv.org')
+FILE_MANAGER_PORT = os.environ.get('FILEMANAGER_SERVICE_PORT', '443')
+FILE_MANAGER_PROTO = os.environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO', 'https')
+FILE_MANAGER_PATH = os.environ.get('FILEMANAGER_PATH', 'filemanager/api')
 FILEMANAGER_ENDPOINT = os.environ.get(
     'FILE_MANAGER_ENDPOINT',
     f'{FILE_MANAGER_PROTO}://{FILE_MANAGER_HOST}:{FILE_MANAGER_PORT}'
@@ -41,7 +41,7 @@ FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH',
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 S3_BUCKETS = [
-    ('arxiv', 'arxiv-compiler'),
+    # ('arxiv', 'arxiv-compiler'),
     ('submission', os.environ.get('S3_SUBMISSION_BUCKET'))
 ]
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
@@ -65,6 +65,7 @@ AUTH_UPDATED_SESSION_REF = True
 
 LOGLEVEL = 10
 
+VAULT_ENABLED = bool(int(os.environ.get('VAULT_ENABLED', '0')))
 KUBE_TOKEN = os.environ.get('KUBE_TOKEN', 'fookubetoken')
 VAULT_HOST = os.environ.get('VAULT_HOST', 'foovaulthost')
 VAULT_PORT = os.environ.get('VAULT_PORT', '1234')
@@ -79,5 +80,6 @@ VAULT_REQUESTS = [
      'minimum_ttl': 60},
     {'type': 'aws',
      'name': 'AWS_S3_CREDENTIAL',
+     'mount_point': 'aws-development/',
      'role': os.environ.get('VAULT_CREDENTIAL')}
 ]

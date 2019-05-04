@@ -41,15 +41,25 @@ class FileManager(service.HTTPIntegration):
 
         service_name = "filemanager"
 
-    def exists(self, source_id: str, checksum: str, token: str) -> bool:
-        """Determine whether or not a source package exists."""
-        path = f'/{source_id}/content'
+    def is_available(self) -> bool:
+        """Check our connection to the filemanager service."""
         try:
-            if self.request('head', path, token).headers['ETag'] != checksum:
-                return False
-        except NotFound:
+            response = self.request('get', '/status')
+            return response.status_code == 200
+        except Exception as e:
+            logger.error('Error when calling filemanager: %s', e)
             return False
         return True
+
+    def owner(self, source_id: str, checksum: str, token: str) \
+            -> Optional[str]:
+        """Get the owner of a source package."""
+        path = f'/{source_id}/content'
+
+        response = self.request('head', path, token)
+        if response.headers['ETag'] != checksum:
+            raise RuntimeError('Not the resource we were looking for')
+        return headers.get('ARXIV-OWNER')
 
     def get_source_content(self, source_id: str, token: str,
                            save_to: str = '/tmp') -> SourcePackage:

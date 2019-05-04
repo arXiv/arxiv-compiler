@@ -93,11 +93,19 @@ class AuthorizationFailed(RuntimeError):
     """The request was not authorized."""
 
 
+def is_available() -> bool:
+    """Verify that we can start compilations."""
+    try:
+        do_nothing.apply_async()
+    except Exception:
+        return False
+    return True
+
+
 def start_compilation(source_id: str, checksum: str,
                       output_format: Format = Format.PDF,
                       preferred_compiler: Optional[str] = None,
-                      token: Optional[str] = None,
-                      owner: Optional[str] = None) -> str:
+                      token: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -120,9 +128,11 @@ def start_compilation(source_id: str, checksum: str,
     """
     try:
         logger.debug('Check for source')
-        if not FileManager.exists(source_id, checksum, token):
+        try:
+            owner = FileManager.owner(source_id, checksum, token)
+        except Exception as e:
             logger.debug('No such source')
-            raise TaskCreationFailed('No such source')
+            raise TaskCreationFailed('No such source') from e
     except (exceptions.RequestForbidden, exceptions.RequestUnauthorized):
         logger.debug('Not authorized to check source')
         raise AuthorizationFailed('Not authorized to access source')
@@ -213,6 +223,12 @@ def update_sent_state(sender=None, headers=None, body=None, **kwargs):
     task = celery_app.tasks.get(sender)
     backend = task.backend if task else celery_app.backend
     backend.store_result(headers['id'], None, "SENT")
+
+
+@celery_app.task
+def do_nothing() -> None:
+    """Dummy task used to check the connection to the queue."""
+    return
 
 
 @celery_app.task

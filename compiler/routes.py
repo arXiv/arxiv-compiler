@@ -44,7 +44,8 @@ def resource_id(source_id, checksum, output_format) -> str:
 @blueprint.route('/status', methods=['GET'])
 def get_service_status() -> Union[str, Response]:
     """Get information about the current status of compilation service."""
-    return jsonify({'iam': 'ok'})
+    data, code, head = controllers.service_status()
+    return jsonify(data), code, head
 
 
 @blueprint.route('/', methods=['POST'])
