@@ -6,12 +6,12 @@ Uses S3 as the underlying storage facility.
 The intended use pattern is that a client (e.g. API controller) can check for
 a compilation using the source ID (e.g. file manager source_id), the format,
 and the checksum of the source package (as reported by the FM service) before
-taking any IO-intensive actions. See :meth:`StoreSession.get_status`.
+taking any IO-intensive actions. See :meth:`Store.get_status`.
 
 Similarly, if a client needs to verify that a compilation product is available
-for a specific source checksum, they would use :meth:`StoreSession.get_status`
-before calling :meth:`StoreSession.retrieve`. For that reason,
-:meth:`StoreSession.retrieve` is agnostic about checksums. This cuts down on
+for a specific source checksum, they would use :meth:`Store.get_status`
+before calling :meth:`Store.retrieve`. For that reason,
+:meth:`Store.retrieve` is agnostic about checksums. This cuts down on
 an extra GET request to S3 every time we want to get a compiled resource.
 """
 import json
@@ -43,21 +43,20 @@ def hash_content(body: bytes) -> str:
     return b64encode(md5(body).digest()).decode('utf-8')
 
 
-class StoreSession:
+class Store:
     """Represents an object store session."""
 
     LOG_KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}.log'
     KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}'
     STATUS_KEY = '{src_id}/{chk}/{out_fmt}/status.json'
 
-    def __init__(self, buckets: List[Tuple[str, str]], version: str,
+    def __init__(self, buckets: List[Tuple[str, str]],
                  verify: bool = False, region_name: Optional[str] = None,
                  endpoint_url: Optional[str] = None,
                  aws_access_key_id: Optional[str] = None,
                  aws_secret_access_key: Optional[str] = None) -> None:
         """Initialize with connection config parameters."""
         self.buckets = buckets
-        self.version = version
         self.region_name = region_name
         self.endpoint_url = endpoint_url
         self.aws_access_key_id = aws_access_key_id
@@ -150,6 +149,8 @@ class StoreSession:
         """
         if product.task is None or product.task.source_id is None:
             raise ValueError('source_id must be set')
+        elif product.task.output_format is None:
+            raise TypeError('Output format must not be None')
 
         k = self.KEY.format(src_id=product.task.source_id,
                             chk=product.task.checksum,
@@ -199,6 +200,8 @@ class StoreSession:
         """
         if product.task is None or product.task.source_id is None:
             raise ValueError('source_id must be set')
+        elif product.task.output_format is None:
+            raise TypeError('Output format must not be None')
         key = self.LOG_KEY.format(src_id=product.task.source_id,
                                   chk=product.task.checksum,
                                   out_fmt=product.task.output_format,
@@ -238,6 +241,7 @@ class StoreSession:
             self.client.create_bucket(Bucket=bucket)
 
     def _get(self, key: str, bucket: str = 'arxiv') -> dict:
+        resp: dict
         try:
             resp = self.client.get_object(Bucket=self._bucket(bucket), Key=key)
         except botocore.exceptions.ClientError as e:
@@ -262,89 +266,34 @@ class StoreSession:
             raise RuntimeError(f'No such bucket: {bucket}') from e
         return name
 
+    @classmethod
+    def init_app(cls, app: Flask) -> None:
+        """Set defaults for required configuration parameters."""
+        app.config.setdefault('AWS_REGION', 'us-east-1')
+        app.config.setdefault('AWS_ACCESS_KEY_ID', None)
+        app.config.setdefault('AWS_SECRET_ACCESS_KEY', None)
+        app.config.setdefault('S3_ENDPOINT', None)
+        app.config.setdefault('S3_VERIFY', True)
+        app.config.setdefault('S3_BUCKET', [])
 
-@wraps(StoreSession.create_bucket)
-def create_bucket() -> None:
-    """Create the bucket(s) required to store content."""
-    current_session().create_bucket()
+    @classmethod
+    def get_session(cls) -> 'Store':
+        """Create a new :class:`botocore.client.S3` session."""
+        config = get_application_config()
+        return cls(config['S3_BUCKETS'],
+                   config['S3_VERIFY'],
+                   config['AWS_REGION'],
+                   config['S3_ENDPOINT'],
+                   config['AWS_ACCESS_KEY_ID'],
+                   config['AWS_SECRET_ACCESS_KEY'])
 
-
-@wraps(StoreSession.get_status)
-def get_status(src_id: str, chk: str, out_fmt: Format,
-               bucket: str = 'arxiv') -> Task:
-    """See :func:`StoreSession.get_status`."""
-    return current_session().get_status(src_id, chk, out_fmt, bucket=bucket)
-
-
-@wraps(StoreSession.set_status)
-def set_status(task: Task, bucket: str = 'arxiv') -> None:
-    """See :func:`StoreSession.get_status`."""
-    return current_session().set_status(task, bucket=bucket)
-
-
-@wraps(StoreSession.store)
-def store(product: Product, bucket: str = 'arxiv') -> None:
-    """See :func:`StoreSession.store`."""
-    return current_session().store(product, bucket=bucket)
-
-
-@wraps(StoreSession.store_log)
-def store_log(product: Product, bucket: str = 'arxiv') -> None:
-    """See :func:`StoreSession.store_log`."""
-    return current_session().store_log(product, bucket=bucket)
-
-
-@wraps(StoreSession.retrieve)
-def retrieve(src_id: str, chk: str, out_fmt: Format,
-             bucket: str = 'arxiv') -> Product:
-    """See :func:`StoreSession.retrieve`."""
-    return current_session().retrieve(src_id, chk, out_fmt, bucket=bucket)
-
-
-@wraps(StoreSession.retrieve_log)
-def retrieve_log(src_id: str, chk: str, out_fmt: Format,
-                 bucket: str = 'arxiv') -> Product:
-    """See :func:`StoreSession.retrieve_log`."""
-    return current_session().retrieve_log(src_id, chk, out_fmt, bucket=bucket)
-
-
-@wraps(StoreSession.is_available)
-def is_available() -> bool:
-    """See :func:`StoreSession.is_available`."""
-    return current_session().is_available()
-
-
-def init_app(app: Flask) -> None:
-    """Set defaults for required configuration parameters."""
-    app.config.setdefault('AWS_REGION', 'us-east-1')
-    app.config.setdefault('AWS_ACCESS_KEY_ID', None)
-    app.config.setdefault('AWS_SECRET_ACCESS_KEY', None)
-    app.config.setdefault('S3_ENDPOINT', None)
-    app.config.setdefault('S3_VERIFY', True)
-    app.config.setdefault('S3_BUCKET', [])
-    app.config.setdefault('VERSION', "0.0")
-
-
-def get_session() -> StoreSession:
-    """Create a new :class:`botocore.client.S3` session."""
-    config = get_application_config()
-    access_key = config.get('AWS_ACCESS_KEY_ID')
-    secret_key = config.get('AWS_SECRET_ACCESS_KEY')
-    endpoint = config.get('S3_ENDPOINT')
-    verify = config.get('S3_VERIFY')
-    region = config.get('AWS_REGION')
-    buckets = config.get('S3_BUCKETS')
-    version = config.get('VERSION')
-    return StoreSession(buckets, version, verify, region,
-                        endpoint, access_key, secret_key)
-
-
-def current_session() -> StoreSession:
-    """Get the current store session for this application."""
-    g = get_application_global()
-    if g is None:
-        return get_session()
-    if 'store' not in g:
-        g.store = get_session()
-    store: StoreSession = g.store
-    return store
+    @classmethod
+    def current_session(cls) -> 'Store':
+        """Get the current store session for this application."""
+        g = get_application_global()
+        if g is None:
+            return cls.get_session()
+        if 'store' not in g:
+            g.store = cls.get_session()
+        store: Store = g.store
+        return store

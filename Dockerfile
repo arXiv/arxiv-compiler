@@ -1,6 +1,6 @@
 # arxiv/compiler-worker
 
-FROM arxiv/base:latest
+FROM arxiv/base:0.15.6
 
 # MySQL is needed for the arxiv-auth package.
 RUN yum install -y which mysql mysql-devel && yum -y clean all

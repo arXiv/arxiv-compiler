@@ -76,13 +76,14 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
-    def test_post_request_compilation(self, mock_store, mock_compiler):
+    @mock.patch('compiler.controllers.Store')
+    @mock.patch('compiler.controllers.filemanager.FileManager')
+    def test_post_request_compile(self, mock_fm, mock_store, mock_compiler):
         """POST the ``requestCompilation`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
-
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_fm.current_session.return_value.owner.return_value = None
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -99,10 +100,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_post_compilation_product_exists(self, mock_store, mock_compiler):
         """POST ``requestCompilation`` for existant product."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -120,7 +120,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -137,10 +138,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_product_exists_unauthorized(self, mock_store, mock_compiler):
         """POST ``requestCompilation`` for existant product, wrong owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -158,7 +158,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -173,14 +174,15 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
-    def test_post_task_start_failed(self, mock_store, mock_compiler):
+    @mock.patch('compiler.controllers.Store')
+    @mock.patch('compiler.controllers.filemanager.FileManager')
+    def test_post_task_start_failed(self, mock_fm, mock_store, mock_compiler):
         """Could not start compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
         mock_compiler.TaskCreationFailed = compiler.TaskCreationFailed
-
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_fm.current_session.return_value.owner.return_value = None
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         def raise_creation_failed(*args, **kwargs):
@@ -201,10 +203,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_completed(self, mock_store, mock_compiler):
         """GET the ``getCompilationStatus`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -222,7 +223,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}',
@@ -234,10 +236,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_not_owner(self, mock_store, mock_compiler):
         """Someone other than the owner requests ``getCompilationStatus``."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -255,7 +256,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}',
@@ -267,17 +269,17 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_nonexistant(self, mock_store, mock_compiler):
         """GET ``getCompilationStatus`` for nonexistant task."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.get(
@@ -289,7 +291,7 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_invalid_format(self, mock_store, mock_compiler):
         """GET ``getCompilationStatus`` for unsupported format."""
         source_id = '54'
@@ -304,10 +306,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -326,8 +327,10 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve_log.return_value = comp_log
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve_log.return_value \
+            = comp_log
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
@@ -342,10 +345,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_not_owner(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` by someone who is not the owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -364,8 +366,10 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve_log.return_value = comp_log
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve_log.return_value \
+            = comp_log
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
@@ -376,17 +380,17 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_nononexistant(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` for nonexistant compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
@@ -397,7 +401,7 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_invalid_format(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` for unsupported format."""
         source_id = '54'
@@ -413,10 +417,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -438,8 +441,10 @@ class TestCompilerApp(TestCase):
             stream=io.BytesIO(b'fooproductcontents'),
             checksum='productchxm'
         )
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve.return_value = comp_product
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve.return_value \
+            = comp_product
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
@@ -454,10 +459,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_not_owner(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` by someone not the owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -475,7 +479,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
@@ -486,17 +491,17 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_nononexistant(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` for nonexistant compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
@@ -507,7 +512,7 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_invalid_format(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` for unsupported format."""
         source_id = '54'

@@ -24,7 +24,7 @@ from urllib3.util.retry import Retry
 from werkzeug.datastructures import FileStorage
 
 from arxiv.integration.api import status, service
-from arxiv.integration.api.exceptions import *
+from arxiv.integration.api import exceptions
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
@@ -45,7 +45,7 @@ class FileManager(service.HTTPIntegration):
         """Check our connection to the filemanager service."""
         try:
             response = self.request('get', '/status')
-            return response.status_code == 200
+            return bool(response.status_code == 200)
         except Exception as e:
             logger.error('Error when calling filemanager: %s', e)
             return False
@@ -59,7 +59,8 @@ class FileManager(service.HTTPIntegration):
         response = self.request('head', path, token)
         if response.headers['ETag'] != checksum:
             raise RuntimeError('Not the resource we were looking for')
-        return headers.get('ARXIV-OWNER')
+        owner: Optional[str] = response.headers.get('ARXIV-OWNER')
+        return owner
 
     def get_source_content(self, source_id: str, token: str,
                            save_to: str = '/tmp') -> SourcePackage:

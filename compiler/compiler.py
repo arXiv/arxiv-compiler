@@ -48,7 +48,8 @@ Always do this:
 """
 
 import os
-from typing import List, Dict, Optional, Tuple, Callable
+from typing import List, Dict, Optional, Tuple, Callable, Any, Mapping, \
+    Hashable
 from functools import wraps
 from itertools import chain
 import subprocess
@@ -69,7 +70,7 @@ from celery.task.control import inspect
 from .celery import celery_app
 from .domain import Product, Task, Format, Status, \
     SourcePackage, Reason
-from .services import store
+from .services import Store
 from .services import FileManager
 
 logger = logging.getLogger(__name__)
@@ -106,10 +107,12 @@ def is_available() -> bool:
 
 
 def start_compilation(source_id: str, checksum: str,
-                      stamp_label: str, stamp_link: str,
+                      stamp_label: Optional[str] = None,
+                      stamp_link: Optional[str] = None,
                       output_format: Format = Format.PDF,
                       preferred_compiler: Optional[str] = None,
-                      token: Optional[str] = None) -> str:
+                      token: Optional[str] = None,
+                      owner: Optional[str] = None) -> str:
     """
     Create a new compilation task.
 
@@ -130,17 +133,6 @@ def start_compilation(source_id: str, checksum: str,
         The identifier for the created compilation task.
 
     """
-    try:
-        logger.debug('Check for source')
-        try:
-            owner = FileManager.owner(source_id, checksum, token)
-        except Exception as e:
-            logger.debug('No such source')
-            raise TaskCreationFailed('No such source') from e
-    except (exceptions.RequestForbidden, exceptions.RequestUnauthorized):
-        logger.debug('Not authorized to check source')
-        raise AuthorizationFailed('Not authorized to access source')
-
     task_id = _get_task_id(source_id, checksum, output_format)
     try:
         do_compile.apply_async(
@@ -158,14 +150,13 @@ def start_compilation(source_id: str, checksum: str,
         logger.error('Failed to create task: %s', e)
         raise TaskCreationFailed('Failed to create task: %s', e) from e
 
-    store.set_status(Task(**{
-        'source_id': source_id,
-        'checksum': checksum,
-        'output_format': output_format,
-        'status': Status.IN_PROGRESS,
-        'task_id': _get_task_id(source_id, checksum, output_format),
-        'owner': owner
-    }))
+    store = Store.current_session()
+    store.set_status(Task(source_id=source_id,
+                          checksum=checksum,
+                          output_format=output_format,
+                          status=Status.IN_PROGRESS,
+                          task_id=task_id,
+                          owner=owner))
     return task_id
 
 
@@ -173,7 +164,8 @@ def _get_task_kwargs(task_id: str) -> dict:
     i = inspect()
     for t in chain(i.active(), i.reserved(), i.scheduled()):
         if i['id'] == task_id:
-            return i['kwargs']
+            kwargs: dict = i['kwargs']
+            return kwargs
     raise RuntimeError('Task not found')
 
 
@@ -199,36 +191,43 @@ def get_task(source_id: str, checksum: str,
     """
     task_id = _get_task_id(source_id, checksum, output_format)
     result = do_compile.AsyncResult(task_id)
-    data = {
-        'source_id': source_id,
-        'checksum': checksum,
-        'output_format': output_format,
-        'task_id': _get_task_id(source_id, checksum, output_format)
-    }
+    task_status = Status.IN_PROGRESS
+    owner: Optional[str] = None
+    reason = Reason.NONE
     if result.status == 'PENDING':
-        raise NoSuchTask('No such task')
+        raise NoSuchTask(f'No such task: {task_id}')
     elif result.status in ['SENT', 'STARTED', 'RETRY']:
-        data['status'] = Status.IN_PROGRESS
+        task_status = Status.IN_PROGRESS
     elif result.status == 'FAILURE':
-        data['status'] = Status.FAILED
+        task_status = Status.FAILED
     elif result.status == 'SUCCESS':
         _result: Dict[str, str] = result.result
         if 'status' in _result:
-            data['status'] = Status(_result['status'])
+            task_status = Status(_result['status'])
         else:
-            data['status'] = Status.COMPLETED
-        data['reason'] = Reason(_result.get('reason'))
+            task_status = Status.COMPLETED
+        reason = Reason(_result.get('reason'))
         if 'owner' in _result:
-            data['owner'] = _result['owner']
-    return Task(**data)
+            owner = _result['owner']
+    return Task(source_id=source_id,
+                checksum=checksum,
+                output_format=output_format,
+                task_id=task_id,
+                status=task_status,
+                reason=reason,
+                owner=owner)
 
 
 @after_task_publish.connect
-def update_sent_state(sender=None, headers=None, body=None, **kwargs):
+def update_sent_state(sender: Optional[Hashable] = None,
+                      headers: Optional[Mapping] = None,
+                      body: Optional[Any] = None,
+                      **kwargs: Any) -> None:
     """Set state to SENT, so that we can tell whether a task exists."""
     task = celery_app.tasks.get(sender)
     backend = task.backend if task else celery_app.backend
-    backend.store_result(headers['id'], None, "SENT")
+    if headers is not None:
+        backend.store_result(headers['id'], None, "SENT")
 
 
 @celery_app.task
@@ -270,39 +269,53 @@ def do_compile(source_id: str, checksum: str,
     """
     logger.debug("do compile for %s @ %s to %s", source_id, checksum,
                  output_format)
-    output_format = Format(output_format)
+    fm = FileManager.current_session()
 
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     verbose = current_app.config['VERBOSE_COMPILE']
     source_dir = tempfile.mkdtemp(dir=container_source_root)
-    task_id = _get_task_id(source_id, checksum, output_format)
+    task_id = _get_task_id(source_id, checksum, Format(output_format))
     out_path: Optional[str] = None
     log_path: Optional[str] = None
+    size_bytes = 0
 
-    info = {
-        'task_id': task_id,
-        'source_id': source_id,
-        'output_format': output_format,
-        'checksum': checksum,
-        'owner': owner
-    }
     stat = None
     try:
-        source = FileManager.get_source_content(source_id, token,
-                                                save_to=source_dir)
+        source = fm.get_source_content(source_id, token, save_to=source_dir)
         logger.debug(f"{source_id} etag: {source.etag}")
     except (exceptions.RequestUnauthorized, exceptions.RequestForbidden):
         description = "There was a problem authorizing your request."
-        stat = Task(status=Status.FAILED, reason=Reason.AUTHORIZATION,
-                    description=description, **info)
+        stat = Task(status=Status.FAILED,
+                    reason=Reason.AUTHORIZATION,
+                    description=description,
+                    source_id=source_id,
+                    output_format=Format(output_format),
+                    checksum=checksum,
+                    task_id=task_id,
+                    owner=owner,
+                    size_bytes=size_bytes)
     except exceptions.ConnectionFailed:
         description = "There was a problem retrieving your source files."
-        stat = Task(status=Status.FAILED, reason=Reason.NETWORK,
-                    description=description, **info)
+        stat = Task(status=Status.FAILED,
+                    reason=Reason.NETWORK,
+                    description=description,
+                    source_id=source_id,
+                    output_format=Format(output_format),
+                    checksum=checksum,
+                    task_id=task_id,
+                    owner=owner,
+                    size_bytes=size_bytes)
     except exceptions.NotFound:
         description = 'Could not retrieve a matching source package'
-        stat = Task(status=Status.FAILED, reason=Reason.MISSING,
-                    description=description, **info)
+        stat = Task(status=Status.FAILED,
+                    reason=Reason.MISSING,
+                    description=description,
+                    source_id=source_id,
+                    output_format=Format(output_format),
+                    checksum=checksum,
+                    task_id=task_id,
+                    owner=owner,
+                    size_bytes=size_bytes)
 
     """
     if source.etag != checksum:
@@ -316,25 +329,52 @@ def do_compile(source_id: str, checksum: str,
     if not stat:
         try:
             out_path, log_path = _run(source,
-                                      stamp_label=stamp_label, stamp_link=stamp_link,
-                                      output_format=output_format,
+                                      stamp_label=stamp_label,
+                                      stamp_link=stamp_link,
+                                      output_format=Format(output_format),
                                       verbose=verbose)
             if out_path is not None:
-                info['size_bytes'] = _file_size(out_path)
+                size_bytes = _file_size(out_path)
         except CorruptedSource:
-            stat = Task(status=Status.FAILED, reason=Reason.CORRUPTED, **info)
-
+            stat = Task(status=Status.FAILED,
+                        reason=Reason.CORRUPTED,
+                        source_id=source_id,
+                        output_format=Format(output_format),
+                        checksum=checksum,
+                        task_id=task_id,
+                        owner=owner,
+                        size_bytes=size_bytes)
     if not stat:
         if out_path is not None:
-            stat = Task(status=Status.COMPLETED, **info)
+            stat = Task(status=Status.COMPLETED,
+                        source_id=source_id,
+                        output_format=Format(output_format),
+                        checksum=checksum,
+                        task_id=task_id,
+                        owner=owner,
+                        size_bytes=size_bytes)
         else:
-            stat = Task(status=Status.FAILED, reason=Reason.ERROR, **info)
+            stat = Task(status=Status.FAILED,
+                        reason=Reason.ERROR,
+                        source_id=source_id,
+                        output_format=Format(output_format),
+                        checksum=checksum,
+                        task_id=task_id,
+                        owner=owner,
+                        size_bytes=size_bytes)
     # Store the result.
     try:
         _store_compilation_result(stat, out_path, log_path)
     except RuntimeError as e:
-        stat = Task(status=Status.FAILED, reason=Reason.STORAGE,
-                    description=str(e), **info)
+        stat = Task(status=Status.FAILED,
+                    reason=Reason.STORAGE,
+                    description=str(e),
+                    source_id=source_id,
+                    output_format=Format(output_format),
+                    checksum=checksum,
+                    task_id=task_id,
+                    owner=owner,
+                    size_bytes=size_bytes)
 
     # Clean up!
     try:
@@ -349,6 +389,7 @@ def _store_compilation_result(status: Task, out_path: Optional[str],
                               log_path: Optional[str]) -> None:
     """Store the status and output (including log) of compilation."""
     logger.debug('_store_compilation_result: %s %s', out_path, log_path)
+    store = Store.current_session()
     if out_path is not None:
         try:
             with open(out_path, 'rb') as f:
@@ -389,6 +430,7 @@ def _run(source: SourcePackage,
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
     host_source_dir = os.path.join(host_source_root, leaf_path)
+    out_path: Optional[str]
 
     options = [
         (True, '-S /autotex'),

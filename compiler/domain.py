@@ -1,6 +1,6 @@
 """Domain class for the compiler service."""
 
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, BinaryIO, Dict
 import io
 from datetime import datetime
 from .util import ResponseStream
@@ -17,20 +17,21 @@ class Format(Enum):
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
-        return self.value
+        value: str = self.value
+        return value
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         """The mime-type for this format."""
-        _ctypes = {
-            self.PDF: 'application/pdf',
-            self.DVI: 'application/x-dvi',
-            self.PS: 'application/postscript'
+        _ctypes: Dict['Format', str] = {
+            Format.PDF: 'application/pdf',
+            Format.DVI: 'application/x-dvi',
+            Format.PS: 'application/postscript'
         }
         return _ctypes[self]
 
 
-class Status(Enum):      # type: ignore
+class Status(Enum):
     """Represents the status of a requested compilation."""
 
     COMPLETED = "completed"
@@ -54,10 +55,6 @@ class Reason(Enum):
 
 class Task(NamedTuple):
     """Represents the state of a compilation product in the store."""
-
-    # These are intended as fixed class attributes, not slots.
-    Formats = Format
-    Statuses = Status
 
     # Here are the actual slots/fields.
     status: Status
@@ -96,17 +93,21 @@ class Task(NamedTuple):
     size_bytes: int = 0
     """Size of the product."""
 
-    owner: str = ""
+    owner: Optional[str] = None
     """The owner of this resource."""
 
     @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
+        if self.output_format is None:
+            raise TypeError('Output format `None` has no extension')
         return self.output_format.ext
 
     @property
-    def content_type(self):
+    def content_type(self) -> str:
         """Mime type for the output format of this compilation."""
+        if self.output_format is None:
+            raise TypeError('Output format `None` has no content type')
         return self.output_format.content_type
 
     def to_dict(self) -> dict:
@@ -137,7 +138,7 @@ class Task(NamedTuple):
 class Product(NamedTuple):
     """Content of a compilation product itself."""
 
-    stream: io.BytesIO
+    stream: BinaryIO
     """Readable buffer with the product content."""
 
     task: Optional[Task] = None

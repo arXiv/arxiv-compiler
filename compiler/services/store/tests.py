@@ -5,7 +5,8 @@ from moto import mock_s3
 import io
 from datetime import datetime
 
-from .. import store
+from .. import Store
+from .. import store as store_
 from ... import domain
 
 mock_app_config = mock.MagicMock(return_value={
@@ -16,7 +17,8 @@ mock_app_config = mock.MagicMock(return_value={
         ('submission', 'arxiv-compiler-submission')
     ],
     'AWS_ACCESS_KEY_ID': 'foo_id',
-    'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+    'AWS_SECRET_ACCESS_KEY': 'foosecretkey',
+    'AWS_REGION': 'us-east-1'
 })
 
 
@@ -24,10 +26,11 @@ class TestStore(TestCase):
     """Test methods on :mod:`compiler.services.store`."""
 
     @mock_s3
-    @mock.patch(f'{store.__name__}.get_application_config', mock_app_config)
+    @mock.patch(f'{store_.__name__}.get_application_config', mock_app_config)
     def test_set_get_compilation_status(self):
         """Test setting and getting compilation status."""
-        store.current_session().create_bucket()
+        store = Store.current_session()
+        store.create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -42,11 +45,11 @@ class TestStore(TestCase):
         self.assertEqual(status_pdf, retrieved)
 
         # No compilation product for that checksum.
-        with self.assertRaises(store.DoesNotExist):
+        with self.assertRaises(store_.DoesNotExist):
             store.get_status('12345', 'foocheck',
                              domain.Format.PDF)
         # No compilation product for that format.
-        with self.assertRaises(store.DoesNotExist):
+        with self.assertRaises(store_.DoesNotExist):
             store.get_status('12345', 'abc123checksum',
                              domain.Format.PS)
 
@@ -95,11 +98,12 @@ class TestStore(TestCase):
         self.assertEqual(status_ps_alt, retrieved_ps)
 
     @mock_s3
-    @mock.patch(f'{store.__name__}.get_application_config', mock_app_config)
+    @mock.patch(f'{store_.__name__}.get_application_config', mock_app_config)
     def test_store_retrieve(self):
         """Test storing and retrieving compilation products."""
+        store = Store.current_session()
         content = io.BytesIO(b'somepdfcontent')
-        store.current_session().create_bucket()
+        store.create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -119,16 +123,17 @@ class TestStore(TestCase):
                                   domain.Format.PDF)
         self.assertEqual(returned.stream.read(), b'somepdfcontent')
 
-        with self.assertRaises(store.DoesNotExist):
+        with self.assertRaises(store_.DoesNotExist):
             store.retrieve('12345', 'foocheck',
                            domain.Format.PS)
 
     @mock_s3
-    @mock.patch(f'{store.__name__}.get_application_config', mock_app_config)
+    @mock.patch(f'{store_.__name__}.get_application_config', mock_app_config)
     def test_store_retrieve_log(self):
         """Test storing and retrieving compilation logs."""
+        store = Store.current_session()
         content = io.BytesIO(b'some log output')
-        store.current_session().create_bucket()
+        store.create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -144,6 +149,6 @@ class TestStore(TestCase):
                                       domain.Format.PDF)
         self.assertEqual(returned.stream.read(), b'some log output')
 
-        with self.assertRaises(store.DoesNotExist):
+        with self.assertRaises(store_.DoesNotExist):
             store.retrieve('12345', 'foocheck',
                            domain.Format.PS)
