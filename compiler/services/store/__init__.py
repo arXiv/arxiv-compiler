@@ -274,7 +274,7 @@ class Store:
         app.config.setdefault('AWS_SECRET_ACCESS_KEY', None)
         app.config.setdefault('S3_ENDPOINT', None)
         app.config.setdefault('S3_VERIFY', True)
-        app.config.setdefault('S3_BUCKET', [])
+        app.config.setdefault('S3_BUCKETS', [])
 
     @classmethod
     def get_session(cls) -> 'Store':

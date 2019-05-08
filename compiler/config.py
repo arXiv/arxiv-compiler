@@ -1,6 +1,7 @@
 """Configuration for the compiler service."""
 
 import os
+import tempfile
 
 DEBUG = os.environ.get('DEBUG') == '1'
 """enable/disable debug mode"""
@@ -24,25 +25,26 @@ cookie as path value.
 JWT_SECRET = os.environ.get('JWT_SECRET', 'foosecret')
 SECRET_KEY = os.environ.get('FLASK_SECRET', 'fooflasksecret')
 
-FILE_MANAGER_HOST = os.environ.get('FILEMANAGER_SERVICE_HOST', 'arxiv.org')
-FILE_MANAGER_PORT = os.environ.get('FILEMANAGER_SERVICE_PORT', '443')
-FILE_MANAGER_PROTO = os.environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO', 'https')
-FILE_MANAGER_PATH = os.environ.get('FILEMANAGER_PATH', 'filemanager/api')
+FILEMANAGER_HOST = os.environ.get('FILEMANAGER_SERVICE_HOST', 'arxiv.org')
+FILEMANAGER_PORT = os.environ.get('FILEMANAGER_SERVICE_PORT', '443')
+FILEMANAGER_PROTO = os.environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO', 'https')
+FILEMANAGER_PATH = os.environ.get('FILEMANAGER_PATH', 'filemanager/api')
 FILEMANAGER_ENDPOINT = os.environ.get(
-    'FILE_MANAGER_ENDPOINT',
-    f'{FILE_MANAGER_PROTO}://{FILE_MANAGER_HOST}:{FILE_MANAGER_PORT}'
-    f'/{FILE_MANAGER_PATH}'
+    'FILEMANAGER_ENDPOINT',
+    f'{FILEMANAGER_PROTO}://{FILEMANAGER_HOST}:{FILEMANAGER_PORT}'
+    f'/{FILEMANAGER_PATH}'
 )
-FILEMANAGER_VERIFY = bool(int(os.environ.get('FILE_MANAGER_VERIFY', '1')))
-FILE_MANAGER_CONTENT_PATH = os.environ.get('FILE_MANAGER_CONTENT_PATH',
+FILEMANAGER_VERIFY = bool(int(os.environ.get('FILEMANAGER_VERIFY', '1')))
+FILEMANAGER_CONTENT_PATH = os.environ.get('FILEMANAGER_CONTENT_PATH',
                                            '/{source_id}/content')
 
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 S3_BUCKETS = [
-    # ('arxiv', 'arxiv-compiler'),
-    ('submission', os.environ.get('S3_SUBMISSION_BUCKET'))
+    ('arxiv', 'arxiv-compiler'),
+    ('submission', os.environ.get('S3_SUBMISSION_BUCKET',
+                                  'arxiv-compiler-submission'))
 ]
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
@@ -52,7 +54,7 @@ REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
 
 COMPILER_DOCKER_IMAGE = os.environ.get('COMPILER_DOCKER_IMAGE')
 
-HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', '/tmp')
+HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', tempfile.mkdtemp())
 """Temporary directories containing source packages go in here."""
 
 CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
@@ -71,15 +73,18 @@ VAULT_HOST = os.environ.get('VAULT_HOST', 'foovaulthost')
 VAULT_PORT = os.environ.get('VAULT_PORT', '1234')
 VAULT_ROLE = os.environ.get('VAULT_ROLE', 'compiler')
 VAULT_CERT = os.environ.get('VAULT_CERT')
+VAULT_SCHEME = os.environ.get('VAULT_SCHEME', 'https')
+NAMESPACE = os.environ.get('NAMESPACE')
+NS_AFFIX = '' if NAMESPACE == 'production' else f'-{NAMESPACE}'
 VAULT_REQUESTS = [
     {'type': 'generic',
      'name': 'JWT_SECRET',
-     'mount_point': 'secret-development/',
+     'mount_point': f'secret{NS_AFFIX}/',
      'path': 'jwt',
      'key': 'jwt-secret',
-     'minimum_ttl': 60},
+     'minimum_ttl': 3600},
     {'type': 'aws',
      'name': 'AWS_S3_CREDENTIAL',
-     'mount_point': 'aws-development/',
+     'mount_point': f'aws{NS_AFFIX}/',
      'role': os.environ.get('VAULT_CREDENTIAL')}
 ]

@@ -30,7 +30,7 @@ class TestStore(TestCase):
     def test_set_get_compilation_status(self):
         """Test setting and getting compilation status."""
         store = Store.current_session()
-        store.create_bucket()
+        store.Store.current_session().create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -103,7 +103,7 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation products."""
         store = Store.current_session()
         content = io.BytesIO(b'somepdfcontent')
-        store.create_bucket()
+        store.Store.current_session().create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -133,7 +133,7 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation logs."""
         store = Store.current_session()
         content = io.BytesIO(b'some log output')
-        store.create_bucket()
+        store.Store.current_session().create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,

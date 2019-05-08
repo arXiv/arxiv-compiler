@@ -41,7 +41,8 @@ def authorizer(scope: Scope) -> Callable[[Task], bool]:
     """Make an authorizer function for injection into a controller."""
     def inner(task: Task) -> bool:
         """Check whether the session is authorized for a specific resource."""
-        # return True
+        if not task.owner:  # If there is no owner, this is a public resource.
+            return True
         return (request.auth.is_authorized(scope, task.task_id)
                 or (request.auth.user
                     and str(request.auth.user.user_id) == str(task.owner)))
