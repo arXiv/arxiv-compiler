@@ -1,5 +1,5 @@
-compiler package
-================
+compiler.services package
+=========================
 
 .. automodule:: compiler.services
     :members:
@@ -13,3 +13,4 @@ Subpackages
 
     compiler.services.filemanager
     compiler.services.store
+

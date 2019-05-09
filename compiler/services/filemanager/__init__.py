@@ -11,7 +11,7 @@ A key requirement for this integration is the ability to pass uploads to
 the file management service as they are being received by this UI application.
 """
 from functools import wraps
-from typing import MutableMapping, Tuple, Optional, Any
+from typing import MutableMapping, Tuple, Optional, Any, Hashable
 import json
 import re
 import os
@@ -24,13 +24,21 @@ from urllib3.util.retry import Retry
 from werkzeug.datastructures import FileStorage
 
 from arxiv.integration.api import status, service
-from arxiv.integration.api.exceptions import *
+from arxiv.integration.api import exceptions
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config, get_application_global
 
 from ...domain import SourcePackageInfo, SourcePackage
 
 logger = logging.getLogger(__name__)
+
+
+class Default(dict):
+    """A more palatable dict for string formatting."""
+
+    def __missing__(self, key: str) -> str:
+        """Return a key when missing rather than raising a KeyError."""
+        return key
 
 
 class FileManager(service.HTTPIntegration):
@@ -41,15 +49,30 @@ class FileManager(service.HTTPIntegration):
 
         service_name = "filemanager"
 
-    def exists(self, source_id: str, checksum: str, token: str) -> bool:
-        """Determine whether or not a source package exists."""
-        path = f'/{source_id}/content'
+    def is_available(self) -> bool:
+        """Check our connection to the filemanager service."""
+        config = get_application_config()
+        status_endpoint = config.get('FILEMANAGER_STATUS_ENDPOINT', '/status')
         try:
-            if self.request('head', path, token).headers['ETag'] != checksum:
-                return False
-        except NotFound:
+            response = self.request('get', status_endpoint)
+            return bool(response.status_code == 200)
+        except Exception as e:
+            logger.error('Error when calling filemanager: %s', e)
             return False
         return True
+
+    def owner(self, source_id: str, checksum: str, token: str) \
+            -> Optional[str]:
+        """Get the owner of a source package."""
+        config = get_application_config()
+        content_endpoint = config.get('FILEMANAGER_CONTENT_PATH',
+                                      '/{source_id}/content')
+        path = content_endpoint.format_map(Default(source_id=source_id))
+        response = self.request('head', path, token)
+        if response.headers['ETag'] != checksum:
+            raise RuntimeError('Not the resource we were looking for')
+        owner: Optional[str] = response.headers.get('ARXIV-OWNER')
+        return owner
 
     def get_source_content(self, source_id: str, token: str,
                            save_to: str = '/tmp') -> SourcePackage:
@@ -70,7 +93,10 @@ class FileManager(service.HTTPIntegration):
 
         """
         logger.debug('Get upload content for: %s', source_id)
-        path = f'/{source_id}/content'
+        config = get_application_config()
+        content_endpoint = config.get('FILEMANAGER_CONTENT_PATH',
+                                      '/{source_id}/content')
+        path = content_endpoint.format_map(Default(source_id=source_id))
         response = self.request('get', path, token)
         logger.debug('Got response with status %s', response.status_code)
         source_file_path = self._save_content(path, source_id, response,
@@ -115,6 +141,10 @@ class FileManager(service.HTTPIntegration):
 
         """
         logger.debug('Get upload info for: %s', source_id)
-        response, _, headers = self.json('get', f'/{source_id}/content', token)
+        config = get_application_config()
+        content_endpoint = config.get('FILEMANAGER_CONTENT_PATH',
+                                      '/{source_id}/content')
+        path = content_endpoint.format_map(Default(source_id=source_id))
+        response, _, headers = self.json('get', path, token)
         logger.debug('Got response with etag %s', headers['ETag'])
         return SourcePackageInfo(source_id=source_id, etag=headers['ETag'])

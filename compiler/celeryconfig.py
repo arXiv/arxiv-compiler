@@ -10,14 +10,37 @@ from urllib import parse
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-# AWS_SECRET_KEY = parse.quote(AWS_SECRET_KEY, safe='')
-# broker_url = "sqs://{}:{}@".format(AWS_ACCESS_KEY, AWS_SECRET_KEY)
 REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
+"""Hostname of the Redis cluster endpoint."""
+
 broker_url = "redis://%s:6379/0" % REDIS_ENDPOINT
+"""URI for the Redis cluster endpoint used for task queue."""
+
 result_backend = "redis://%s:6379/0" % REDIS_ENDPOINT
+"""URI for the Redis cluster endpoint used as a result backend."""
+
 broker_transport_options = {
-    # 'region': os.environ.get('AWS_REGION', 'us-east-1'),
     'queue_name_prefix': 'compiler-',
+    'max_retries': 5,
+    'interval_start': 0,
+    'interval_step': 0.5,
+    'interval_max': 3,
 }
 worker_prefetch_multiplier = 1
+"""Don't let workers grab a whole bunch of tasks at once."""
+
 task_acks_late = True
+"""
+Tasks are not acknowledged until they are finished.
+
+This is intended to provide durability in cases where the worker disappears
+in the middle of processing a task. The goal is that a task is performed to
+completion once.
+"""
+
+task_publish_retry_policy = {
+    'max_retries': 5,
+    'interval_start': 0,
+    'interval_max': 1,
+    'interval_step': 0.2
+}

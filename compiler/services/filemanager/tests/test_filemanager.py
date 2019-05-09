@@ -26,7 +26,7 @@ class TestServiceStatus(TestCase):
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
                 return_value=mock.MagicMock(
-                    status_code=status.HTTP_200_OK,
+                    status_code=status.OK,
                     json=mock.MagicMock(return_value={'iam': 'ok'})
                 )
             )
@@ -38,7 +38,7 @@ class TestServiceStatus(TestCase):
 class TestGetUploadInfo(TestCase):
     """:func:`FileManager.get_upload_info` returns the current ETag."""
 
-    def session(self, status_code=status.HTTP_200_OK, method="get", json={},
+    def session(self, status_code=status.OK, method="get", json={},
                 content="", headers={}):
         """Make a mock session."""
         return mock.MagicMock(**{
@@ -71,7 +71,7 @@ class TestGetUploadInfo(TestCase):
     def test_get_upload_info_nonexistant(self, mock_Session):
         """Get info for an upload workspace that does not exist."""
         source_id = '123456'
-        mock_Session.return_value = self.session(status.HTTP_404_NOT_FOUND)
+        mock_Session.return_value = self.session(status.NOT_FOUND)
 
         with self.assertRaises(exceptions.NotFound):
             FileManager.get_upload_info(source_id, 'footoken')
@@ -81,7 +81,7 @@ class TestGetUploadInfo(TestCase):
     def test_get_upload_info_bad_request(self, mock_Session):
         """We made a bad request."""
         source_id = '123456'
-        mock_Session.return_value = self.session(status.HTTP_400_BAD_REQUEST)
+        mock_Session.return_value = self.session(status.BAD_REQUEST)
         with self.assertRaises(exceptions.BadRequest):
             FileManager.get_upload_info(source_id, 'footoken')
 
@@ -90,7 +90,7 @@ class TestGetUploadInfo(TestCase):
     def test_get_upload_info_unauthorized(self, mock_Session):
         """We made an unauthorized request."""
         source_id = '123456'
-        mock_Session.return_value = self.session(status.HTTP_401_UNAUTHORIZED)
+        mock_Session.return_value = self.session(status.UNAUTHORIZED)
         with self.assertRaises(exceptions.RequestUnauthorized):
             FileManager.get_upload_info(source_id, 'footoken')
 
@@ -99,7 +99,7 @@ class TestGetUploadInfo(TestCase):
     def test_get_upload_info_forbidden(self, mock_Session):
         """We made a forbidden request."""
         source_id = '123456'
-        mock_Session.return_value = self.session(status.HTTP_403_FORBIDDEN)
+        mock_Session.return_value = self.session(status.FORBIDDEN)
 
         with self.assertRaises(exceptions.RequestForbidden):
             FileManager.get_upload_info(source_id, 'footoken')
@@ -110,7 +110,7 @@ class TestGetUploadInfo(TestCase):
         """FM service replied 500 Internal Server Error."""
         source_id = '123456'
         mock_Session.return_value = self.session(
-            status.HTTP_500_INTERNAL_SERVER_ERROR
+            status.INTERNAL_SERVER_ERROR
         )
 
         with self.assertRaises(exceptions.RequestFailed):
@@ -128,7 +128,7 @@ class TestGetUploadInfo(TestCase):
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
                 return_value=mock.MagicMock(
-                    status_code=status.HTTP_200_OK,
+                    status_code=status.OK,
                     json=mock.MagicMock(side_effect=raise_JSONDecodeError)
                 )
             )
@@ -170,7 +170,7 @@ class TestGetUploadInfo(TestCase):
 class TestGetUpload(TestCase):
     """:func:`FileManager.get_upload` returns the upload content."""
 
-    def session(self, status_code=status.HTTP_200_OK, method="get", json={},
+    def session(self, status_code=status.OK, method="get", json={},
                 content="", headers={}):
         """Make a mock session."""
         return mock.MagicMock(**{
@@ -197,7 +197,7 @@ class TestGetUpload(TestCase):
         mock_Session.return_value = mock.MagicMock(
             get=mock.MagicMock(
                 return_value=mock.MagicMock(
-                    status_code=status.HTTP_200_OK,
+                    status_code=status.OK,
                     iter_content=mock_iter_content,
                     headers={'ETag': etag}
                 )
@@ -214,6 +214,6 @@ class TestGetUpload(TestCase):
     def test_get_upload_nonexistant(self, mock_Session):
         """Get info for an upload workspace that does not exist."""
         source_id = '123456'
-        mock_Session.return_value = self.session(status.HTTP_404_NOT_FOUND)
+        mock_Session.return_value = self.session(status.NOT_FOUND)
         with self.assertRaises(exceptions.NotFound):
             FileManager.get_source_content(source_id, 'footoken')

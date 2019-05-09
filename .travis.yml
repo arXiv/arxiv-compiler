@@ -16,3 +16,17 @@ script:
   - pipenv run nose2 --with-coverage
 after_success:
   - coveralls
+  - "./tests/lintstats.sh"
+deploy:
+- provider: script
+  script:
+    ./deploy/make_and_push_images.sh compiler
+  on:
+    all_branches: true
+- provider: script
+  script:
+    ./deploy/make_and_push_images.sh compiler &&
+    ./deploy/install_helm.sh development &&
+    ./deploy/publish_helm_chart.sh
+  on:
+    tags: true

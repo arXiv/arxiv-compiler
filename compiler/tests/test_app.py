@@ -3,7 +3,7 @@
 from unittest import TestCase, mock
 import io
 
-from arxiv.integration.api import status
+from arxiv.integration.api import status, service
 from arxiv.users.helpers import generate_token
 from arxiv.users.auth import scopes
 
@@ -22,6 +22,10 @@ class TestCompilerApp(TestCase):
         self.app = factory.create_app()
         self.client = self.app.test_client()
         self.app.config['JWT_SECRET'] = 'foosecret'
+        self.app.config['S3_BUCKETS'] = [
+            # ('arxiv', 'arxiv-compiler'),
+            ('submission', 'test-submission-bucket')
+        ]
         self.user_id = '123'
         with self.app.app_context():
             self.token = generate_token(self.user_id, 'foo@user.com',
@@ -39,18 +43,22 @@ class TestCompilerApp(TestCase):
         """Raise :class:`compiler.NoSuchTask`."""
         raise compiler.NoSuchTask('Nada')
 
-    def test_get_status(self):
+    @mock.patch(f'{compiler.__name__}.do_nothing', mock.MagicMock())
+    @mock.patch(f'{service.__name__}.requests.Session')
+    @mock.patch(f'{store.__name__}.boto3.client', mock.MagicMock())
+    def test_get_status(self, mock_session):
         """GET the ``getServiceStatus`` endpoint."""
+        mock_session.return_value.get.return_value.status_code = status.OK
         response = self.client.get('/status')
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
 
     def test_get_nonexistant(self):
         """GET a nonexistant endpoint."""
         response = self.client.get('/nowhere')
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
         self.assertEqual(
             response.json,
-            {'reason': 'The requested URL was not found on the server.  If you'
+            {'reason': 'The requested URL was not found on the server. If you'
                        ' entered the URL manually please check your spelling'
                        ' and try again.'}
         )
@@ -59,7 +67,7 @@ class TestCompilerApp(TestCase):
     def test_post_bad_request(self):
         """POST the ``requestCompilation`` endpoint without data."""
         response = self.client.post('/', headers={'Authorization': self.token})
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
         self.assertEqual(
             response.json,
             {'reason': 'The browser (or proxy) sent a request that this server'
@@ -68,13 +76,14 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
-    def test_post_request_compilation(self, mock_store, mock_compiler):
+    @mock.patch('compiler.controllers.Store')
+    @mock.patch('compiler.controllers.filemanager.FileManager')
+    def test_post_request_compile(self, mock_fm, mock_store, mock_compiler):
         """POST the ``requestCompilation`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
-
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_fm.current_session.return_value.owner.return_value = None
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -85,16 +94,15 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        self.assertEqual(response.status_code, status.ACCEPTED)
         self.assertEqual(response.headers['Location'],
                          'http://localhost/54/a1b2c3d4%3D/pdf')
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_post_compilation_product_exists(self, mock_store, mock_compiler):
         """POST ``requestCompilation`` for existant product."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -112,7 +120,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -123,16 +132,15 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_303_SEE_OTHER)
+        self.assertEqual(response.status_code, status.SEE_OTHER)
         self.assertEqual(response.headers['Location'],
                          f'http://localhost/{source_id}/a1b2c3d4%3D/{fmt}')
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_product_exists_unauthorized(self, mock_store, mock_compiler):
         """POST ``requestCompilation`` for existant product, wrong owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -150,7 +158,8 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.post('/', json={
@@ -161,18 +170,19 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
-    def test_post_task_start_failed(self, mock_store, mock_compiler):
+    @mock.patch('compiler.controllers.Store')
+    @mock.patch('compiler.controllers.filemanager.FileManager')
+    def test_post_task_start_failed(self, mock_fm, mock_store, mock_compiler):
         """Could not start compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
         mock_compiler.TaskCreationFailed = compiler.TaskCreationFailed
-
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_fm.current_session.return_value.owner.return_value = None
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         def raise_creation_failed(*args, **kwargs):
@@ -189,14 +199,13 @@ class TestCompilerApp(TestCase):
         )
 
         self.assertEqual(response.status_code,
-                         status.HTTP_500_INTERNAL_SERVER_ERROR)
+                         status.INTERNAL_SERVER_ERROR)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_completed(self, mock_store, mock_compiler):
         """GET the ``getCompilationStatus`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -214,22 +223,22 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertDictEqual(response.json, comp_status.to_dict())
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_not_owner(self, mock_store, mock_compiler):
         """Someone other than the owner requests ``getCompilationStatus``."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -247,29 +256,30 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN,
+        self.assertEqual(response.status_code, status.FORBIDDEN,
                          'Forbidden user gets a 403 Forbidden response.')
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_nonexistant(self, mock_store, mock_compiler):
         """GET ``getCompilationStatus`` for nonexistant task."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
         mock_compiler.get_task.side_effect = self.raise_no_such_task
 
         response = self.client.get(
@@ -277,11 +287,11 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_status_invalid_format(self, mock_store, mock_compiler):
         """GET ``getCompilationStatus`` for unsupported format."""
         source_id = '54'
@@ -292,14 +302,13 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -318,15 +327,17 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve_log.return_value = comp_log
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve_log.return_value \
+            = comp_log
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertEqual(response.data, b'foologcontent',
                          "Returns the raw log content")
         self.assertEqual(response.headers['Content-Type'],
@@ -334,10 +345,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_not_owner(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` by someone who is not the owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -356,40 +366,42 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve_log.return_value = comp_log
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve_log.return_value \
+            = comp_log
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_nononexistant(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` for nonexistant compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_log_invalid_format(self, mock_store, mock_compiler):
         """GET the ``getCompilationLog`` for unsupported format."""
         source_id = '54'
@@ -401,14 +413,13 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` endpoint with valid data."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -430,15 +441,17 @@ class TestCompilerApp(TestCase):
             stream=io.BytesIO(b'fooproductcontents'),
             checksum='productchxm'
         )
-        mock_store.get_status.return_value = comp_status
-        mock_store.retrieve.return_value = comp_product
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
+        mock_store.current_session.return_value.retrieve.return_value \
+            = comp_product
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.OK)
         self.assertEqual(response.data, b'fooproductcontents',
                          "Returns the raw product content")
         self.assertEqual(response.headers['Content-Type'], 'application/pdf')
@@ -446,10 +459,9 @@ class TestCompilerApp(TestCase):
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_not_owner(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` by someone not the owner."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
@@ -467,39 +479,40 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.get_status.return_value = comp_status
+        mock_store.current_session.return_value.get_status.return_value \
+            = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.FORBIDDEN)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_nononexistant(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` for nonexistant compilation."""
-        mock_store.DoesNotExist = store.DoesNotExist
         mock_compiler.NoSuchTask = compiler.NoSuchTask
 
         source_id = '54'
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.get_status.side_effect = self.raise_does_not_exist
+        mock_store.current_session.return_value.get_status.side_effect \
+            = self.raise_does_not_exist
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertEqual(response.status_code, status.NOT_FOUND)
 
     @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
     @mock.patch('compiler.controllers.compiler')
-    @mock.patch('compiler.controllers.store')
+    @mock.patch('compiler.controllers.Store')
     def test_get_product_invalid_format(self, mock_store, mock_compiler):
         """GET the ``getCompilationProduct`` for unsupported format."""
         source_id = '54'
@@ -511,4 +524,4 @@ class TestCompilerApp(TestCase):
             headers={'Authorization': self.token}
         )
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.BAD_REQUEST)

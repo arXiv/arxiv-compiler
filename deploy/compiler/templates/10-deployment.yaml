@@ -1,0 +1,232 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: "{{ .Values.namespace }}"
+  name: compiler
+  labels:
+    subsystem: "{{ .Values.labels.subsystem }}"
+    service-group: "{{ .Values.labels.service_group }}"
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ default "compiler" .Values.deployment.name }}"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    subsystem: "{{ .Values.labels.subsystem }}"
+    container: "{{ default "compiler" .Values.deployment.name }}"
+    service-group: "{{ .Values.labels.service_group }}"
+    log-style: uwsgi
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        subsystem: "{{ .Values.labels.subsystem }}"
+        container: "{{ default "compiler" .Values.deployment.name }}"
+        service-group: "{{ .Values.labels.service_group }}"
+        log-style: uwsgi
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      serviceAccount: compiler
+      volumes:
+      - name: vault-token
+        emptyDir: {}
+      - name: vault-certificate
+        secret:
+          secretName: vault-certificate
+      containers:
+      - name: "{{ default "compiler" .Values.deployment.name }}"
+        image: arxiv/compiler:{{ .Values.image.tag }}
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: vault-token
+          mountPath: /etc/vault
+        - name: vault-certificate
+          mountPath: /etc/vault-certificate
+          readOnly: true
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            cpu: 300m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        # livenessProbe:
+        #   initialDelaySeconds: 2
+        #   periodSeconds: 5
+        #   httpGet:
+        #     path: /status
+        #     port: 8000
+        # readinessProbe:
+        #   periodSeconds: 5
+        #   httpGet:
+        #     path: /status
+        #     port: 8000
+        env:
+        - name: LOGLEVEL
+          value: "{{ .Values.loglevel }}"
+        - name: REDIS_ENDPOINT
+          value: "{{ .Values.redis.host }}"
+        - name: VAULT_ENABLED
+          value: "1"
+        - name: VAULT_HOST
+          value: "{{ .Values.vault.host }}"
+        - name: VAULT_PORT
+          value: "{{ .Values.vault.port }}"
+        - name: VAULT_CERT
+          value: /etc/vault-certificate/vaulttls.cert.pem
+        - name: VAULT_ROLE
+          value: "{{ .Values.vault.role }}-{{ .Values.namespace }}"
+        - name: VAULT_CREDENTIAL
+          value: "{{ .Values.vault.credential }}"
+        - name: S3_SUBMISSION_BUCKET
+          value: "{{ .Values.s3.submission.bucket }}-{{ .Values.namespace }}"
+        - name: KUBE_TOKEN
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        {{ if .Values.filemanager.override }}
+        - name: FILEMANAGER_SERVICE_HOST
+          value: "{{ .Values.filemanager.host }}"
+        - name: FILEMANAGER_SERVICE_PORT
+          value: "{{ .Values.filemanager.port }}"
+        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+          value: "{{ .Values.filemanager.proto }}"
+        - name: FILEMANAGER_PATH
+          value: "{{ .Values.filemanager.path }}"
+        - name: FILEMANAGER_CONTENT_PATH
+          value: "{{ .Values.filemanager.content_path }}"
+        {{ end }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+
+
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: "{{ default "compiler" .Values.deployment.name }}-worker"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    subsystem: "{{ .Values.labels.subsystem }}"
+    container: "{{ default "compiler" .Values.deployment.name }}-worker"
+    service-group: backend
+    log-style: celery
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        subsystem: "{{ .Values.labels.subsystem }}"
+        container: "{{ default "compiler" .Values.deployment.name }}-worker"
+        service-group: "{{ .Values.labels.service_group }}"
+        log-style: celery
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      serviceAccount: compiler
+      volumes:
+      - name: vault-token
+        emptyDir: {}
+      - name: docker-graph-storage
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      - name: sources
+        emptyDir: {}
+      - name: vault-certificate
+        secret:
+          secretName: vault-certificate
+
+      containers:
+      - name: dind-daemon
+        image: docker:18.09.2-dind
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1"
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: docker-graph-storage
+          mountPath: /var/lib/docker
+        - name: sources
+          mountPath: /sources
+        - name: vault-certificate
+          mountPath: /etc/vault-certificate
+          readOnly: true
+
+      - name: arxiv-compiler-worker
+        image: arxiv/compiler:{{ .Values.image.tag }}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            cpu: 300m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: vault-token
+          mountPath: /etc/vault
+        - name: run
+          mountPath: /var/run/celery
+        - name: sources
+          mountPath: /sources
+        command:
+          - /opt/arxiv/start_worker.sh
+          - -A compiler.worker.celery_app
+          - --loglevel=INFO
+          - -E
+          - --concurrency=2
+        env:
+        - name: REDIS_ENDPOINT
+          value: "{{ .Values.redis.host }}"
+        - name: VAULT_ENABLED
+          value: "1"
+        - name: VAULT_HOST
+          value: "{{ .Values.vault.host }}"
+        - name: VAULT_PORT
+          value: "{{ .Values.vault.port }}"
+        - name: VAULT_CERT
+          value: /etc/vault-certificate/vaulttls.cert.pem
+        - name: VAULT_ROLE
+          value: "{{ .Values.vault.role }}-{{ .Values.namespace }}"
+        - name: VAULT_CREDENTIAL
+          value: "{{ .Values.vault.credential }}"
+        - name: S3_SUBMISSION_BUCKET
+          value: "{{ .Values.s3.submission.bucket }}-{{ .Values.namespace }}"
+        - name: KUBE_TOKEN
+          value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        - name: DOCKER_HOST
+          value: tcp://localhost:2375
+        - name: CONVERTER_DOCKER_IMAGE
+          value: "{{ .Values.converter.image }}"
+        - name: HOST_SOURCE_ROOT
+          value: /sources
+        {{ if .Values.filemanager.override }}
+        - name: FILEMANAGER_SERVICE_HOST
+          value: "{{ .Values.filemanager.host }}"
+        - name: FILEMANAGER_SERVICE_PORT
+          value: "{{ .Values.filemanager.port }}"
+        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+          value: "{{ .Values.filemanager.proto }}"
+        - name: FILEMANAGER_PATH
+          value: "{{ .Values.filemanager.path }}"
+        - name: FILEMANAGER_CONTENT_PATH
+          value: "{{ .Values.filemanager.content_path }}"
+        {{ end }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

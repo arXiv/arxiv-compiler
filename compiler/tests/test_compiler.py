@@ -28,7 +28,7 @@ class TestStartCompilation(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager', mock.MagicMock())
     @mock.patch(f'{compiler.__name__}.do_compile', mock.MagicMock())
-    @mock.patch(f'{compiler.__name__}.store', mock.MagicMock())
+    @mock.patch(f'{compiler.__name__}.Store', mock.MagicMock())
     def test_start_compilation_ok(self):
         """Compilation starts succesfully."""
         task_id = compiler.start_compilation('1234', 'asdf1234=', 'arXiv:1234',
@@ -126,7 +126,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_do_compile_success(self, mock_store, mock_run, mock_filemanager):
         """Everything goes according to plan."""
         container_source_root = mkdtemp()
@@ -160,7 +160,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_unauthorized(self, mock_store, mock_run, mock_filemanager):
         """Request to filemanager is unauthorized."""
         container_source_root = mkdtemp()
@@ -170,7 +170,9 @@ class TestDoCompile(TestCase):
         def raise_unauthorized(*args, **kwargs):
             raise exceptions.RequestUnauthorized('Nope!', mock.MagicMock())
 
-        mock_filemanager.get_source_content.side_effect = raise_unauthorized
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(side_effect=raise_unauthorized)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -198,7 +200,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_forbidden(self, mock_store, mock_run, mock_filemanager):
         """Request to filemanager is forbidden."""
         container_source_root = mkdtemp()
@@ -208,7 +210,9 @@ class TestDoCompile(TestCase):
         def raise_forbidden(*args, **kwargs):
             raise exceptions.RequestForbidden('Nope!', mock.MagicMock())
 
-        mock_filemanager.get_source_content.side_effect = raise_forbidden
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(side_effect=raise_forbidden)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -236,7 +240,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_connection_failed(self, mock_store, mock_run, mock_filemanager):
         """Request to filemanager fails."""
         container_source_root = mkdtemp()
@@ -246,7 +250,9 @@ class TestDoCompile(TestCase):
         def raise_conn_failed(*args, **kwargs):
             raise exceptions.ConnectionFailed('Nope!', mock.MagicMock())
 
-        mock_filemanager.get_source_content.side_effect = raise_conn_failed
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(side_effect=raise_conn_failed)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -274,7 +280,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_not_found(self, mock_store, mock_run, mock_filemanager):
         """Request to filemanager fails because there is no source package."""
         container_source_root = mkdtemp()
@@ -284,7 +290,9 @@ class TestDoCompile(TestCase):
         def raise_not_found(*args, **kwargs):
             raise exceptions.NotFound('Nope!', mock.MagicMock())
 
-        mock_filemanager.get_source_content.side_effect = raise_not_found
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(side_effect=raise_not_found)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -312,7 +320,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_source_corrupted(self, mock_store, mock_run, mock_filemanager):
         """There is a problem with the content of the source package."""
         container_source_root = mkdtemp()
@@ -349,7 +357,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_no_output(self, mock_store, mock_run, mock_filemanager):
         """Compilation generates no output."""
         container_source_root = mkdtemp()
@@ -382,7 +390,7 @@ class TestDoCompile(TestCase):
 
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}._run')
-    @mock.patch(f'{compiler.__name__}.store')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_cannot_save(self, mock_store, mock_run, mock_filemanager):
         """There is a problem storing the results."""
         container_source_root = mkdtemp()
@@ -393,7 +401,8 @@ class TestDoCompile(TestCase):
         def raise_runtimeerror(*args, **kwargs):
             raise RuntimeError('yuck', mock.MagicMock())
 
-        mock_store.store.side_effect = raise_runtimeerror
+        mock_store.current_session.return_value.store.side_effect \
+            = raise_runtimeerror
 
         app = Flask('test')
         app.config.update({
@@ -438,7 +447,7 @@ class TestRun(TestCase):
         open(os.path.join(log_dir, 'autotex.log'), 'a').close()
 
         mock_current_app.config = {
-            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': root
         }
@@ -465,7 +474,7 @@ class TestRun(TestCase):
         open(os.path.join(log_dir, 'autotex.log'), 'a').close()
 
         mock_current_app.config = {
-            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': root
         }
@@ -481,7 +490,7 @@ class TestRun(TestCase):
 # class TestCompile(TestCase):
 #     """Tests for :func:`compiler.start_compilation`."""
 #
-#     @mock.patch(f'{compiler.__name__}.store')
+#     @mock.patch(f'{compiler.__name__}.Store')
 #     @mock.patch(f'{compiler.__name__}.FileManager.get_source_content')
 #     def test_real_compiler(self, mock_get_source_content, mock_store):
 #         """The compilation succeeds, and storage works without a hitch."""

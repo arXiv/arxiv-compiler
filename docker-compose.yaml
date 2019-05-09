@@ -12,13 +12,25 @@ x-base-service:
     AWS_S3_REGION_NAME: "us-east-1"
     S3_ENDPOINT: "https://compiler-test-localstack:4572"
     S3_VERIFY: 0
-    COMPILER_DOCKER_IMAGE: "${COMPILER_DOCKER_IMAGE}"
-    FILE_MANAGER_CONTENT_PATH: "/src/{source_id}"
+    CONVERTER_DOCKER_IMAGE: "${CONVERTER_DOCKER_IMAGE}"
+    FILEMANAGER_SERVICE_HOST: "arxiv.org"
+    FILEMANAGER_SERVICE_PORT: "443"
+    FILEMANAGER_SERVICE_PORT_443_PROTO: "https"
+    FILEMANAGER_PATH: "/"
+    FILEMANAGER_CONTENT_PATH: "/src/{source_id}"
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
     HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
     VERBOSE_COMPILE: 1
+    VAULT_ENABLED: "1"
+    NAMESPACE: "production"
+    KUBE_TOKEN: "fookubetoken"
+    VAULT_HOST: "mock-compiler-vault"
+    VAULT_PORT: "8200"
+    VAULT_ROLE: "compiler"
+    VAULT_CREDENTIAL: "foocredential"
+    VAULT_SCHEME: "http"
 
 services:
   compiler-test-redis:
@@ -66,6 +78,17 @@ services:
     volumes:
       - "${HOST_SOURCE_ROOT}:/tmp"
       - /var/run/docker.sock:/var/run/docker.sock
+
+  mock-compiler-vault:
+    image: arxiv/mock-vault
+    build:
+      context: .
+      dockerfile: Dockerfile-mock-vault
+    container_name: mock-compiler-vault
+    environment:
+      JWT_SECRET: foosecret
+    networks:
+      - compiler-test
 
 networks:
   compiler-test:

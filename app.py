@@ -10,4 +10,4 @@ app = create_app()
 # developing locally.
 with app.app_context():
     time.sleep(5)   # Give S3 a chance to come up.
-    store.create_bucket()
+    store.Store.current_session().create_bucket()
