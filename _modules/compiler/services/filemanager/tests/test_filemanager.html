@@ -1,0 +1,324 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.services.filemanager.tests.test_filemanager &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for compiler.services.filemanager.tests.test_filemanager</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for :mod:`compiler.services.filemanager`.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="k">import</span> <span class="n">TestCase</span><span class="p">,</span> <span class="n">mock</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+
+<span class="kn">from</span> <span class="nn">arxiv.integration.api</span> <span class="k">import</span> <span class="n">exceptions</span><span class="p">,</span> <span class="n">status</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">FileManager</span>
+<span class="kn">from</span> <span class="nn">....</span> <span class="k">import</span> <span class="n">domain</span><span class="p">,</span> <span class="n">util</span>
+
+<span class="n">CONFIG</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s1">&#39;FILEMANAGER_ENDPOINT&#39;</span><span class="p">:</span> <span class="s1">&#39;http://fooendpoint:1234&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;FILEMANAGER_VERIFY&#39;</span><span class="p">:</span> <span class="kc">False</span>
+<span class="p">}</span>
+<span class="n">mock_app</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="n">CONFIG</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestServiceStatus"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestServiceStatus">[docs]</a><span class="k">class</span> <span class="nc">TestServiceStatus</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test :func:`.FileManager.get_status`.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestServiceStatus.test_status"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestServiceStatus.test_status">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the status of the file manager service sucessfully.&quot;&quot;&quot;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">return_value</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">return_value</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;iam&#39;</span><span class="p">:</span> <span class="s1">&#39;ok&#39;</span><span class="p">})</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">FileManager</span><span class="o">.</span><span class="n">get_status</span><span class="p">(),</span> <span class="p">{</span><span class="s1">&#39;iam&#39;</span><span class="p">:</span> <span class="s1">&#39;ok&#39;</span><span class="p">},</span>
+                         <span class="s2">&quot;Gets the response content from the status enpoint&quot;</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestGetUploadInfo"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo">[docs]</a><span class="k">class</span> <span class="nc">TestGetUploadInfo</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;:func:`FileManager.get_upload_info` returns the current ETag.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestGetUploadInfo.session"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.session">[docs]</a>    <span class="k">def</span> <span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;Make a mock session.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+            <span class="n">method</span><span class="p">:</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">return_value</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                        <span class="n">return_value</span><span class="o">=</span><span class="n">json</span>
+                    <span class="p">),</span>
+                    <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">})</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get info for an upload workspace that exists.&quot;&quot;&quot;</span>
+        <span class="n">etag</span> <span class="o">=</span> <span class="s1">&#39;asdf12345checksum&#39;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">etag</span><span class="p">})</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">SourcePackageInfo</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">etag</span><span class="p">,</span> <span class="n">etag</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_id</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_nonexistant"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_nonexistant">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_nonexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get info for an upload workspace that does not exist.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">NotFound</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_bad_request"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_request">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_bad_request</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;We made a bad request.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">BAD_REQUEST</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">BadRequest</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_unauthorized"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_unauthorized">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_unauthorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;We made an unauthorized request.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">UNAUTHORIZED</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestUnauthorized</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_forbidden"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_forbidden">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_forbidden</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;We made a forbidden request.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">FORBIDDEN</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestForbidden</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_error"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_error">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;FM service replied 500 Internal Server Error.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span>
+            <span class="n">status</span><span class="o">.</span><span class="n">INTERNAL_SERVER_ERROR</span>
+        <span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestFailed</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_bad_json"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_json">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_bad_json</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;FM service reurns bad JSON.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+
+        <span class="k">def</span> <span class="nf">raise_JSONDecodeError</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">json</span><span class="o">.</span><span class="n">decoder</span><span class="o">.</span><span class="n">JSONDecodeError</span><span class="p">(</span><span class="s1">&#39;nope&#39;</span><span class="p">,</span> <span class="s1">&#39;nope&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">return_value</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_JSONDecodeError</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">BadResponse</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_bad_ssl"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_ssl">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_bad_ssl</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;FM service has bad TLS.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+
+        <span class="k">def</span> <span class="nf">raise_ssl_error</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">requests</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">SSLError</span><span class="p">(</span><span class="s1">&#39;danger fill bobinson&#39;</span><span class="p">)</span>
+
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_ssl_error</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">SecurityException</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUploadInfo.test_get_upload_info_no_connection"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_no_connection">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_info_no_connection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;FM service cannot connect.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+
+        <span class="k">def</span> <span class="nf">raise_connection_error</span><span class="p">(</span><span class="o">*</span><span class="n">a</span><span class="p">,</span> <span class="o">**</span><span class="n">k</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">requests</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ConnectionError</span><span class="p">(</span><span class="s1">&#39;where r u&#39;</span><span class="p">)</span>
+
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_connection_error</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">ConnectionFailed</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_upload_info</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestGetUpload"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload">[docs]</a><span class="k">class</span> <span class="nc">TestGetUpload</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;:func:`FileManager.get_upload` returns the upload content.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestGetUpload.session"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.session">[docs]</a>    <span class="k">def</span> <span class="nf">session</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">&quot;get&quot;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{},</span>
+                <span class="n">content</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{}):</span>
+        <span class="sd">&quot;&quot;&quot;Make a mock session.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+            <span class="n">method</span><span class="p">:</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">return_value</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="n">status_code</span><span class="p">,</span>
+                    <span class="n">json</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                        <span class="n">return_value</span><span class="o">=</span><span class="n">json</span>
+                    <span class="p">),</span>
+                    <span class="n">content</span><span class="o">=</span><span class="n">content</span><span class="p">,</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="n">headers</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">})</span></div>
+
+<div class="viewcode-block" id="TestGetUpload.test_get_upload"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.test_get_upload">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get upload that exists.&quot;&quot;&quot;</span>
+        <span class="n">etag</span> <span class="o">=</span> <span class="s1">&#39;asdf12345checksum&#39;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;foocontent&#39;</span>
+        <span class="n">mock_iter_content</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">return_value</span><span class="o">=</span><span class="p">[</span><span class="n">content</span><span class="p">])</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">return_value</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                    <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span>
+                    <span class="n">iter_content</span><span class="o">=</span><span class="n">mock_iter_content</span><span class="p">,</span>
+                    <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">etag</span><span class="p">}</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">FileManager</span><span class="o">.</span><span class="n">get_source_content</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">info</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">SourcePackage</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">etag</span><span class="p">,</span> <span class="n">etag</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">source_id</span><span class="p">,</span> <span class="n">source_id</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsInstance</span><span class="p">(</span><span class="n">info</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetUpload.test_get_upload_nonexistant"><a class="viewcode-back" href="../../../../../api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.test_get_upload_nonexistant">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.current_app&#39;</span><span class="p">,</span> <span class="n">mock_app</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.integration.api.service.requests.Session&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_upload_nonexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_Session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get info for an upload workspace that does not exist.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;123456&#39;</span>
+        <span class="n">mock_Session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="p">(</span><span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">exceptions</span><span class="o">.</span><span class="n">NotFound</span><span class="p">):</span>
+            <span class="n">FileManager</span><span class="o">.</span><span class="n">get_source_content</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../../index.html">Module code</a><ul>
+  <li><a href="../../filemanager.html">compiler.services.filemanager</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

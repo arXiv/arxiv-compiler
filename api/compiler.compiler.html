@@ -1,14 +1,13 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>compiler.compiler module &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
@@ -34,135 +33,168 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="compiler-compiler-module">
-<h1>compiler.compiler module<a class="headerlink" href="#compiler-compiler-module" title="Permalink to this headline">¶</a></h1>
-<blockquote>
-<div><span class="target" id="module-compiler.compiler"></span><p>Parameters supported by autotex “converter” image.</p>
-<dl class="docutils">
-<dt><a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a></dt>
-<dd><p class="first">-C cache directory [defaults to paper/format specific directory in PS_CACHE]
+  <div class="section" id="module-compiler.compiler">
+<span id="compiler-compiler-module"></span><h1>compiler.compiler module<a class="headerlink" href="#module-compiler.compiler" title="Permalink to this headline">¶</a></h1>
+<p>Dispatching and execution of compilation tasks.</p>
+<p>Parameters supported by autotex “converter” image:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>-C cache directory [defaults to paper/format specific directory in PS_CACHE]
 -D pass through for -D dvips flag
 -f output format, only sensible use is -f fInm for pdf generation
--u add a psmapfile to dvips command “-u +psmapfile”
+-u add a psmapfile to dvips command &quot;-u +psmapfile&quot;
 -h print usage
 -k do not delete temporary directory
 -P pass through for -P dvips flag
--p id of paper to process (pre 2007 archive/papernum or new numerical id</p>
-<blockquote>
-<div>yymm.d{4,5}) (required!)</div></blockquote>
-<p>-d id to use for decrytion (overrides default to -p id)
+-p id of paper to process (pre 2007 archive/papernum or new numerical id
+   yymm.\\d{4,5}) (required!)
+-d id to use for decrytion (overrides default to -p id)
 -s do not add stamp to PostScript
 -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
--v verbose logging, that is, print log messages to STDOUT</p>
-<blockquote>
-<div>(they are always logged to auto_gen_ps.log)</div></blockquote>
-<p class="last">-q quiet - don’t send emails to tex_admin (not the inverse of verbose!)
+-v verbose logging, that is, print log messages to STDOUT
+   (they are always logged to auto_gen_ps.log)
+-q quiet - don&#39;t send emails to tex_admin (not the inverse of verbose!)
 -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
 -X cache DVI file (default: no)
--Y don’t copy PostScript or PDF to cache
--Z don’t gzip PostScript before moving to cache
--T override the default AUTOTEX_TIMEOUT setting with user value</p>
-</dd>
-</dl>
-<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+-Y don&#39;t copy PostScript or PDF to cache
+-Z don&#39;t gzip PostScript before moving to cache
+-T override the default AUTOTEX_TIMEOUT setting with user value
+</pre></div>
+</div>
 <p>We’re going to use:</p>
 <ul class="simple">
-<li>-f output format, only sensible use is -f fInm for pdf generation (fInm, dvi,
-ps)</li>
-<li>-p id of paper to process (pre 2007 archive/papernum or new numerical id
-yymm.d{4,5}) (required!)</li>
-<li>-s do not add stamp to PostScript</li>
-<li>-T override the default AUTOTEX_TIMEOUT setting with user value</li>
-<li>-u add a psmapfile to dvips command “-u +psmapfile”</li>
-<li>-P pass through for -P dvips flag</li>
-<li>-t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)</li>
-<li>-D pass through for -D dvips flag</li>
-<li>-d id to use for decrytion (overrides default to -p id)</li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-f</span></code> output format, only sensible use is -f fInm for pdf generation (fInm,
+dvi, ps)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-p</span></code> id of paper to process (pre 2007 archive/papernum or new numerical id
+yymm.\d{4,5}) (required!)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-s</span></code> do not add stamp to PostScript</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-T</span></code> override the default AUTOTEX_TIMEOUT setting with user value</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-u</span></code> add a psmapfile to dvips command “-u +psmapfile”</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-P</span></code> pass through for -P dvips flag</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-t</span></code> pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-D</span></code> pass through for -D dvips flag</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-d</span></code> id to use for decrytion (overrides default to -p id)</p></li>
 </ul>
-<p>Always do this:
-- -q quiet - don’t send emails to tex_admin (not the inverse of verbose!)
-- -Y don’t copy PostScript or PDF to cache</p>
+<p>Always do this:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">-q</span></code> quiet - don’t send emails to tex_admin (not the inverse of verbose!)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-Y</span></code> don’t copy PostScript or PDF to cache</p></li>
+</ul>
+<dl class="exception">
+<dt id="compiler.compiler.AuthorizationFailed">
+<em class="property">exception </em><code class="descclassname">compiler.compiler.</code><code class="descname">AuthorizationFailed</code><a class="reference internal" href="../_modules/compiler/compiler.html#AuthorizationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.AuthorizationFailed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/exceptions.html#RuntimeError" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
+<p>The request was not authorized.</p>
+</dd></dl>
+
 <dl class="exception">
 <dt id="compiler.compiler.CorruptedSource">
 <em class="property">exception </em><code class="descclassname">compiler.compiler.</code><code class="descname">CorruptedSource</code><a class="reference internal" href="../_modules/compiler/compiler.html#CorruptedSource"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.CorruptedSource" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
-<p>“The source content is corrupted.</p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/exceptions.html#RuntimeError" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
+<p>The source content is corrupted.</p>
 </dd></dl>
 
 <dl class="exception">
 <dt id="compiler.compiler.NoSuchTask">
 <em class="property">exception </em><code class="descclassname">compiler.compiler.</code><code class="descname">NoSuchTask</code><a class="reference internal" href="../_modules/compiler/compiler.html#NoSuchTask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.NoSuchTask" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/exceptions.html#RuntimeError" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
 <p>A request was made for a non-existant task.</p>
 </dd></dl>
 
 <dl class="exception">
 <dt id="compiler.compiler.TaskCreationFailed">
 <em class="property">exception </em><code class="descclassname">compiler.compiler.</code><code class="descname">TaskCreationFailed</code><a class="reference internal" href="../_modules/compiler/compiler.html#TaskCreationFailed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.TaskCreationFailed" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#RuntimeError" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/exceptions.html#RuntimeError" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a></p>
 <p>An extraction task could not be created.</p>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.compiler.get_task">
-<code class="descclassname">compiler.compiler.</code><code class="descname">get_task</code><span class="sig-paren">(</span><em>source_id: str</em>, <em>checksum: str</em>, <em>output_format: compiler.domain.Format = &lt;Format.PDF: 'pdf'&gt;</em><span class="sig-paren">)</span> &#x2192; compiler.domain.Task<a class="reference internal" href="../_modules/compiler/compiler.html#get_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.get_task" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.compiler.</code><code class="descname">get_task</code><span class="sig-paren">(</span><em>source_id</em>, <em>checksum</em>, <em>output_format=&lt;Format.PDF: 'pdf'&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/compiler.html#get_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.get_task" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the status of an extraction task.</p>
-<dl class="docutils">
-<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Unique identifier for the source being compiled.</dd>
-<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>The checksum for the source package. This is used to differentiate
-compilation tasks.</dd>
-<dt>output_format: Format</dt>
-<dd>The desired output format. Default: Format.PDF.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Unique identifier for the source being compiled.</p></li>
+<li><p><strong>checksum</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The checksum for the source package. This is used to differentiate
+compilation tasks.</p></li>
+<li><p><strong>output_format</strong> (<a class="reference internal" href="compiler.domain.html#compiler.domain.Format" title="compiler.domain.Format"><em>Format</em></a>) – The desired output format. Default: Format.PDF.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p></p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference internal" href="compiler.domain.html#compiler.domain.Task" title="compiler.domain.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></p>
+</dd>
 </dl>
-<p><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></p>
+</dd></dl>
+
+<dl class="function">
+<dt id="compiler.compiler.is_available">
+<code class="descclassname">compiler.compiler.</code><code class="descname">is_available</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/compiler.html#is_available"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.is_available" title="Permalink to this definition">¶</a></dt>
+<dd><p>Verify that we can start compilations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/functions.html#bool" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.compiler.run_docker">
-<code class="descclassname">compiler.compiler.</code><code class="descname">run_docker</code><span class="sig-paren">(</span><em>image: str</em>, <em>volumes: list = []</em>, <em>ports: list = []</em>, <em>args: List[str] = []</em>, <em>daemon: bool = False</em><span class="sig-paren">)</span> &#x2192; Tuple[int, str, str]<a class="reference internal" href="../_modules/compiler/compiler.html#run_docker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.run_docker" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.compiler.</code><code class="descname">run_docker</code><span class="sig-paren">(</span><em>image</em>, <em>volumes=[]</em>, <em>ports=[]</em>, <em>args=[]</em>, <em>daemon=False</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/compiler.html#run_docker"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.run_docker" title="Permalink to this definition">¶</a></dt>
 <dd><p>Run a generic docker image.</p>
 <p>In our uses, we wish to set the userid to that of running process (getuid)
 by default. Additionally, we do not expose any ports for running services
 making this a rather simple function.</p>
-<dl class="docutils">
-<dt>image <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Name of the docker image in the format ‘repository/name:tag’</dd>
-<dt>volumes <span class="classifier-delimiter">:</span> <span class="classifier">list of tuple of str</span></dt>
-<dd>List of volumes to mount in the format [host_dir, container_dir].</dd>
-<dt>args <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Arguments to the image’s run cmd (set by Dockerfile CMD)</dd>
-<dt>daemon <span class="classifier-delimiter">:</span> <span class="classifier">boolean</span></dt>
-<dd>If True, launches the task to be run forever</dd>
-</dl>
-<dl class="docutils">
-<dt>int</dt>
-<dd>Compilation exit code.</dd>
-<dt>str</dt>
-<dd>STDOUT from compilation.</dd>
-<dt>str</dt>
-<dd>STDERR from compilation.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Name of the docker image in the format ‘repository/name:tag’</p></li>
+<li><p><strong>volumes</strong> (<em>list of tuple of str</em>) – List of volumes to mount in the format [host_dir, container_dir].</p></li>
+<li><p><strong>args</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Arguments to the image’s run cmd (set by Dockerfile CMD)</p></li>
+<li><p><strong>daemon</strong> (<em>boolean</em>) – If True, launches the task to be run forever</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>int</em> – Compilation exit code.</p></li>
+<li><p><em>str</em> – STDOUT from compilation.</p></li>
+<li><p><em>str</em> – STDERR from compilation.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.compiler.start_compilation">
-<code class="descclassname">compiler.compiler.</code><code class="descname">start_compilation</code><span class="sig-paren">(</span><em>source_id: str</em>, <em>checksum: str</em>, <em>output_format: compiler.domain.Format = &lt;Format.PDF: 'pdf'&gt;</em>, <em>preferred_compiler: Optional[str] = None</em>, <em>token: Optional[str] = None</em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="../_modules/compiler/compiler.html#start_compilation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.start_compilation" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.compiler.</code><code class="descname">start_compilation</code><span class="sig-paren">(</span><em>source_id</em>, <em>checksum</em>, <em>stamp_label=None</em>, <em>stamp_link=None</em>, <em>output_format=&lt;Format.PDF: 'pdf'&gt;</em>, <em>preferred_compiler=None</em>, <em>token=None</em>, <em>owner=None</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/compiler.html#start_compilation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.start_compilation" title="Permalink to this definition">¶</a></dt>
 <dd><p>Create a new compilation task.</p>
-<dl class="docutils">
-<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Unique identifier for the source being compiled.</dd>
-<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>The checksum for the source package. This is used to differentiate
-compilation tasks.</dd>
-<dt>output_format: Format</dt>
-<dd>The desired output format. Default: Format.PDF.</dd>
-</dl>
-<p>preferred_compiler : str</p>
-<dl class="docutils">
-<dt>str</dt>
-<dd>The identifier for the created compilation task.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Unique identifier for the source being compiled.</p></li>
+<li><p><strong>checksum</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – The checksum for the source package. This is used to differentiate
+compilation tasks.</p></li>
+<li><p><strong>output_format</strong> (<a class="reference internal" href="compiler.domain.html#compiler.domain.Format" title="compiler.domain.Format"><em>Format</em></a>) – The desired output format. Default: Format.PDF.</p></li>
+<li><p><strong>preferred_compiler</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – </p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The identifier for the created compilation task.</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)">str</a></p>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -170,9 +202,13 @@ compilation tasks.</dd>
 <dt id="compiler.compiler.update_sent_state">
 <code class="descclassname">compiler.compiler.</code><code class="descname">update_sent_state</code><span class="sig-paren">(</span><em>sender=None</em>, <em>headers=None</em>, <em>body=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/compiler.html#update_sent_state"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.compiler.update_sent_state" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set state to SENT, so that we can tell whether a task exists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p>
+</dd>
+</dl>
 </dd></dl>
 
-</div></blockquote>
 </div>
 
 
@@ -194,6 +230,7 @@ compilation tasks.</dd>
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
 </ul>
@@ -219,8 +256,6 @@ compilation tasks.</dd>
     <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -241,7 +276,7 @@ compilation tasks.</dd>
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -1,7 +1,7 @@
 compiler.domain module
-=========================
- 
- .. automodule:: compiler.domain
-     :members:
-     :undoc-members:
-     :show-inheritance: 
+======================
+
+.. automodule:: compiler.domain
+    :members:
+    :undoc-members:
+    :show-inheritance:

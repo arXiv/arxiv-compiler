@@ -1,0 +1,630 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.tests.test_app &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for compiler.tests.test_app</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Test the compiler application as a whole.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="k">import</span> <span class="n">TestCase</span><span class="p">,</span> <span class="n">mock</span>
+<span class="kn">import</span> <span class="nn">io</span>
+
+<span class="kn">from</span> <span class="nn">arxiv.integration.api</span> <span class="k">import</span> <span class="n">status</span><span class="p">,</span> <span class="n">service</span>
+<span class="kn">from</span> <span class="nn">arxiv.users.helpers</span> <span class="k">import</span> <span class="n">generate_token</span>
+<span class="kn">from</span> <span class="nn">arxiv.users.auth</span> <span class="k">import</span> <span class="n">scopes</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">factory</span><span class="p">,</span> <span class="n">compiler</span><span class="p">,</span> <span class="n">domain</span>
+<span class="kn">from</span> <span class="nn">..services</span> <span class="k">import</span> <span class="n">store</span><span class="p">,</span> <span class="n">filemanager</span>
+
+
+<span class="n">OS_ENVIRON</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;JWT_SECRET&#39;</span><span class="p">:</span> <span class="s1">&#39;foosecret&#39;</span><span class="p">}</span>
+
+
+<div class="viewcode-block" id="TestCompilerApp"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp">[docs]</a><span class="k">class</span> <span class="nc">TestCompilerApp</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;The the app API.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestCompilerApp.setUp"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.setUp">[docs]</a>    <span class="k">def</span> <span class="nf">setUp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a test app and client.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span> <span class="o">=</span> <span class="n">factory</span><span class="o">.</span><span class="n">create_app</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">client</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">test_client</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;JWT_SECRET&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;foosecret&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;S3_BUCKETS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="c1"># (&#39;arxiv&#39;, &#39;arxiv-compiler&#39;),</span>
+            <span class="p">(</span><span class="s1">&#39;submission&#39;</span><span class="p">,</span> <span class="s1">&#39;test-submission-bucket&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span> <span class="o">=</span> <span class="s1">&#39;123&#39;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">token</span> <span class="o">=</span> <span class="n">generate_token</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">user_id</span><span class="p">,</span> <span class="s1">&#39;foo@user.com&#39;</span><span class="p">,</span>
+                                        <span class="s1">&#39;foouser&#39;</span><span class="p">,</span>
+                                        <span class="n">scope</span><span class="o">=</span><span class="p">[</span><span class="n">scopes</span><span class="o">.</span><span class="n">CREATE_COMPILE</span><span class="p">,</span>
+                                               <span class="n">scopes</span><span class="o">.</span><span class="n">READ_COMPILE</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.raise_does_not_exist"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.raise_does_not_exist">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">raise_does_not_exist</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Raise :class:`store.DoesNotExist`.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="n">store</span><span class="o">.</span><span class="n">DoesNotExist</span><span class="p">(</span><span class="s1">&#39;Nope&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.raise_no_such_task"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.raise_no_such_task">[docs]</a>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">raise_no_such_task</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Raise :class:`compiler.NoSuchTask`.&quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span><span class="p">(</span><span class="s1">&#39;Nada&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_status"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_nothing&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{service.__name__}</span><span class="s1">.requests.Session&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{store.__name__}</span><span class="s1">.boto3.client&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">test_get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_session</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getServiceStatus`` endpoint.&quot;&quot;&quot;</span>
+        <span class="n">mock_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">status_code</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/status&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_nonexistant"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_nonexistant">[docs]</a>    <span class="k">def</span> <span class="nf">test_get_nonexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET a nonexistant endpoint.&quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/nowhere&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;The requested URL was not found on the server. If you&#39;</span>
+                       <span class="s1">&#39; entered the URL manually please check your spelling&#39;</span>
+                       <span class="s1">&#39; and try again.&#39;</span><span class="p">}</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_post_bad_request"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_bad_request">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_post_bad_request</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;POST the ``requestCompilation`` endpoint without data.&quot;&quot;&quot;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">BAD_REQUEST</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span>
+            <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">,</span>
+            <span class="p">{</span><span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;The browser (or proxy) sent a request that this server&#39;</span>
+                       <span class="s1">&#39; could not understand.&#39;</span><span class="p">}</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_post_request_compile"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_request_compile">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.filemanager.FileManager&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_post_request_compile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_fm</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;POST the ``requestCompilation`` endpoint with valid data.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+        <span class="n">mock_fm</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_does_not_exist</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">get_task</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_no_such_task</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;54&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;a1b2c3d4=&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span>
+            <span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">ACCEPTED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Location&#39;</span><span class="p">],</span>
+                         <span class="s1">&#39;http://localhost/54/a1b2c3d4%3D/pdf&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_post_compilation_product_exists"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_compilation_product_exists">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_post_compilation_product_exists</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;POST ``requestCompilation`` for existant product.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">get_task</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_no_such_task</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+                <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span>
+            <span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">SEE_OTHER</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Location&#39;</span><span class="p">],</span>
+                         <span class="n">f</span><span class="s1">&#39;http://localhost/</span><span class="si">{source_id}</span><span class="s1">/a1b2c3d4%3D/</span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_product_exists_unauthorized"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_product_exists_unauthorized">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_product_exists_unauthorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;POST ``requestCompilation`` for existant product, wrong owner.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="s1">&#39;84843&#39;</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">get_task</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_no_such_task</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+                <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+                <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span>
+            <span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">FORBIDDEN</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_post_task_start_failed"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_task_start_failed">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.filemanager.FileManager&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_post_task_start_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_fm</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Could not start compilation.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">TaskCreationFailed</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">TaskCreationFailed</span>
+        <span class="n">mock_fm</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_does_not_exist</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">get_task</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_no_such_task</span>
+
+        <span class="k">def</span> <span class="nf">raise_creation_failed</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">compiler</span><span class="o">.</span><span class="n">TaskCreationFailed</span><span class="p">(</span><span class="s1">&#39;Nope&#39;</span><span class="p">)</span>
+
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">start_compilation</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="n">raise_creation_failed</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">,</span> <span class="n">json</span><span class="o">=</span><span class="p">{</span>
+                <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;54&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;a1b2c3d4=&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span>
+            <span class="p">},</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span>
+                         <span class="n">status</span><span class="o">.</span><span class="n">INTERNAL_SERVER_ERROR</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_status_completed"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_completed">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_status_completed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationStatus`` endpoint with valid data.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="p">,</span> <span class="n">comp_status</span><span class="o">.</span><span class="n">to_dict</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_status_not_owner"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_not_owner">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_status_not_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Someone other than the owner requests ``getCompilationStatus``.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="s1">&#39;5943&#39;</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">FORBIDDEN</span><span class="p">,</span>
+                         <span class="s1">&#39;Forbidden user gets a 403 Forbidden response.&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_status_nonexistant"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_nonexistant">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_status_nonexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET ``getCompilationStatus`` for nonexistant task.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_does_not_exist</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">get_task</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_no_such_task</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_status_invalid_format"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_invalid_format">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_status_invalid_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET ``getCompilationStatus`` for unsupported format.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;wav&#39;</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">BAD_REQUEST</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_log"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationLog`` endpoint with valid data.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">comp_log</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;foologcontent&#39;</span><span class="p">))</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">retrieve_log</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_log</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/log&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;foologcontent&#39;</span><span class="p">,</span>
+                         <span class="s2">&quot;Returns the raw log content&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">],</span>
+                         <span class="s1">&#39;text/plain; charset=utf-8&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_log_not_owner"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_not_owner">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_log_not_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationLog`` by someone who is not the owner.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="s1">&#39;98766&#39;</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">comp_log</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;foologcontent&#39;</span><span class="p">))</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">retrieve_log</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_log</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/log&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">FORBIDDEN</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_log_nononexistant"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_nononexistant">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_log_nononexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationLog`` for nonexistant compilation.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_does_not_exist</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/log&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_log_invalid_format"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_invalid_format">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_log_invalid_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationLog`` for unsupported format.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;wav&#39;</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/log&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">BAD_REQUEST</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_product"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationProduct`` endpoint with valid data.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">user_id</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">comp_product</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span>
+            <span class="n">stream</span><span class="o">=</span><span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;fooproductcontents&#39;</span><span class="p">),</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;productchxm&#39;</span>
+        <span class="p">)</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">retrieve</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_product</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/product&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">data</span><span class="p">,</span> <span class="sa">b</span><span class="s1">&#39;fooproductcontents&#39;</span><span class="p">,</span>
+                         <span class="s2">&quot;Returns the raw product content&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;Content-Type&#39;</span><span class="p">],</span> <span class="s1">&#39;application/pdf&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">headers</span><span class="p">[</span><span class="s1">&#39;ETag&#39;</span><span class="p">],</span> <span class="s1">&#39;&quot;productchxm&quot;&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_product_not_owner"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_not_owner">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_product_not_owner</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationProduct`` by someone not the owner.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+        <span class="n">owner</span> <span class="o">=</span> <span class="s1">&#39;98766&#39;</span>
+
+        <span class="n">comp_status</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="o">.</span><span class="n">from_dict</span><span class="p">({</span>
+            <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="n">source_id</span><span class="p">,</span>
+            <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="n">fmt</span><span class="p">,</span>
+            <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="n">checksum</span><span class="p">,</span>
+            <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">123456</span><span class="p">,</span>
+            <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="n">owner</span><span class="p">,</span>
+            <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">&#39;</span>
+        <span class="p">})</span>
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">return_value</span> \
+            <span class="o">=</span> <span class="n">comp_status</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/product&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">FORBIDDEN</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_product_nononexistant"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_nononexistant">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_product_nononexistant</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationProduct`` for nonexistant compilation.&quot;&quot;&quot;</span>
+        <span class="n">mock_compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span>
+
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;pdf&#39;</span>
+
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">get_status</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raise_does_not_exist</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/product&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">NOT_FOUND</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestCompilerApp.test_get_product_invalid_format"><a class="viewcode-back" href="../../../api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_invalid_format">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;arxiv.users.auth.middleware.os.environ&#39;</span><span class="p">,</span> <span class="n">OS_ENVIRON</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.compiler&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="s1">&#39;compiler.controllers.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_product_invalid_format</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_compiler</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;GET the ``getCompilationProduct`` for unsupported format.&quot;&quot;&quot;</span>
+        <span class="n">source_id</span> <span class="o">=</span> <span class="s1">&#39;54&#39;</span>
+        <span class="n">checksum</span> <span class="o">=</span> <span class="s1">&#39;a1b2c3d4=&#39;</span>
+        <span class="n">fmt</span> <span class="o">=</span> <span class="s1">&#39;wav&#39;</span>
+
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">client</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="n">f</span><span class="s1">&#39;/</span><span class="si">{source_id}</span><span class="s1">/</span><span class="si">{checksum}</span><span class="s1">/</span><span class="si">{fmt}</span><span class="s1">/product&#39;</span><span class="p">,</span>
+            <span class="n">headers</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;Authorization&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">token</span><span class="p">}</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">BAD_REQUEST</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

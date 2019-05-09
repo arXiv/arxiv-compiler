@@ -1,7 +1,7 @@
 compiler.compiler module
-=========================
- 
- .. automodule:: compiler.compiler
-     :members:
-     :undoc-members:
-     :show-inheritance: 
+========================
+
+.. automodule:: compiler.compiler
+    :members:
+    :undoc-members:
+    :show-inheritance:

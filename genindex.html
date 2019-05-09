@@ -1,15 +1,14 @@
 
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>Index &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
     <script type="text/javascript" src="_static/jquery.js"></script>
     <script type="text/javascript" src="_static/underscore.js"></script>
@@ -58,6 +57,7 @@
  | <a href="#T"><strong>T</strong></a>
  | <a href="#U"><strong>U</strong></a>
  | <a href="#V"><strong>V</strong></a>
+ | <a href="#W"><strong>W</strong></a>
  
 </div>
 <h2 id="A">A</h2>
@@ -65,9 +65,19 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.config.html#compiler.config.APPLICATION_ROOT">APPLICATION_ROOT (in module compiler.config)</a>
 </li>
+      <li><a href="api/compiler.domain.html#compiler.domain.Reason.AUTHORIZATION">AUTHORIZATION (compiler.domain.Reason attribute)</a>
+</li>
+      <li><a href="api/compiler.compiler.html#compiler.compiler.AuthorizationFailed">AuthorizationFailed</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.domain.html#compiler.domain.Reason.AUTHORIZATION">AUTHORIZATION (compiler.domain.Reason attribute)</a>
+      <li><a href="api/compiler.routes.html#compiler.routes.authorizer">authorizer() (in module compiler.routes)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.AWS_ACCESS_KEY_ID">AWS_ACCESS_KEY_ID (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.AWS_REGION">AWS_REGION (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.AWS_SECRET_ACCESS_KEY">AWS_SECRET_ACCESS_KEY (in module compiler.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -75,11 +85,7 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.BadRequest">BadRequest</a>
-</li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.BadResponse">BadResponse</a>
+      <li><a href="api/compiler.celeryconfig.html#compiler.celeryconfig.broker_url">broker_url (in module compiler.celeryconfig)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -88,6 +94,8 @@
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.domain.html#compiler.domain.Reason.CANCELLED">CANCELLED (compiler.domain.Reason attribute)</a>
+</li>
+      <li><a href="api/compiler.celery.html#compiler.celery.celery_app">celery_app (in module compiler.celery)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Product.checksum">checksum (compiler.domain.Product attribute)</a>
 
@@ -121,19 +129,31 @@
 </li>
       <li><a href="api/compiler.services.html#module-compiler.services">compiler.services (module)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.services.filemanager.html#module-compiler.services.filemanager">compiler.services.filemanager (module)</a>
 </li>
+      <li><a href="api/compiler.services.filemanager.tests.html#module-compiler.services.filemanager.tests">compiler.services.filemanager.tests (module)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#module-compiler.services.filemanager.tests.test_filemanager">compiler.services.filemanager.tests.test_filemanager (module)</a>
+</li>
       <li><a href="api/compiler.services.store.html#module-compiler.services.store">compiler.services.store (module)</a>
+</li>
+      <li><a href="api/compiler.services.store.tests.html#module-compiler.services.store.tests">compiler.services.store.tests (module)</a>
+</li>
+      <li><a href="api/compiler.tests.html#module-compiler.tests">compiler.tests (module)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#module-compiler.tests.test_app">compiler.tests.test_app (module)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#module-compiler.tests.test_compiler">compiler.tests.test_compiler (module)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#module-compiler.tests.test_controllers">compiler.tests.test_controllers (module)</a>
 </li>
       <li><a href="api/compiler.util.html#module-compiler.util">compiler.util (module)</a>
 </li>
       <li><a href="api/compiler.worker.html#module-compiler.worker">compiler.worker (module)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Status.COMPLETED">COMPLETED (compiler.domain.Status attribute)</a>
-</li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.ConnectionFailed">ConnectionFailed</a>
 </li>
       <li><a href="api/compiler.config.html#compiler.config.CONTAINER_SOURCE_ROOT">CONTAINER_SOURCE_ROOT (in module compiler.config)</a>
 </li>
@@ -143,24 +163,18 @@
         <li><a href="api/compiler.domain.html#compiler.domain.Task.content_type">(compiler.domain.Task attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api/compiler.config.html#compiler.config.CONVERTER_DOCKER_IMAGE">CONVERTER_DOCKER_IMAGE (in module compiler.config)</a>
+</li>
       <li><a href="api/compiler.domain.html#compiler.domain.Reason.CORRUPTED">CORRUPTED (compiler.domain.Reason attribute)</a>
 </li>
       <li><a href="api/compiler.compiler.html#compiler.compiler.CorruptedSource">CorruptedSource</a>
 </li>
       <li><a href="api/compiler.factory.html#compiler.factory.create_app">create_app() (in module compiler.factory)</a>
 </li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.create_bucket">create_bucket() (compiler.services.store.StoreSession method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.create_bucket">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.create_bucket">create_bucket() (compiler.services.store.Store method)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.current_session">current_session() (in module compiler.services.filemanager)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.current_session">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.current_session">current_session() (compiler.services.store.Store class method)</a>
 </li>
-      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -169,10 +183,12 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.config.html#compiler.config.DEBUG">DEBUG (in module compiler.config)</a>
 </li>
-      <li><a href="api/compiler.domain.html#compiler.domain.Task.description">description (compiler.domain.Task attribute)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.Default">Default (class in compiler.services.filemanager)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.domain.html#compiler.domain.Task.description">description (compiler.domain.Task attribute)</a>
+</li>
       <li><a href="api/compiler.services.store.html#compiler.services.store.DoesNotExist">DoesNotExist</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Format.DVI">DVI (compiler.domain.Format attribute)</a>
@@ -207,13 +223,27 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.domain.html#compiler.domain.Status.FAILED">FAILED (compiler.domain.Status attribute)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService">FileManagementService (class in compiler.services.filemanager)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager">FileManager (class in compiler.services.filemanager)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.Meta">FileManager.Meta (class in compiler.services.filemanager)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_CONTENT_PATH">FILEMANAGER_CONTENT_PATH (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_ENDPOINT">FILEMANAGER_ENDPOINT (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_HOST">FILEMANAGER_HOST (in module compiler.config)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.domain.html#compiler.domain.Format">Format (class in compiler.domain)</a>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_PATH">FILEMANAGER_PATH (in module compiler.config)</a>
 </li>
-      <li><a href="api/compiler.domain.html#compiler.domain.Task.Formats">Formats (compiler.domain.Task attribute)</a>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_PORT">FILEMANAGER_PORT (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_PROTO">FILEMANAGER_PROTO (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.FILEMANAGER_VERIFY">FILEMANAGER_VERIFY (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.domain.html#compiler.domain.Format">Format (class in compiler.domain)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.from_dict">from_dict() (compiler.domain.Task class method)</a>
 </li>
@@ -235,46 +265,28 @@
         <li><a href="api/compiler.routes.html#compiler.routes.get_product">(in module compiler.routes)</a>
 </li>
       </ul></li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService.get_service_status">get_service_status() (compiler.services.filemanager.FileManagementService method)</a>
-
-      <ul>
-        <li><a href="api/compiler.routes.html#compiler.routes.get_service_status">(in module compiler.routes)</a>
+      <li><a href="api/compiler.worker.html#compiler.worker.get_secrets">get_secrets() (in module compiler.worker)</a>
 </li>
-        <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.get_service_status">(in module compiler.services.filemanager)</a>
+      <li><a href="api/compiler.routes.html#compiler.routes.get_service_status">get_service_status() (in module compiler.routes)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.get_session">get_session() (in module compiler.services.filemanager)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.get_session">(in module compiler.services.store)</a>
-</li>
-      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService.get_source_content">get_source_content() (compiler.services.filemanager.FileManagementService method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.get_source_content">(in module compiler.services.filemanager)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.get_session">get_session() (compiler.services.store.Store class method)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.get_status">get_status() (compiler.services.store.StoreSession method)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.get_source_content">get_source_content() (compiler.services.filemanager.FileManager method)</a>
+</li>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.get_status">get_status() (compiler.services.store.Store method)</a>
 
       <ul>
         <li><a href="api/compiler.controllers.html#compiler.controllers.get_status">(in module compiler.controllers)</a>
 </li>
         <li><a href="api/compiler.routes.html#compiler.routes.get_status">(in module compiler.routes)</a>
 </li>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.get_status">(in module compiler.services.store)</a>
-</li>
       </ul></li>
       <li><a href="api/compiler.compiler.html#compiler.compiler.get_task">get_task() (in module compiler.compiler)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService.get_upload_info">get_upload_info() (compiler.services.filemanager.FileManagementService method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.get_upload_info">(in module compiler.services.filemanager)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.get_upload_info">get_upload_info() (compiler.services.filemanager.FileManager method)</a>
 </li>
-      </ul></li>
   </ul></td>
 </tr></table>
 
@@ -295,12 +307,16 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.domain.html#compiler.domain.Status.IN_PROGRESS">IN_PROGRESS (compiler.domain.Status attribute)</a>
 </li>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.init_app">init_app() (compiler.services.store.Store class method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.init_app">init_app() (in module compiler.services.filemanager)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.is_available">is_available() (compiler.services.filemanager.FileManager method)</a>
 
       <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.init_app">(in module compiler.services.store)</a>
+        <li><a href="api/compiler.services.store.html#compiler.services.store.Store.is_available">(compiler.services.store.Store method)</a>
+</li>
+        <li><a href="api/compiler.compiler.html#compiler.compiler.is_available">(in module compiler.compiler)</a>
 </li>
       </ul></li>
   </ul></td>
@@ -312,12 +328,20 @@
       <li><a href="api/compiler.factory.html#compiler.factory.jsonify_exception">jsonify_exception() (in module compiler.factory)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.config.html#compiler.config.JWT_SECRET">JWT_SECRET (in module compiler.config)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.KEY">KEY (compiler.services.store.StoreSession attribute)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.KEY">KEY (compiler.services.store.Store attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.config.html#compiler.config.KUBE_TOKEN">KUBE_TOKEN (in module compiler.config)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -325,7 +349,7 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.LOG_KEY">LOG_KEY (compiler.services.store.StoreSession attribute)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.LOG_KEY">LOG_KEY (compiler.services.store.Store attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -336,20 +360,24 @@
       <li><a href="api/compiler.domain.html#compiler.domain.Reason.MISSING">MISSING (compiler.domain.Reason attribute)</a>
 </li>
   </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.mock_url_for">mock_url_for() (in module compiler.tests.test_controllers)</a>
+</li>
+  </ul></td>
 </tr></table>
 
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.domain.html#compiler.domain.Reason.NETWORK">NETWORK (compiler.domain.Reason attribute)</a>
+      <li><a href="api/compiler.config.html#compiler.config.NAMESPACE">NAMESPACE (in module compiler.config)</a>
 </li>
-      <li><a href="api/compiler.domain.html#compiler.domain.Reason.NONE">NONE (compiler.domain.Reason attribute)</a>
+      <li><a href="api/compiler.domain.html#compiler.domain.Reason.NETWORK">NETWORK (compiler.domain.Reason attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.compiler.html#compiler.compiler.NoSuchTask">NoSuchTask</a>
+      <li><a href="api/compiler.domain.html#compiler.domain.Reason.NONE">NONE (compiler.domain.Reason attribute)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.NotFound">NotFound</a>
+      <li><a href="api/compiler.compiler.html#compiler.compiler.NoSuchTask">NoSuchTask</a>
 </li>
   </ul></td>
 </tr></table>
@@ -361,7 +389,9 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.Oversize">Oversize</a>
+      <li><a href="api/compiler.domain.html#compiler.domain.Task.owner">owner (compiler.domain.Task attribute)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.owner">owner() (compiler.services.filemanager.FileManager method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -385,34 +415,38 @@
 <h2 id="R">R</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.raise_does_not_exist">raise_does_not_exist() (compiler.tests.test_app.TestCompilerApp static method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.raise_no_such_task">raise_no_such_task() (compiler.tests.test_app.TestCompilerApp static method)</a>
+
+      <ul>
+        <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.raise_no_such_task">(in module compiler.tests.test_controllers)</a>
+</li>
+      </ul></li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.raise_store_does_not_exist">raise_store_does_not_exist() (in module compiler.tests.test_controllers)</a>
+</li>
       <li><a href="api/compiler.domain.html#compiler.domain.Reason">Reason (class in compiler.domain)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.reason">reason (compiler.domain.Task attribute)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService.request">request() (compiler.services.filemanager.FileManagementService method)</a>
+      <li><a href="api/compiler.celeryconfig.html#compiler.celeryconfig.REDIS_ENDPOINT">REDIS_ENDPOINT (in module compiler.celeryconfig)</a>
+
+      <ul>
+        <li><a href="api/compiler.config.html#compiler.config.REDIS_ENDPOINT">(in module compiler.config)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.RequestFailed">RequestFailed</a>
-</li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.RequestForbidden">RequestForbidden</a>
-</li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.RequestUnauthorized">RequestUnauthorized</a>
-</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.routes.html#compiler.routes.resource_id">resource_id() (in module compiler.routes)</a>
+</li>
       <li><a href="api/compiler.util.html#compiler.util.ResponseStream">ResponseStream (class in compiler.util)</a>
 </li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.retrieve">retrieve() (compiler.services.store.StoreSession method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.retrieve">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.celeryconfig.html#compiler.celeryconfig.result_backend">result_backend (in module compiler.celeryconfig)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.retrieve_log">retrieve_log() (compiler.services.store.StoreSession method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.retrieve_log">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.retrieve">retrieve() (compiler.services.store.Store method)</a>
 </li>
-      </ul></li>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.retrieve_log">retrieve_log() (compiler.services.store.Store method)</a>
+</li>
       <li><a href="api/compiler.compiler.html#compiler.compiler.run_docker">run_docker() (in module compiler.compiler)</a>
 </li>
   </ul></td>
@@ -421,20 +455,30 @@
 <h2 id="S">S</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.SecurityException">SecurityException</a>
+      <li><a href="api/compiler.config.html#compiler.config.S3_BUCKETS">S3_BUCKETS (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.S3_ENDPOINT">S3_ENDPOINT (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.S3_VERIFY">S3_VERIFY (in module compiler.config)</a>
 </li>
       <li><a href="api/compiler.config.html#compiler.config.SERVER_NAME">SERVER_NAME (in module compiler.config)</a>
 </li>
-      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManagementService.set_auth_token">set_auth_token() (compiler.services.filemanager.FileManagementService method)</a>
+      <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.FileManager.Meta.service_name">service_name (compiler.services.filemanager.FileManager.Meta attribute)</a>
+</li>
+      <li><a href="api/compiler.controllers.html#compiler.controllers.service_status">service_status() (in module compiler.controllers)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.session">session() (compiler.services.filemanager.tests.test_filemanager.TestGetUpload method)</a>
 
       <ul>
-        <li><a href="api/compiler.services.filemanager.html#compiler.services.filemanager.set_auth_token">(in module compiler.services.filemanager)</a>
+        <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.session">(compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
 </li>
       </ul></li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.set_status">set_status() (compiler.services.store.StoreSession method)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.set_status">set_status() (compiler.services.store.Store method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.setUp">setUp() (compiler.tests.test_app.TestCompilerApp method)</a>
 
       <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.set_status">(in module compiler.services.store)</a>
+        <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestRequestCompilation.setUp">(compiler.tests.test_controllers.TestRequestCompilation method)</a>
 </li>
       </ul></li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.size_bytes">size_bytes (compiler.domain.Task attribute)</a>
@@ -447,12 +491,12 @@
         <li><a href="api/compiler.domain.html#compiler.domain.Task.source_id">(compiler.domain.Task attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.domain.html#compiler.domain.Reason.SOURCE_TYPE">SOURCE_TYPE (compiler.domain.Reason attribute)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.SourcePackage">SourcePackage (class in compiler.domain)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/compiler.domain.html#compiler.domain.SourcePackageInfo">SourcePackageInfo (class in compiler.domain)</a>
 </li>
       <li><a href="api/compiler.compiler.html#compiler.compiler.start_compilation">start_compilation() (in module compiler.compiler)</a>
@@ -461,25 +505,15 @@
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.status">status (compiler.domain.Task attribute)</a>
 </li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.STATUS_KEY">STATUS_KEY (compiler.services.store.StoreSession attribute)</a>
-</li>
-      <li><a href="api/compiler.domain.html#compiler.domain.Task.Statuses">Statuses (compiler.domain.Task attribute)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.STATUS_KEY">STATUS_KEY (compiler.services.store.Store attribute)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Reason.STORAGE">STORAGE (compiler.domain.Reason attribute)</a>
 </li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.store">store() (compiler.services.store.StoreSession method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.store">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store">Store (class in compiler.services.store)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession.store_log">store_log() (compiler.services.store.StoreSession method)</a>
-
-      <ul>
-        <li><a href="api/compiler.services.store.html#compiler.services.store.store_log">(in module compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.store">store() (compiler.services.store.Store method)</a>
 </li>
-      </ul></li>
-      <li><a href="api/compiler.services.store.html#compiler.services.store.StoreSession">StoreSession (class in compiler.services.store)</a>
+      <li><a href="api/compiler.services.store.html#compiler.services.store.Store.store_log">store_log() (compiler.services.store.Store method)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Product.stream">stream (compiler.domain.Product attribute)</a>
 </li>
@@ -493,11 +527,173 @@
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Product.task">task (compiler.domain.Product attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.celeryconfig.html#compiler.celeryconfig.task_acks_late">task_acks_late (in module compiler.celeryconfig)</a>
+</li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.task_id">task_id (compiler.domain.Task attribute)</a>
 </li>
       <li><a href="api/compiler.compiler.html#compiler.compiler.TaskCreationFailed">TaskCreationFailed</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_cannot_save">test_cannot_save() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestRequestCompilation.test_compile_de_novo">test_compile_de_novo() (compiler.tests.test_controllers.TestRequestCompilation method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestRequestCompilation.test_compile_exists">test_compile_exists() (compiler.tests.test_controllers.TestRequestCompilation method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_connection_failed">test_connection_failed() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_do_compile_success">test_do_compile_success() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_forbidden">test_forbidden() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_failed">test_get_failed() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_failed_gracefully">test_get_failed_gracefully() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask.test_get_info_completed">test_get_info_completed() (compiler.tests.test_controllers.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask.test_get_info_in_progress">test_get_info_in_progress() (compiler.tests.test_controllers.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask.test_get_info_nonexistant">test_get_info_nonexistant() (compiler.tests.test_controllers.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log">test_get_log() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetCompilationLog.test_get_log_completed">test_get_log_completed() (compiler.tests.test_controllers.TestGetCompilationLog method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_invalid_format">test_get_log_invalid_format() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetCompilationLog.test_get_log_nonexistant">test_get_log_nonexistant() (compiler.tests.test_controllers.TestGetCompilationLog method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_nononexistant">test_get_log_nononexistant() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_log_not_owner">test_get_log_not_owner() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_nonexistant">test_get_nonexistant() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_nonexistant_task">test_get_nonexistant_task() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product">test_get_product() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetProduct.test_get_product_completed">test_get_product_completed() (compiler.tests.test_controllers.TestGetProduct method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_invalid_format">test_get_product_invalid_format() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetProduct.test_get_product_nonexistant">test_get_product_nonexistant() (compiler.tests.test_controllers.TestGetProduct method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_nononexistant">test_get_product_nononexistant() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_product_not_owner">test_get_product_not_owner() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_retry_task">test_get_retry_task() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_started_task">test_get_started_task() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status">test_get_status() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_completed">test_get_status_completed() (compiler.tests.test_app.TestCompilerApp method)</a>
+
+      <ul>
+        <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask.test_get_status_completed">(compiler.tests.test_controllers.TestGetTask method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask.test_get_status_in_progress">test_get_status_in_progress() (compiler.tests.test_controllers.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_invalid_format">test_get_status_invalid_format() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_nonexistant">test_get_status_nonexistant() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_get_status_not_owner">test_get_status_not_owner() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_succeeded">test_get_succeeded() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_unstarted_task">test_get_unstarted_task() (compiler.tests.test_compiler.TestGetTask method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.test_get_upload">test_get_upload() (compiler.services.filemanager.tests.test_filemanager.TestGetUpload method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info">test_get_upload_info() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_json">test_get_upload_info_bad_json() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_request">test_get_upload_info_bad_request() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_bad_ssl">test_get_upload_info_bad_ssl() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_error">test_get_upload_info_error() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_forbidden">test_get_upload_info_forbidden() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_no_connection">test_get_upload_info_no_connection() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_nonexistant">test_get_upload_info_nonexistant() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo.test_get_upload_info_unauthorized">test_get_upload_info_unauthorized() (compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload.test_get_upload_nonexistant">test_get_upload_nonexistant() (compiler.services.filemanager.tests.test_filemanager.TestGetUpload method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_no_output">test_no_output() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_not_found">test_not_found() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_bad_request">test_post_bad_request() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_compilation_product_exists">test_post_compilation_product_exists() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_request_compile">test_post_request_compile() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_post_task_start_failed">test_post_task_start_failed() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp.test_product_exists_unauthorized">test_product_exists_unauthorized() (compiler.tests.test_app.TestCompilerApp method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestRequestCompilation.test_request_missing_parameter">test_request_missing_parameter() (compiler.tests.test_controllers.TestRequestCompilation method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun.test_run">test_run() (compiler.tests.test_compiler.TestRun method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun.test_run_fails">test_run_fails() (compiler.tests.test_compiler.TestRun method)</a>
+</li>
+      <li><a href="api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_set_get_compilation_status">test_set_get_compilation_status() (compiler.services.store.tests.TestStore method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_source_corrupted">test_source_corrupted() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_errs">test_start_compilation_errs() (compiler.tests.test_compiler.TestStartCompilation method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_ok">test_start_compilation_ok() (compiler.tests.test_compiler.TestStartCompilation method)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestServiceStatus.test_status">test_status() (compiler.services.filemanager.tests.test_filemanager.TestServiceStatus method)</a>
+</li>
+      <li><a href="api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_store_retrieve">test_store_retrieve() (compiler.services.store.tests.TestStore method)</a>
+</li>
+      <li><a href="api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_store_retrieve_log">test_store_retrieve_log() (compiler.services.store.tests.TestStore method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_unauthorized">test_unauthorized() (compiler.tests.test_compiler.TestDoCompile method)</a>
+</li>
+      <li><a href="api/compiler.tests.test_app.html#compiler.tests.test_app.TestCompilerApp">TestCompilerApp (class in compiler.tests.test_app)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile">TestDoCompile (class in compiler.tests.test_compiler)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetCompilationLog">TestGetCompilationLog (class in compiler.tests.test_controllers)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetProduct">TestGetProduct (class in compiler.tests.test_controllers)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask">TestGetTask (class in compiler.tests.test_compiler)</a>
+
+      <ul>
+        <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestGetTask">(class in compiler.tests.test_controllers)</a>
+</li>
+      </ul></li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUpload">TestGetUpload (class in compiler.services.filemanager.tests.test_filemanager)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestGetUploadInfo">TestGetUploadInfo (class in compiler.services.filemanager.tests.test_filemanager)</a>
+</li>
+      <li><a href="api/compiler.tests.test_controllers.html#compiler.tests.test_controllers.TestRequestCompilation">TestRequestCompilation (class in compiler.tests.test_controllers)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun">TestRun (class in compiler.tests.test_compiler)</a>
+</li>
+      <li><a href="api/compiler.services.filemanager.tests.test_filemanager.html#compiler.services.filemanager.tests.test_filemanager.TestServiceStatus">TestServiceStatus (class in compiler.services.filemanager.tests.test_filemanager)</a>
+</li>
+      <li><a href="api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation">TestStartCompilation (class in compiler.tests.test_compiler)</a>
+</li>
+      <li><a href="api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore">TestStore (class in compiler.services.store.tests)</a>
 </li>
       <li><a href="api/compiler.domain.html#compiler.domain.Task.to_dict">to_dict() (compiler.domain.Task method)</a>
 </li>
@@ -515,7 +711,35 @@
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_CERT">VAULT_CERT (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_ENABLED">VAULT_ENABLED (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_HOST">VAULT_HOST (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_PORT">VAULT_PORT (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_REQUESTS">VAULT_REQUESTS (in module compiler.config)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_ROLE">VAULT_ROLE (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.config.html#compiler.config.VAULT_SCHEME">VAULT_SCHEME (in module compiler.config)</a>
+</li>
       <li><a href="api/compiler.config.html#compiler.config.VERBOSE_COMPILE">VERBOSE_COMPILE (in module compiler.config)</a>
+</li>
+      <li><a href="api/compiler.worker.html#compiler.worker.verify_converter_image_up_to_date">verify_converter_image_up_to_date() (in module compiler.worker)</a>
+</li>
+      <li><a href="api/compiler.worker.html#compiler.worker.verify_secrets_up_to_date">verify_secrets_up_to_date() (in module compiler.worker)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/compiler.celeryconfig.html#compiler.celeryconfig.worker_prefetch_multiplier">worker_prefetch_multiplier (in module compiler.celeryconfig)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -540,6 +764,7 @@
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="architecture.html">Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/modules.html">compiler</a></li>
 </ul>
 
@@ -556,8 +781,6 @@
     <form class="search" action="search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -578,7 +801,7 @@
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

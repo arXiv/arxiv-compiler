@@ -1,7 +1,7 @@
 compiler.controllers module
 ===========================
- 
- .. automodule:: compiler.controllers
-     :members:
-     :undoc-members:
-     :show-inheritance: 
+
+.. automodule:: compiler.controllers
+    :members:
+    :undoc-members:
+    :show-inheritance:

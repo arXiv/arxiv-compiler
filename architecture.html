@@ -1,0 +1,184 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="compiler" href="api/modules.html" />
+    <link rel="prev" title="arXiv Compiler Service" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="architecture">
+<h1>Architecture<a class="headerlink" href="#architecture" title="Permalink to this headline">¶</a></h1>
+<p>This section provides a high-level overview of the compilation service,
+including its context within the arXiv software system, the primary containers
+by which the service is comprised, and the main functional components within
+those containers.</p>
+<div class="section" id="context">
+<h2>Context<a class="headerlink" href="#context" title="Permalink to this headline">¶</a></h2>
+<p>The compilation service encapsulates the core TeX compilation functionality
+of the arXiv system. This functionality is leveraged in four contexts:</p>
+<ol class="arabic simple">
+<li><p>Compilation of submission content (TeX, PS) to PDF during the submission
+process so that the submitter can preview their e-print as it will appear
+on arXiv.</p></li>
+<li><p>Providing compiled PDFs during moderation, to facilitate quality assurance
+checks and moderator review.</p></li>
+<li><p>Compilation of PDF, PS, DVI, and other derived formats at announcement time,
+to be included in the canonical record and distributed via the public
+website.</p></li>
+<li><p>Compilation of sources provided by API consumers, e.g. for overlay journals
+or authoring platforms to validate compatibility with arXiv and/or provide
+previews to authors.</p></li>
+</ol>
+<p>The current implementation of the compiler service focuses on the first two
+contexts, specifically on PDF outputs.</p>
+<p>The third context (announcement) will be supported during later milestones of
+the arXiv-NG project.</p>
+<p>The fourth context is currently aspirational.</p>
+</div>
+<div class="section" id="containers">
+<h2>Containers<a class="headerlink" href="#containers" title="Permalink to this headline">¶</a></h2>
+<p>The compilation service is deployed as three containers:</p>
+<ol class="arabic simple">
+<li><p>The compiler API, a Flask WSGI application that handles requests for
+compilation, dispatches compilation tasks to the worker, and provides access
+to compiled products and logs.</p></li>
+<li><p>The compiler worker, a Celery application that handles compilation tasks
+by retrieving source content, executing the
+[converter](<a class="reference external" href="https://github.com/arXiv/arxiv-converter">https://github.com/arXiv/arxiv-converter</a>), and storing the
+resultant products and logs.</p></li>
+<li><p>A Docker-in-Docker (DinD) container, within which the converter image is
+executed. The DinD exposes its API to the compiler worker.</p></li>
+</ol>
+<p>The API and worker containers rely on two infrastructure services:</p>
+<ol class="arabic simple">
+<li><p>A Redis cluster used as a task queue and result backend, typically shared
+within a deployment namespace.</p></li>
+<li><p>S3 bucket(s) for storing compilation products and logs.</p></li>
+</ol>
+</div>
+<div class="section" id="components">
+<h2>Components<a class="headerlink" href="#components" title="Permalink to this headline">¶</a></h2>
+<p>The API and worker containers are composed from the same set of components,
+the <a class="reference internal" href="api/compiler.html#module-compiler" title="compiler"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler</span></code></a> package. This package follows the patterns described
+in <a class="reference external" href="https://arxiv.github.io/arxiv-arxitecture/crosscutting/services.html" title="(in arXiv arXitecture v0.9)"><span>Services in arXiv NG</span></a>.</p>
+<p><a class="reference internal" href="api/compiler.domain.html#module-compiler.domain" title="compiler.domain"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.domain</span></code></a> provides the core concepts and data structures for the
+compiler service.</p>
+<p><a class="reference internal" href="api/compiler.factory.html#module-compiler.factory" title="compiler.factory"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.factory</span></code></a> provides the <code class="xref py py-func docutils literal notranslate"><span class="pre">create_app()</span></code> factory for generating
+the compiler API WSGI application.</p>
+<p><a class="reference internal" href="api/compiler.routes.html#module-compiler.routes" title="compiler.routes"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.routes</span></code></a> provides the API blueprint.</p>
+<p>API request controllers can be found in <a class="reference internal" href="api/compiler.controllers.html#module-compiler.controllers" title="compiler.controllers"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.controllers</span></code></a>.</p>
+<p>Two service integration modules can be found in <a class="reference internal" href="api/compiler.services.html#module-compiler.services" title="compiler.services"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.services</span></code></a>:</p>
+<ol class="arabic simple">
+<li><p><a class="reference internal" href="api/compiler.services.filemanager.html#module-compiler.services.filemanager" title="compiler.services.filemanager"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.services.filemanager</span></code></a> provides integration with the
+filemanager service, to retrieve source content for submissions.</p></li>
+<li><p><a class="reference internal" href="api/compiler.services.store.html#module-compiler.services.store" title="compiler.services.store"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.services.store</span></code></a> provides integration with the S3 buckets
+used to store compilation products and logs.</p></li>
+</ol>
+<p>Dispatching and execution of compilation tasks is implemented in
+<a class="reference internal" href="api/compiler.compiler.html#module-compiler.compiler" title="compiler.compiler"><code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.compiler</span></code></a>.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Architecture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#context">Context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#containers">Containers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#components">Components</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">arXiv Compiler Service</a></li>
+      <li>Next: <a href="api/modules.html" title="next chapter">compiler</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/architecture.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

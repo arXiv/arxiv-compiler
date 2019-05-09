@@ -1,0 +1,262 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.tests.test_compiler module &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="compiler.tests.test_controllers module" href="compiler.tests.test_controllers.html" />
+    <link rel="prev" title="compiler.tests.test_app module" href="compiler.tests.test_app.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-compiler.tests.test_compiler">
+<span id="compiler-tests-test-compiler-module"></span><h1>compiler.tests.test_compiler module<a class="headerlink" href="#module-compiler.tests.test_compiler" title="Permalink to this headline">¶</a></h1>
+<p>Tests for <code class="xref py py-mod docutils literal notranslate"><span class="pre">compiler.start_compilationr</span></code>.</p>
+<dl class="class">
+<dt id="compiler.tests.test_compiler.TestDoCompile">
+<em class="property">class </em><code class="descclassname">compiler.tests.test_compiler.</code><code class="descname">TestDoCompile</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>Test main compilation routine.</p>
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_cannot_save">
+<code class="descname">test_cannot_save</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_cannot_save"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_cannot_save" title="Permalink to this definition">¶</a></dt>
+<dd><p>There is a problem storing the results.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_connection_failed">
+<code class="descname">test_connection_failed</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_connection_failed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_connection_failed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request to filemanager fails.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_do_compile_success">
+<code class="descname">test_do_compile_success</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_do_compile_success"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_do_compile_success" title="Permalink to this definition">¶</a></dt>
+<dd><p>Everything goes according to plan.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_forbidden">
+<code class="descname">test_forbidden</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_forbidden"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_forbidden" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request to filemanager is forbidden.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_no_output">
+<code class="descname">test_no_output</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_no_output"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_no_output" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compilation generates no output.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_not_found">
+<code class="descname">test_not_found</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_not_found"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_not_found" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request to filemanager fails because there is no source package.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_source_corrupted">
+<code class="descname">test_source_corrupted</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_source_corrupted"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_source_corrupted" title="Permalink to this definition">¶</a></dt>
+<dd><p>There is a problem with the content of the source package.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestDoCompile.test_unauthorized">
+<code class="descname">test_unauthorized</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_run</em>, <em>mock_filemanager</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestDoCompile.test_unauthorized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestDoCompile.test_unauthorized" title="Permalink to this definition">¶</a></dt>
+<dd><p>Request to filemanager is unauthorized.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.tests.test_compiler.TestGetTask">
+<em class="property">class </em><code class="descclassname">compiler.tests.test_compiler.</code><code class="descname">TestGetTask</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>Test <code class="xref py py-func docutils literal notranslate"><span class="pre">get_task()</span></code>.</p>
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_failed">
+<code class="descname">test_get_failed</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_failed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_failed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists and failed.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_failed_gracefully">
+<code class="descname">test_get_failed_gracefully</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_failed_gracefully"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_failed_gracefully" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists and failed gracefully.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_nonexistant_task">
+<code class="descname">test_get_nonexistant_task</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_nonexistant_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_nonexistant_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>There is no such task.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_retry_task">
+<code class="descname">test_get_retry_task</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_retry_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_retry_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists and is being retried.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_started_task">
+<code class="descname">test_get_started_task</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_started_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_started_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists and has started.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_succeeded">
+<code class="descname">test_get_succeeded</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_succeeded"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_succeeded" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists and succeeded.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestGetTask.test_get_unstarted_task">
+<code class="descname">test_get_unstarted_task</code><span class="sig-paren">(</span><em>mock_do</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestGetTask.test_get_unstarted_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestGetTask.test_get_unstarted_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Task exists, but has not started.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.tests.test_compiler.TestRun">
+<em class="property">class </em><code class="descclassname">compiler.tests.test_compiler.</code><code class="descname">TestRun</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestRun"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestRun" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>Tests for <code class="xref py py-func docutils literal notranslate"><span class="pre">compiler._run()</span></code>.</p>
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestRun.test_run">
+<code class="descname">test_run</code><span class="sig-paren">(</span><em>mock_current_app</em>, <em>mock_dock</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestRun.test_run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestRun.test_run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compilation is successful.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestRun.test_run_fails">
+<code class="descname">test_run_fails</code><span class="sig-paren">(</span><em>mock_current_app</em>, <em>mock_dock</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestRun.test_run_fails"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestRun.test_run_fails" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compilation fails.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="class">
+<dt id="compiler.tests.test_compiler.TestStartCompilation">
+<em class="property">class </em><code class="descclassname">compiler.tests.test_compiler.</code><code class="descname">TestStartCompilation</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestStartCompilation"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestStartCompilation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>Test <code class="xref py py-func docutils literal notranslate"><span class="pre">start_compilation()</span></code>.</p>
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_errs">
+<code class="descname">test_start_compilation_errs</code><span class="sig-paren">(</span><em>mock_do_compile</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestStartCompilation.test_start_compilation_errs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_errs" title="Permalink to this definition">¶</a></dt>
+<dd><p>An error occurs when starting compilation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_ok">
+<code class="descname">test_start_compilation_ok</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_compiler.html#TestStartCompilation.test_start_compilation_ok"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_ok" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compilation starts succesfully.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">compiler</a><ul>
+  <li><a href="compiler.html">compiler package</a><ul>
+  <li><a href="compiler.tests.html">compiler.tests package</a><ul>
+      <li>Previous: <a href="compiler.tests.test_app.html" title="previous chapter">compiler.tests.test_app module</a></li>
+      <li>Next: <a href="compiler.tests.test_controllers.html" title="next chapter">compiler.tests.test_controllers module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/compiler.tests.test_compiler.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

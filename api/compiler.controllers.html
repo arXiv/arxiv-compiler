@@ -1,14 +1,13 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>compiler.controllers module &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
@@ -34,99 +33,125 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="compiler-controllers-module">
-<h1>compiler.controllers module<a class="headerlink" href="#compiler-controllers-module" title="Permalink to this headline">¶</a></h1>
-<blockquote>
-<div><span class="target" id="module-compiler.controllers"></span><p>Request controllers.</p>
+  <div class="section" id="module-compiler.controllers">
+<span id="compiler-controllers-module"></span><h1>compiler.controllers module<a class="headerlink" href="#module-compiler.controllers" title="Permalink to this headline">¶</a></h1>
+<p>Request controllers.</p>
 <dl class="function">
 <dt id="compiler.controllers.compile">
-<code class="descclassname">compiler.controllers.</code><code class="descname">compile</code><span class="sig-paren">(</span><em>request_data: werkzeug.datastructures.MultiDict</em>, <em>token: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#compile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.compile" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.controllers.</code><code class="descname">compile</code><span class="sig-paren">(</span><em>request_data</em>, <em>token</em>, <em>session</em>, <em>is_authorized=&lt;function &lt;lambda&gt;&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/controllers.html#compile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.compile" title="Permalink to this definition">¶</a></dt>
 <dd><p>Start compilation of an upload workspace.</p>
-<dl class="docutils">
-<dt>request_data <span class="classifier-delimiter">:</span> <span class="classifier"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiDict</span></code></span></dt>
-<dd>Data payload from the request.</dd>
-<dt>token <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Auth token to be used for subrequests (e.g. to file management
-service).</dd>
-</dl>
-<dl class="docutils">
-<dt>dict</dt>
-<dd>Response data.</dd>
-<dt>int</dt>
-<dd>HTTP status code.</dd>
-<dt>dict</dt>
-<dd>Headers to add to response.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>request_data</strong> (<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiDict</span></code>) – Data payload from the request.</p></li>
+<li><p><strong>token</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Auth token to be used for subrequests (e.g. to file management
+service).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>dict</em> – Response data.</p></li>
+<li><p><em>int</em> – HTTP status code.</p></li>
+<li><p><em>dict</em> – Headers to add to response.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.controllers.get_log">
-<code class="descclassname">compiler.controllers.</code><code class="descname">get_log</code><span class="sig-paren">(</span><em>source_id: int</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_log" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_log</code><span class="sig-paren">(</span><em>source_id</em>, <em>checksum</em>, <em>output_format</em>, <em>is_authorized=&lt;function &lt;lambda&gt;&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/controllers.html#get_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_log" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get a compilation log.</p>
-<dl class="docutils">
-<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd>Identifier for the source package.</dd>
-<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Checksum of the source package to compile.</dd>
-<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
-</dl>
-<dl class="docutils">
-<dt>dict</dt>
-<dd>Response data.</dd>
-<dt>int</dt>
-<dd>HTTP status code.</dd>
-<dt>dict</dt>
-<dd>Headers to add to response.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Identifier for the source package.</p></li>
+<li><p><strong>checksum</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Checksum of the source package to compile.</p></li>
+<li><p><strong>output_format</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Desired output format. Only <cite>pdf</cite> is currently supported.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>dict</em> – Response data.</p></li>
+<li><p><em>int</em> – HTTP status code.</p></li>
+<li><p><em>dict</em> – Headers to add to response.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.controllers.get_product">
-<code class="descclassname">compiler.controllers.</code><code class="descname">get_product</code><span class="sig-paren">(</span><em>source_id: int</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_product" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_product</code><span class="sig-paren">(</span><em>source_id</em>, <em>checksum</em>, <em>output_format</em>, <em>is_authorized=&lt;function &lt;lambda&gt;&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/controllers.html#get_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_product" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the product of a compilation.</p>
-<dl class="docutils">
-<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd>Identifier for the source package.</dd>
-<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Checksum of the source package to compile.</dd>
-<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
-</dl>
-<dl class="docutils">
-<dt>dict</dt>
-<dd>Response data.</dd>
-<dt>int</dt>
-<dd>HTTP status code.</dd>
-<dt>dict</dt>
-<dd>Headers to add to response.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Identifier for the source package.</p></li>
+<li><p><strong>checksum</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Checksum of the source package to compile.</p></li>
+<li><p><strong>output_format</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Desired output format. Only <cite>pdf</cite> is currently supported.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>dict</em> – Response data.</p></li>
+<li><p><em>int</em> – HTTP status code.</p></li>
+<li><p><em>dict</em> – Headers to add to response.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
 <dl class="function">
 <dt id="compiler.controllers.get_status">
-<code class="descclassname">compiler.controllers.</code><code class="descname">get_status</code><span class="sig-paren">(</span><em>source_id: str</em>, <em>checksum: str</em>, <em>output_format: str</em><span class="sig-paren">)</span> &#x2192; Tuple[dict, int, dict]<a class="reference internal" href="../_modules/compiler/controllers.html#get_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_status" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.controllers.</code><code class="descname">get_status</code><span class="sig-paren">(</span><em>source_id</em>, <em>checksum</em>, <em>output_format</em>, <em>is_authorized=&lt;function &lt;lambda&gt;&gt;</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/controllers.html#get_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.get_status" title="Permalink to this definition">¶</a></dt>
 <dd><p>Get the status of a compilation.</p>
 <p>See <code class="docutils literal notranslate"><span class="pre">schema/resources/compilationStatus.json</span></code>.</p>
-<dl class="docutils">
-<dt>source_id <span class="classifier-delimiter">:</span> <span class="classifier">int</span></dt>
-<dd>Identifier for the source package.</dd>
-<dt>checksum <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Checksum of the source package to compile.</dd>
-<dt>output_format <span class="classifier-delimiter">:</span> <span class="classifier">str</span></dt>
-<dd>Desired output format. Only <cite>pdf</cite> is currently supported.</dd>
-</dl>
-<dl class="docutils">
-<dt>dict</dt>
-<dd>Response data.</dd>
-<dt>int</dt>
-<dd>HTTP status code.</dd>
-<dt>dict</dt>
-<dd>Headers to add to response.</dd>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>source_id</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – Identifier for the source package.</p></li>
+<li><p><strong>checksum</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Checksum of the source package to compile.</p></li>
+<li><p><strong>output_format</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a>) – Desired output format. Only <cite>pdf</cite> is currently supported.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>dict</em> – Response data.</p></li>
+<li><p><em>int</em> – HTTP status code.</p></li>
+<li><p><em>dict</em> – Headers to add to response.</p></li>
+</ul>
+</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]</p>
+</dd>
 </dl>
 </dd></dl>
 
-</div></blockquote>
+<dl class="function">
+<dt id="compiler.controllers.service_status">
+<code class="descclassname">compiler.controllers.</code><code class="descname">service_status</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/controllers.html#service_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.controllers.service_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exercise dependencies and verify operational status.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><code class="xref py py-class docutils literal notranslate"><span class="pre">Tuple</span></code>[<a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>, <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 
 
@@ -148,6 +173,7 @@ service).</dd>
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
 </ul>
@@ -173,8 +199,6 @@ service).</dd>
     <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -195,7 +219,7 @@ service).</dd>
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.services.store.tests &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for compiler.services.store.tests</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for :mod:`compiler.services.store`.&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="k">import</span> <span class="n">TestCase</span><span class="p">,</span> <span class="n">mock</span>
+<span class="kn">from</span> <span class="nn">moto</span> <span class="k">import</span> <span class="n">mock_s3</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="k">import</span> <span class="n">datetime</span>
+
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">Store</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">store</span> <span class="k">as</span> <span class="n">store_</span>
+<span class="kn">from</span> <span class="nn">...</span> <span class="k">import</span> <span class="n">domain</span>
+
+<span class="n">mock_app_config</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">return_value</span><span class="o">=</span><span class="p">{</span>
+    <span class="s1">&#39;S3_ENDPOINT&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="s1">&#39;S3_VERIFY&#39;</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="s1">&#39;S3_BUCKETS&#39;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;arxiv&#39;</span><span class="p">,</span> <span class="s1">&#39;arxiv-compiler&#39;</span><span class="p">),</span>
+        <span class="p">(</span><span class="s1">&#39;submission&#39;</span><span class="p">,</span> <span class="s1">&#39;arxiv-compiler-submission&#39;</span><span class="p">)</span>
+    <span class="p">],</span>
+    <span class="s1">&#39;AWS_ACCESS_KEY_ID&#39;</span><span class="p">:</span> <span class="s1">&#39;foo_id&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AWS_SECRET_ACCESS_KEY&#39;</span><span class="p">:</span> <span class="s1">&#39;foosecretkey&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;AWS_REGION&#39;</span><span class="p">:</span> <span class="s1">&#39;us-east-1&#39;</span>
+<span class="p">})</span>
+
+
+<div class="viewcode-block" id="TestStore"><a class="viewcode-back" href="../../../../api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore">[docs]</a><span class="k">class</span> <span class="nc">TestStore</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test methods on :mod:`compiler.services.store`.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestStore.test_set_get_compilation_status"><a class="viewcode-back" href="../../../../api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_set_get_compilation_status">[docs]</a>    <span class="nd">@mock_s3</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{store_.__name__}</span><span class="s1">.get_application_config&#39;</span><span class="p">,</span> <span class="n">mock_app_config</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_set_get_compilation_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test setting and getting compilation status.&quot;&quot;&quot;</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">()</span>
+        <span class="n">status_pdf</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6789&#39;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">IN_PROGRESS</span>
+        <span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">status_pdf</span><span class="p">)</span>
+
+        <span class="n">retrieved</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                     <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">status_pdf</span><span class="p">,</span> <span class="n">retrieved</span><span class="p">)</span>
+
+        <span class="c1"># No compilation product for that checksum.</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">store_</span><span class="o">.</span><span class="n">DoesNotExist</span><span class="p">):</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;foocheck&#39;</span><span class="p">,</span>
+                             <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="c1"># No compilation product for that format.</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">store_</span><span class="o">.</span><span class="n">DoesNotExist</span><span class="p">):</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                             <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span>
+
+        <span class="c1"># New format for same upload ID/checksum.</span>
+        <span class="n">status_ps</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6789&#39;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">IN_PROGRESS</span>
+        <span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">status_ps</span><span class="p">)</span>
+
+        <span class="n">retrieved_pdf</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                         <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">status_pdf</span><span class="p">,</span> <span class="n">retrieved_pdf</span><span class="p">)</span>
+        <span class="n">retrieved_ps</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                        <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">status_ps</span><span class="p">,</span> <span class="n">retrieved_ps</span><span class="p">)</span>
+
+        <span class="c1"># Change the status of the existing format/checksum.</span>
+        <span class="n">status_ps_failed</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6789&#39;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">FAILED</span>
+        <span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">status_ps_failed</span><span class="p">)</span>
+        <span class="n">retrieved_ps</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                        <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">status_ps_failed</span><span class="p">,</span> <span class="n">retrieved_ps</span><span class="p">)</span>
+
+        <span class="c1"># Same format, new checksum.</span>
+        <span class="n">status_ps_alt</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;someotherchecksum1234&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6710&#39;</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">COMPLETED</span>
+        <span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">set_status</span><span class="p">(</span><span class="n">status_ps_alt</span><span class="p">)</span>
+
+        <span class="n">retrieved_ps</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;someotherchecksum1234&#39;</span><span class="p">,</span>
+                                        <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">status_ps_alt</span><span class="p">,</span> <span class="n">retrieved_ps</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestStore.test_store_retrieve"><a class="viewcode-back" href="../../../../api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_store_retrieve">[docs]</a>    <span class="nd">@mock_s3</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{store_.__name__}</span><span class="s1">.get_application_config&#39;</span><span class="p">,</span> <span class="n">mock_app_config</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_store_retrieve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test storing and retrieving compilation products.&quot;&quot;&quot;</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;somepdfcontent&#39;</span><span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">()</span>
+        <span class="n">status_pdf</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6789&#39;</span><span class="p">,</span>
+            <span class="n">size_bytes</span><span class="o">=</span><span class="mi">309192</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">COMPLETED</span>
+        <span class="p">)</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">content</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="n">status_pdf</span><span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+
+        <span class="n">rstatus_pdf</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                       <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">rstatus_pdf</span><span class="p">,</span> <span class="n">status_pdf</span><span class="p">)</span>
+
+        <span class="n">returned</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                  <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">returned</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="sa">b</span><span class="s1">&#39;somepdfcontent&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">store_</span><span class="o">.</span><span class="n">DoesNotExist</span><span class="p">):</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;foocheck&#39;</span><span class="p">,</span>
+                           <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestStore.test_store_retrieve_log"><a class="viewcode-back" href="../../../../api/compiler.services.store.tests.html#compiler.services.store.tests.TestStore.test_store_retrieve_log">[docs]</a>    <span class="nd">@mock_s3</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{store_.__name__}</span><span class="s1">.get_application_config&#39;</span><span class="p">,</span> <span class="n">mock_app_config</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_store_retrieve_log</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Test storing and retrieving compilation logs.&quot;&quot;&quot;</span>
+        <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+        <span class="n">content</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">(</span><span class="sa">b</span><span class="s1">&#39;some log output&#39;</span><span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">create_bucket</span><span class="p">()</span>
+        <span class="n">status_pdf</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Task</span><span class="p">(</span>
+            <span class="n">source_id</span><span class="o">=</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span>
+            <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">,</span>
+            <span class="n">checksum</span><span class="o">=</span><span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+            <span class="n">task_id</span><span class="o">=</span><span class="s1">&#39;foo-task-1234-6789&#39;</span><span class="p">,</span>
+            <span class="n">size_bytes</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">status</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">COMPLETED</span>
+        <span class="p">)</span>
+        <span class="n">product</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">Product</span><span class="p">(</span><span class="n">stream</span><span class="o">=</span><span class="n">content</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="n">status_pdf</span><span class="p">)</span>
+        <span class="n">store</span><span class="o">.</span><span class="n">store_log</span><span class="p">(</span><span class="n">product</span><span class="p">)</span>
+
+        <span class="n">returned</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">retrieve_log</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;abc123checksum&#39;</span><span class="p">,</span>
+                                      <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">returned</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">(),</span> <span class="sa">b</span><span class="s1">&#39;some log output&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">store_</span><span class="o">.</span><span class="n">DoesNotExist</span><span class="p">):</span>
+            <span class="n">store</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span><span class="s1">&#39;12345&#39;</span><span class="p">,</span> <span class="s1">&#39;foocheck&#39;</span><span class="p">,</span>
+                           <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PS</span><span class="p">)</span></div></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../../index.html">Module code</a><ul>
+  <li><a href="../store.html">compiler.services.store</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

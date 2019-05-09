@@ -1,14 +1,13 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>compiler.controllers &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../../_static/jquery.js"></script>
     <script type="text/javascript" src="../../_static/underscore.js"></script>
@@ -35,17 +34,20 @@
   <h1>Source code for compiler.controllers</h1><div class="highlight"><pre>
 <span></span><span class="sd">&quot;&quot;&quot;Request controllers.&quot;&quot;&quot;</span>
 
-<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">http</span> <span class="k">import</span> <span class="n">HTTPStatus</span> <span class="k">as</span> <span class="n">status</span>
 
 <span class="kn">from</span> <span class="nn">werkzeug</span> <span class="k">import</span> <span class="n">MultiDict</span>
-<span class="kn">from</span> <span class="nn">werkzeug.exceptions</span> <span class="k">import</span> <span class="n">BadRequest</span><span class="p">,</span> <span class="n">NotFound</span><span class="p">,</span> <span class="n">InternalServerError</span>
+<span class="kn">from</span> <span class="nn">werkzeug.exceptions</span> <span class="k">import</span> <span class="n">BadRequest</span><span class="p">,</span> <span class="n">NotFound</span><span class="p">,</span> <span class="n">InternalServerError</span><span class="p">,</span> \
+    <span class="n">Forbidden</span>
 
 <span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="n">url_for</span>
 
-<span class="kn">from</span> <span class="nn">arxiv</span> <span class="k">import</span> <span class="n">status</span>
+<span class="kn">from</span> <span class="nn">arxiv.users.domain</span> <span class="k">import</span> <span class="n">Session</span>
 <span class="kn">from</span> <span class="nn">arxiv.base</span> <span class="k">import</span> <span class="n">logging</span>
 
-<span class="kn">from</span> <span class="nn">.services</span> <span class="k">import</span> <span class="n">store</span>
+<span class="kn">from</span> <span class="nn">.services</span> <span class="k">import</span> <span class="n">Store</span><span class="p">,</span> <span class="n">filemanager</span>
+<span class="kn">from</span> <span class="nn">.services.store</span> <span class="k">import</span> <span class="n">DoesNotExist</span>
 <span class="kn">from</span> <span class="nn">.</span> <span class="k">import</span> <span class="n">compiler</span>
 <span class="kn">from</span> <span class="nn">.domain</span> <span class="k">import</span> <span class="n">Task</span><span class="p">,</span> <span class="n">Product</span><span class="p">,</span> <span class="n">Status</span><span class="p">,</span> <span class="n">Format</span>
 
@@ -57,38 +59,41 @@
 <span class="k">def</span> <span class="nf">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                        <span class="n">output_format</span><span class="p">:</span> <span class="n">Format</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Task</span><span class="p">]:</span>
     <span class="sd">&quot;&quot;&quot;Get a :class:`.Task` from storage.&quot;&quot;&quot;</span>
+    <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">stat</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">get_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got status from store: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">stat</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">stat</span>
-    <span class="k">except</span> <span class="n">store</span><span class="o">.</span><span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">except</span> <span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;No such compilation: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;No such compilation: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
-    <span class="k">return</span> <span class="kc">None</span>
-
-
-<span class="k">def</span> <span class="nf">_status_from_task</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-                      <span class="n">output_format</span><span class="p">:</span> <span class="n">Format</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Task</span><span class="p">]:</span>
-    <span class="sd">&quot;&quot;&quot;Get a :class:`.Task` from the task queue.&quot;&quot;&quot;</span>
-    <span class="k">try</span><span class="p">:</span>
-        <span class="n">stat</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Got status from previous task: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">stat</span><span class="p">)</span>
-        <span class="k">return</span> <span class="n">stat</span>
-    <span class="k">except</span> <span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;No such compilation task: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
+    <span class="c1"># except Exception as e:</span>
+    <span class="c1">#     logger.debug(&#39;No such compilation: %s&#39;, e)</span>
     <span class="k">return</span> <span class="kc">None</span>
 
 
 <span class="k">def</span> <span class="nf">_redirect_to_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="n">Format</span><span class="p">,</span>
-                        <span class="n">code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">HTTP_303_SEE_OTHER</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+                        <span class="n">code</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">status</span><span class="o">.</span><span class="n">SEE_OTHER</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;Redirect to the status endpoint.&quot;&quot;&quot;</span>
     <span class="n">location</span> <span class="o">=</span> <span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;api.get_status&#39;</span><span class="p">,</span> <span class="n">source_id</span><span class="o">=</span><span class="n">source_id</span><span class="p">,</span>
                        <span class="n">checksum</span><span class="o">=</span><span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="o">=</span><span class="n">output_format</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
     <span class="k">return</span> <span class="p">{},</span> <span class="n">code</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;Location&#39;</span><span class="p">:</span> <span class="n">location</span><span class="p">}</span>
 
 
-<div class="viewcode-block" id="compile"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.compile">[docs]</a><span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="n">request_data</span><span class="p">:</span> <span class="n">MultiDict</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<div class="viewcode-block" id="service_status"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.service_status">[docs]</a><span class="k">def</span> <span class="nf">service_status</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Exercise dependencies and verify operational status.&quot;&quot;&quot;</span>
+    <span class="n">fm</span> <span class="o">=</span> <span class="n">filemanager</span><span class="o">.</span><span class="n">FileManager</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+    <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+    <span class="n">response_data</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">response_data</span><span class="p">[</span><span class="s1">&#39;store&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+    <span class="n">response_data</span><span class="p">[</span><span class="s1">&#39;compiler&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+    <span class="n">response_data</span><span class="p">[</span><span class="s1">&#39;filemanager&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fm</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">response_data</span><span class="o">.</span><span class="n">values</span><span class="p">()):</span>
+        <span class="k">return</span> <span class="n">response_data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">SERVICE_UNAVAILABLE</span><span class="p">,</span> <span class="p">{}</span>
+    <span class="k">return</span> <span class="n">response_data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="p">{}</span></div>
+
+
+<div class="viewcode-block" id="compile"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.compile">[docs]</a><span class="k">def</span> <span class="nf">compile</span><span class="p">(</span><span class="n">request_data</span><span class="p">:</span> <span class="n">MultiDict</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">session</span><span class="p">:</span> <span class="n">Session</span><span class="p">,</span>
+            <span class="n">is_authorized</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">task</span><span class="p">:</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Start compilation of an upload workspace.</span>
 
@@ -123,26 +128,37 @@
         <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Missing required parameter: checksum&#39;</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s1">&#39;Missing required parameter: checksum&#39;</span><span class="p">)</span>
 
+    <span class="c1"># We don&#39;t want to compile the same source package twice.</span>
     <span class="n">force</span> <span class="o">=</span> <span class="n">request_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;force&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Support label and link for PS/PDF Stamping</span>
+    <span class="c1"># Test</span>
+    <span class="n">stamp_label</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stamp_label&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="n">stamp_link</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">request_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stamp_link&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">: request compilation with </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="vm">__name__</span><span class="p">,</span> <span class="n">request_data</span><span class="p">)</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
-        <span class="k">if</span> <span class="n">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">info</span> <span class="o">=</span> <span class="n">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">is_authorized</span><span class="p">(</span><span class="n">info</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">Forbidden</span><span class="p">(</span><span class="s1">&#39;Not authorized to compile this resource&#39;</span><span class="p">)</span>
             <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;compilation exists, redirecting&#39;</span><span class="p">)</span>
             <span class="k">return</span> <span class="n">_redirect_to_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span>
-        <span class="k">if</span> <span class="n">_status_from_task</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;compilation exists, redirecting&#39;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="n">_redirect_to_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">)</span>
+
+    <span class="n">owner</span> <span class="o">=</span> <span class="n">_get_owner</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">compiler</span><span class="o">.</span><span class="n">start_compilation</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">,</span>
-                                   <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">)</span>
+        <span class="n">compiler</span><span class="o">.</span><span class="n">start_compilation</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">stamp_label</span><span class="p">,</span>
+                                   <span class="n">stamp_link</span><span class="p">,</span> <span class="n">output_format</span><span class="p">,</span> <span class="n">token</span><span class="o">=</span><span class="n">token</span><span class="p">,</span>
+                                   <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="p">)</span>
     <span class="k">except</span> <span class="n">compiler</span><span class="o">.</span><span class="n">TaskCreationFailed</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failed to start compilation: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
         <span class="k">raise</span> <span class="n">InternalServerError</span><span class="p">(</span><span class="s1">&#39;Failed to start compilation&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
     <span class="k">return</span> <span class="n">_redirect_to_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">output_format</span><span class="p">,</span>
-                               <span class="n">status</span><span class="o">.</span><span class="n">HTTP_202_ACCEPTED</span><span class="p">)</span></div>
+                               <span class="n">status</span><span class="o">.</span><span class="n">ACCEPTED</span><span class="p">)</span></div>
 
 
-<div class="viewcode-block" id="get_status"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_status">[docs]</a><span class="k">def</span> <span class="nf">get_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<div class="viewcode-block" id="get_status"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_status">[docs]</a><span class="k">def</span> <span class="nf">get_status</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+               <span class="n">is_authorized</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">task</span><span class="p">:</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the status of a compilation.</span>
 
@@ -174,14 +190,16 @@
     <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;get_status for </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">, </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span>
                  <span class="n">output_format</span><span class="p">)</span>
     <span class="n">info</span> <span class="o">=</span> <span class="n">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
+    <span class="c1"># Verify that the requester is authorized to view this resource.</span>
     <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="n">info</span> <span class="o">=</span> <span class="n">_status_from_task</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such compilation&#39;</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">info</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">status</span><span class="o">.</span><span class="n">HTTP_200_OK</span><span class="p">,</span> <span class="p">{}</span></div>
+        <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such resource&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_authorized</span><span class="p">(</span><span class="n">info</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">Forbidden</span><span class="p">(</span><span class="s1">&#39;Access denied&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">info</span><span class="o">.</span><span class="n">to_dict</span><span class="p">(),</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;ARXIV-OWNER&#39;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">owner</span><span class="p">}</span></div>
 
 
-<div class="viewcode-block" id="get_product"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_product">[docs]</a><span class="k">def</span> <span class="nf">get_product</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<div class="viewcode-block" id="get_product"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_product">[docs]</a><span class="k">def</span> <span class="nf">get_product</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                <span class="n">is_authorized</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">task</span><span class="p">:</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get the product of a compilation.</span>
 
@@ -204,26 +222,34 @@
 <span class="sd">        Headers to add to response.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">product_format</span> <span class="o">=</span> <span class="n">Format</span><span class="p">(</span><span class="n">output_format</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>  <span class="c1"># Not a valid format.</span>
         <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s1">&#39;Invalid format&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Verify that the requester is authorized to view this resource.</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such resource&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_authorized</span><span class="p">(</span><span class="n">info</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">Forbidden</span><span class="p">(</span><span class="s1">&#39;Access denied&#39;</span><span class="p">)</span>
+
     <span class="k">try</span><span class="p">:</span>
         <span class="n">product</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">retrieve</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
-    <span class="k">except</span> <span class="n">store</span><span class="o">.</span><span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">except</span> <span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such compilation product&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
-    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unhandled exception: </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">e</span><span class="p">)</span>
-        <span class="k">raise</span> <span class="n">InternalServerError</span><span class="p">(</span><span class="s1">&#39;Unhandled exception: </span><span class="si">%s</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="n">e</span><span class="p">)</span>
     <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;stream&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">stream</span><span class="p">,</span>
         <span class="s1">&#39;content_type&#39;</span><span class="p">:</span> <span class="n">product_format</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span>
-        <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">.</span><span class="si">{product_format.ext}</span><span class="s1">&#39;</span>
+        <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">.</span><span class="si">{product_format.ext}</span><span class="s1">&#39;</span><span class="p">,</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">HTTP_200_OK</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">checksum</span><span class="p">}</span></div>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ARXIV-OWNER&#39;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span> <span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">checksum</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="n">headers</span></div>
 
 
-<div class="viewcode-block" id="get_log"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_log">[docs]</a><span class="k">def</span> <span class="nf">get_log</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
+<div class="viewcode-block" id="get_log"><a class="viewcode-back" href="../../api/compiler.controllers.html#compiler.controllers.get_log">[docs]</a><span class="k">def</span> <span class="nf">get_log</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">output_format</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">is_authorized</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">task</span><span class="p">:</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Response</span><span class="p">:</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Get a compilation log.</span>
 
@@ -246,20 +272,47 @@
 <span class="sd">        Headers to add to response.</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">store</span> <span class="o">=</span> <span class="n">Store</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">product_format</span> <span class="o">=</span> <span class="n">Format</span><span class="p">(</span><span class="n">output_format</span><span class="p">)</span>
     <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>  <span class="c1"># Not a valid format.</span>
         <span class="k">raise</span> <span class="n">BadRequest</span><span class="p">(</span><span class="s1">&#39;Invalid format&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Verify that the requester is authorized to view this resource.</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="n">_status_from_store</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">info</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such resource&#39;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">is_authorized</span><span class="p">(</span><span class="n">info</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">Forbidden</span><span class="p">(</span><span class="s1">&#39;Access denied&#39;</span><span class="p">)</span>
+
     <span class="k">try</span><span class="p">:</span>
         <span class="n">product</span> <span class="o">=</span> <span class="n">store</span><span class="o">.</span><span class="n">retrieve_log</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">product_format</span><span class="p">)</span>
-    <span class="k">except</span> <span class="n">store</span><span class="o">.</span><span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="k">except</span> <span class="n">DoesNotExist</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
         <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such compilation product&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
     <span class="n">data</span> <span class="o">=</span> <span class="p">{</span>
         <span class="s1">&#39;stream&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">stream</span><span class="p">,</span>
-        <span class="s1">&#39;content_type&#39;</span><span class="p">:</span> <span class="n">product_format</span><span class="o">.</span><span class="n">content_type</span><span class="p">,</span>
+        <span class="s1">&#39;content_type&#39;</span><span class="p">:</span> <span class="s1">&#39;text/plain&#39;</span><span class="p">,</span>
         <span class="s1">&#39;filename&#39;</span><span class="p">:</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{source_id}</span><span class="s1">.</span><span class="si">{product_format.ext}</span><span class="s1">&#39;</span>
     <span class="p">}</span>
-    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">HTTP_200_OK</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">checksum</span><span class="p">}</span></div>
+    <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;ARXIV-OWNER&#39;</span><span class="p">:</span> <span class="n">info</span><span class="o">.</span><span class="n">owner</span><span class="p">,</span> <span class="s1">&#39;ETag&#39;</span><span class="p">:</span> <span class="n">product</span><span class="o">.</span><span class="n">checksum</span><span class="p">}</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">status</span><span class="o">.</span><span class="n">OK</span><span class="p">,</span> <span class="n">headers</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_owner</span><span class="p">(</span><span class="n">source_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">checksum</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]:</span>
+    <span class="sd">&quot;&quot;&quot;Get the owner of the upload source package.&quot;&quot;&quot;</span>
+    <span class="n">fm</span> <span class="o">=</span> <span class="n">filemanager</span><span class="o">.</span><span class="n">FileManager</span><span class="o">.</span><span class="n">current_session</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Check for source&#39;</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">owner</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">fm</span><span class="o">.</span><span class="n">owner</span><span class="p">(</span><span class="n">source_id</span><span class="p">,</span> <span class="n">checksum</span><span class="p">,</span> <span class="n">token</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;No such source&#39;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;No such source&#39;</span><span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+    <span class="k">except</span> <span class="p">(</span><span class="n">filemanager</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestForbidden</span><span class="p">,</span>
+            <span class="n">filemanager</span><span class="o">.</span><span class="n">exceptions</span><span class="o">.</span><span class="n">RequestUnauthorized</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Not authorized to check source&#39;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">Forbidden</span><span class="p">(</span><span class="s1">&#39;Not authorized to access source&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">owner</span>
 </pre></div>
 
           </div>
@@ -280,6 +333,7 @@
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../architecture.html">Architecture</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api/modules.html">compiler</a></li>
 </ul>
 
@@ -298,8 +352,6 @@
     <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -320,7 +372,7 @@
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
     </div>

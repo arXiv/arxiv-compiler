@@ -1,14 +1,13 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>compiler.config module &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
@@ -34,10 +33,9 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="compiler-config-module">
-<h1>compiler.config module<a class="headerlink" href="#compiler-config-module" title="Permalink to this headline">¶</a></h1>
-<blockquote>
-<div><span class="target" id="module-compiler.config"></span><p>Configuration for the compiler service.</p>
+  <div class="section" id="module-compiler.config">
+<span id="compiler-config-module"></span><h1>compiler.config module<a class="headerlink" href="#module-compiler.config" title="Permalink to this headline">¶</a></h1>
+<p>Configuration for the compiler service.</p>
 <dl class="data">
 <dt id="compiler.config.APPLICATION_ROOT">
 <code class="descclassname">compiler.config.</code><code class="descname">APPLICATION_ROOT</code><em class="property"> = '/'</em><a class="headerlink" href="#compiler.config.APPLICATION_ROOT" title="Permalink to this definition">¶</a></dt>
@@ -47,9 +45,33 @@ cookie as path value.</p>
 </dd></dl>
 
 <dl class="data">
+<dt id="compiler.config.AWS_ACCESS_KEY_ID">
+<code class="descclassname">compiler.config.</code><code class="descname">AWS_ACCESS_KEY_ID</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.AWS_ACCESS_KEY_ID" title="Permalink to this definition">¶</a></dt>
+<dd><p>Access key ID for AWS, authorized for S3 access.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.AWS_REGION">
+<code class="descclassname">compiler.config.</code><code class="descname">AWS_REGION</code><em class="property"> = 'us-east-1'</em><a class="headerlink" href="#compiler.config.AWS_REGION" title="Permalink to this definition">¶</a></dt>
+<dd><p>AWS region. Defaults to <code class="docutils literal notranslate"><span class="pre">us-east-1</span></code>.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.AWS_SECRET_ACCESS_KEY">
+<code class="descclassname">compiler.config.</code><code class="descname">AWS_SECRET_ACCESS_KEY</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.AWS_SECRET_ACCESS_KEY" title="Permalink to this definition">¶</a></dt>
+<dd><p>Secret key for AWS, authorized for S3 access.</p>
+</dd></dl>
+
+<dl class="data">
 <dt id="compiler.config.CONTAINER_SOURCE_ROOT">
 <code class="descclassname">compiler.config.</code><code class="descname">CONTAINER_SOURCE_ROOT</code><em class="property"> = '/tmp'</em><a class="headerlink" href="#compiler.config.CONTAINER_SOURCE_ROOT" title="Permalink to this definition">¶</a></dt>
 <dd><p>Temporary directories containing source packages go in here.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.CONVERTER_DOCKER_IMAGE">
+<code class="descclassname">compiler.config.</code><code class="descname">CONVERTER_DOCKER_IMAGE</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.CONVERTER_DOCKER_IMAGE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Image name (including tag) for the TeX converter.</p>
 </dd></dl>
 
 <dl class="data">
@@ -59,19 +81,149 @@ cookie as path value.</p>
 </dd></dl>
 
 <dl class="data">
+<dt id="compiler.config.FILEMANAGER_CONTENT_PATH">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_CONTENT_PATH</code><em class="property"> = '/{source_id}/content'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_CONTENT_PATH" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sub-path template for retrieving source packages from the filemanager service.</p>
+<p>Should use the <a class="reference external" href="https://docs.python.org/3.4/library/string.html#format-examples">curly-brace format syntax</a>. Currently
+supports the <code class="docutils literal notranslate"><span class="pre">source_id</span></code> key.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_ENDPOINT">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_ENDPOINT</code><em class="property"> = 'https://arxiv.org:443/filemanager/api'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_ENDPOINT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Full URI for the base filemanager service API endpoint.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_HOST">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_HOST</code><em class="property"> = 'arxiv.org'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_HOST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hostname of the filemanager service.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_PATH">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_PATH</code><em class="property"> = 'filemanager/api'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_PATH" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to the base filemanager service API endpoint.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_PORT">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_PORT</code><em class="property"> = '443'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_PORT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Filemanager service HTTP(S) port.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_PROTO">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_PROTO</code><em class="property"> = 'https'</em><a class="headerlink" href="#compiler.config.FILEMANAGER_PROTO" title="Permalink to this definition">¶</a></dt>
+<dd><p>Protocol for calling the filemanager service. Default is <code class="docutils literal notranslate"><span class="pre">https</span></code>.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.FILEMANAGER_VERIFY">
+<code class="descclassname">compiler.config.</code><code class="descname">FILEMANAGER_VERIFY</code><em class="property"> = True</em><a class="headerlink" href="#compiler.config.FILEMANAGER_VERIFY" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable/disable TLS certificate verification for the filemanager service.</p>
+</dd></dl>
+
+<dl class="data">
 <dt id="compiler.config.HOST_SOURCE_ROOT">
-<code class="descclassname">compiler.config.</code><code class="descname">HOST_SOURCE_ROOT</code><em class="property"> = '/tmp'</em><a class="headerlink" href="#compiler.config.HOST_SOURCE_ROOT" title="Permalink to this definition">¶</a></dt>
+<code class="descclassname">compiler.config.</code><code class="descname">HOST_SOURCE_ROOT</code><em class="property"> = '/var/folders/l7/5ygyvtbs29340t2s2nsq4lh00000gp/T/tmpd4gn78t0'</em><a class="headerlink" href="#compiler.config.HOST_SOURCE_ROOT" title="Permalink to this definition">¶</a></dt>
 <dd><p>Temporary directories containing source packages go in here.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.JWT_SECRET">
+<code class="descclassname">compiler.config.</code><code class="descname">JWT_SECRET</code><em class="property"> = 'foosecret'</em><a class="headerlink" href="#compiler.config.JWT_SECRET" title="Permalink to this definition">¶</a></dt>
+<dd><p>Secret key for auth tokens.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.KUBE_TOKEN">
+<code class="descclassname">compiler.config.</code><code class="descname">KUBE_TOKEN</code><em class="property"> = 'fookubetoken'</em><a class="headerlink" href="#compiler.config.KUBE_TOKEN" title="Permalink to this definition">¶</a></dt>
+<dd><p>Service account token for authenticating with Vault. May be a file path.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.NAMESPACE">
+<code class="descclassname">compiler.config.</code><code class="descname">NAMESPACE</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.NAMESPACE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Namespace in which this service is deployed; to quality keys for secrets.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.REDIS_ENDPOINT">
+<code class="descclassname">compiler.config.</code><code class="descname">REDIS_ENDPOINT</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.REDIS_ENDPOINT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Hostname of the Redis cluster endpoint.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.S3_BUCKETS">
+<code class="descclassname">compiler.config.</code><code class="descname">S3_BUCKETS</code><em class="property"> = [('submission', 'arxiv-compiler-submission')]</em><a class="headerlink" href="#compiler.config.S3_BUCKETS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Buckets for storing compilation products and logs.</p>
+<p>This is a list of 2-tuples, containing a name for the bucket within the
+compiler service and the name of the bucket on S3.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.S3_ENDPOINT">
+<code class="descclassname">compiler.config.</code><code class="descname">S3_ENDPOINT</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.S3_ENDPOINT" title="Permalink to this definition">¶</a></dt>
+<dd><p>AWS S3 endpoint. Default is <code class="docutils literal notranslate"><span class="pre">None</span></code> (use the “real” S3 service).</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.S3_VERIFY">
+<code class="descclassname">compiler.config.</code><code class="descname">S3_VERIFY</code><em class="property"> = True</em><a class="headerlink" href="#compiler.config.S3_VERIFY" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable/disable TLS certificate verification for S3.</p>
 </dd></dl>
 
 <dl class="data">
 <dt id="compiler.config.SERVER_NAME">
 <code class="descclassname">compiler.config.</code><code class="descname">SERVER_NAME</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.SERVER_NAME" title="Permalink to this definition">¶</a></dt>
-<dd><p>the name and port number of the server. Required for subdomain support
+<dd><p>The name and port number of the server. Required for subdomain support
 (e.g.: ‘myapp.dev:5000’) Note that localhost does not support subdomains so
 setting this to ‘localhost’ does not help. Setting a SERVER_NAME also by
 default enables URL generation without a request context but with an
 application context.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_CERT">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_CERT</code><em class="property"> = None</em><a class="headerlink" href="#compiler.config.VAULT_CERT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to CA certificate for TLS verification when talking to Vault.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_ENABLED">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_ENABLED</code><em class="property"> = False</em><a class="headerlink" href="#compiler.config.VAULT_ENABLED" title="Permalink to this definition">¶</a></dt>
+<dd><p>Enable/disable secret retrieval from Vault.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_HOST">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_HOST</code><em class="property"> = 'foovaulthost'</em><a class="headerlink" href="#compiler.config.VAULT_HOST" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vault hostname/address.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_PORT">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_PORT</code><em class="property"> = '1234'</em><a class="headerlink" href="#compiler.config.VAULT_PORT" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vault API port.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_REQUESTS">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_REQUESTS</code><em class="property"> = [{'type': 'generic', 'name': 'JWT_SECRET', 'mount_point': 'secret-None/', 'path': 'jwt', 'key': 'jwt-secret', 'minimum_ttl': 3600}, {'type': 'aws', 'name': 'AWS_S3_CREDENTIAL', 'mount_point': 'aws-None/', 'role': None}]</em><a class="headerlink" href="#compiler.config.VAULT_REQUESTS" title="Permalink to this definition">¶</a></dt>
+<dd><p>Requests for Vault secrets.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_ROLE">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_ROLE</code><em class="property"> = 'compiler'</em><a class="headerlink" href="#compiler.config.VAULT_ROLE" title="Permalink to this definition">¶</a></dt>
+<dd><p>Vault role linked to this application’s service account.</p>
+</dd></dl>
+
+<dl class="data">
+<dt id="compiler.config.VAULT_SCHEME">
+<code class="descclassname">compiler.config.</code><code class="descname">VAULT_SCHEME</code><em class="property"> = 'https'</em><a class="headerlink" href="#compiler.config.VAULT_SCHEME" title="Permalink to this definition">¶</a></dt>
+<dd><p>Default is <code class="docutils literal notranslate"><span class="pre">https</span></code>.</p>
 </dd></dl>
 
 <dl class="data">
@@ -80,7 +232,6 @@ application context.</p>
 <dd><p>If 1 (True), converter image is run in verbose mode.</p>
 </dd></dl>
 
-</div></blockquote>
 </div>
 
 
@@ -102,6 +253,7 @@ application context.</p>
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
 </ul>
@@ -127,8 +279,6 @@ application context.</p>
     <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -149,7 +299,7 @@ application context.</p>
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |

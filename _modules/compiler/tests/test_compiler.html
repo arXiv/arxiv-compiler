@@ -1,0 +1,625 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.tests.test_compiler &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for compiler.tests.test_compiler</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Tests for :mod:`compiler.start_compilationr`.&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">from</span> <span class="nn">tempfile</span> <span class="k">import</span> <span class="n">TemporaryDirectory</span><span class="p">,</span> <span class="n">mkstemp</span><span class="p">,</span> <span class="n">mkdtemp</span>
+<span class="kn">from</span> <span class="nn">unittest</span> <span class="k">import</span> <span class="n">TestCase</span><span class="p">,</span> <span class="n">mock</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">from</span> <span class="nn">operator</span> <span class="k">import</span> <span class="n">itemgetter</span>
+
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="kn">import</span> <span class="nn">subprocess</span>
+
+<span class="kn">from</span> <span class="nn">importlib_resources</span> <span class="k">import</span> <span class="n">read_binary</span>
+
+<span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="n">Flask</span>
+<span class="kn">from</span> <span class="nn">arxiv.integration.api</span> <span class="k">import</span> <span class="n">exceptions</span><span class="p">,</span> <span class="n">status</span>
+
+<span class="kn">from</span> <span class="nn">..factory</span> <span class="k">import</span> <span class="n">create_app</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">compiler</span>
+<span class="kn">from</span> <span class="nn">..</span> <span class="k">import</span> <span class="n">domain</span><span class="p">,</span> <span class="n">util</span>
+<span class="kn">from</span> <span class="nn">..services</span> <span class="k">import</span> <span class="n">filemanager</span>
+
+<span class="n">data_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;data&#39;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="TestStartCompilation"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation">[docs]</a><span class="k">class</span> <span class="nc">TestStartCompilation</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test :func:`start_compilation`.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestStartCompilation.test_start_compilation_ok"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_ok">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="k">def</span> <span class="nf">test_start_compilation_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compilation starts succesfully.&quot;&quot;&quot;</span>
+        <span class="n">task_id</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">start_compilation</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="s1">&#39;arXiv:1234&#39;</span><span class="p">,</span>
+                                             <span class="s1">&#39;http://arxiv.org/abs/1234&#39;</span><span class="p">,</span>
+                                             <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">,</span>
+                                             <span class="n">token</span><span class="o">=</span><span class="s1">&#39;footoken&#39;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task_id</span><span class="p">,</span> <span class="s2">&quot;1234/asdf1234=/pdf&quot;</span><span class="p">,</span> <span class="s2">&quot;Returns task ID&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestStartCompilation.test_start_compilation_errs"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestStartCompilation.test_start_compilation_errs">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_start_compilation_errs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do_compile</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;An error occurs when starting compilation.&quot;&quot;&quot;</span>
+        <span class="k">def</span> <span class="nf">raise_runtimeerror</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;Some error occurred&#39;</span><span class="p">)</span>
+
+        <span class="n">mock_do_compile</span><span class="o">.</span><span class="n">apply_async</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="n">raise_runtimeerror</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">compiler</span><span class="o">.</span><span class="n">TaskCreationFailed</span><span class="p">):</span>
+            <span class="n">compiler</span><span class="o">.</span><span class="n">start_compilation</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span>
+                                       <span class="s1">&#39;arXiv:1234&#39;</span><span class="p">,</span> <span class="s1">&#39;http://arxiv.org/abs/1234&#39;</span><span class="p">,</span>
+                                       <span class="n">output_format</span><span class="o">=</span><span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">,</span>
+                                       <span class="n">token</span><span class="o">=</span><span class="s1">&#39;footoken&#39;</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestGetTask"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask">[docs]</a><span class="k">class</span> <span class="nc">TestGetTask</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test :func:`get_task`.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestGetTask.test_get_nonexistant_task"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_nonexistant_task">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_nonexistant_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;There is no such task.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;PENDING&#39;</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">assertRaises</span><span class="p">(</span><span class="n">compiler</span><span class="o">.</span><span class="n">NoSuchTask</span><span class="p">):</span>
+            <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_unstarted_task"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_unstarted_task">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_unstarted_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists, but has not started.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;SENT&#39;</span><span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">IN_PROGRESS</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_started_task"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_started_task">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_started_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists and has started.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;STARTED&#39;</span><span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">IN_PROGRESS</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_retry_task"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_retry_task">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_retry_task</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists and is being retried.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;RETRY&#39;</span><span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">IN_PROGRESS</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_failed"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_failed">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists and failed.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">status</span><span class="o">=</span><span class="s1">&#39;FAILURE&#39;</span><span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_succeeded"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_succeeded">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_succeeded</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists and succeeded.&quot;&quot;&quot;</span>
+        <span class="c1"># We set the status to SENT when we create the task.</span>
+        <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">status</span><span class="o">=</span><span class="s1">&#39;SUCCESS&#39;</span><span class="p">,</span>
+            <span class="n">result</span><span class="o">=</span><span class="p">{}</span>
+        <span class="p">)</span>
+        <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">COMPLETED</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Reason</span><span class="o">.</span><span class="n">NONE</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestGetTask.test_get_failed_gracefully"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestGetTask.test_get_failed_gracefully">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.do_compile&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_get_failed_gracefully</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_do</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Task exists and failed gracefully.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">reason</span> <span class="ow">in</span> <span class="n">domain</span><span class="o">.</span><span class="n">Reason</span><span class="p">:</span>
+            <span class="n">mock_do</span><span class="o">.</span><span class="n">AsyncResult</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+                <span class="n">status</span><span class="o">=</span><span class="s1">&#39;SUCCESS&#39;</span><span class="p">,</span>
+                <span class="n">result</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span> <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="n">reason</span><span class="o">.</span><span class="n">value</span><span class="p">}</span>
+            <span class="p">)</span>
+            <span class="n">task</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">get_task</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Format</span><span class="o">.</span><span class="n">PDF</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">status</span><span class="p">,</span> <span class="n">domain</span><span class="o">.</span><span class="n">Status</span><span class="o">.</span><span class="n">FAILED</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">task</span><span class="o">.</span><span class="n">reason</span><span class="p">,</span> <span class="n">reason</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestDoCompile"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile">[docs]</a><span class="k">class</span> <span class="nc">TestDoCompile</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Test main compilation routine.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestDoCompile.test_do_compile_success"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_do_compile_success">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_do_compile_success</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Everything goes according to plan.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;something is not nothing&#39;</span><span class="p">)</span>
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">log_path</span><span class="p">)</span>
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;completed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">24</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_unauthorized"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_unauthorized">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_unauthorized</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Request to filemanager is unauthorized.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">raise_unauthorized</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">RequestUnauthorized</span><span class="p">(</span><span class="s1">&#39;Nope!&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_filemanager</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get_source_content</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_unauthorized</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;auth_error&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;There was a problem authorizing your&#39;</span>
+                                   <span class="s1">&#39; request.&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_forbidden"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_forbidden">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_forbidden</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Request to filemanager is forbidden.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">raise_forbidden</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">RequestForbidden</span><span class="p">(</span><span class="s1">&#39;Nope!&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_filemanager</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get_source_content</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_forbidden</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;auth_error&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;There was a problem authorizing your&#39;</span>
+                                   <span class="s1">&#39; request.&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_connection_failed"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_connection_failed">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_connection_failed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Request to filemanager fails.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">raise_conn_failed</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">ConnectionFailed</span><span class="p">(</span><span class="s1">&#39;Nope!&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_filemanager</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get_source_content</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_conn_failed</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;network_error&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;There was a problem retrieving your source&#39;</span>
+                                   <span class="s1">&#39; files.&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_not_found"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_not_found">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_not_found</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Request to filemanager fails because there is no source package.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">raise_not_found</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">exceptions</span><span class="o">.</span><span class="n">NotFound</span><span class="p">(</span><span class="s1">&#39;Nope!&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_filemanager</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span>
+            <span class="n">get_source_content</span><span class="o">=</span><span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">(</span><span class="n">side_effect</span><span class="o">=</span><span class="n">raise_not_found</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;missing_source&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;Could not retrieve a matching source&#39;</span>
+                                   <span class="s1">&#39; package&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_source_corrupted"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_source_corrupted">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_source_corrupted</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;There is a problem with the content of the source package.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="k">def</span> <span class="nf">raise_corrupted</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="n">compiler</span><span class="o">.</span><span class="n">CorruptedSource</span><span class="p">(</span><span class="s1">&#39;yuck&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">side_effect</span> <span class="o">=</span> <span class="n">raise_corrupted</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;corrupted_source&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_no_output"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_no_output">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_no_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compilation generates no output.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">log_path</span><span class="p">)</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;compilation_errors&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div>
+
+<div class="viewcode-block" id="TestDoCompile.test_cannot_save"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestDoCompile.test_cannot_save">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.FileManager&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">._run&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.Store&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_cannot_save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_store</span><span class="p">,</span> <span class="n">mock_run</span><span class="p">,</span> <span class="n">mock_filemanager</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;There is a problem storing the results.&quot;&quot;&quot;</span>
+        <span class="n">container_source_root</span> <span class="o">=</span> <span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">out_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">mkstemp</span><span class="p">()</span>
+        <span class="n">mock_run</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">(</span><span class="n">out_path</span><span class="p">,</span> <span class="n">log_path</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">raise_runtimeerror</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s1">&#39;yuck&#39;</span><span class="p">,</span> <span class="n">mock</span><span class="o">.</span><span class="n">MagicMock</span><span class="p">())</span>
+
+        <span class="n">mock_store</span><span class="o">.</span><span class="n">current_session</span><span class="o">.</span><span class="n">return_value</span><span class="o">.</span><span class="n">store</span><span class="o">.</span><span class="n">side_effect</span> \
+            <span class="o">=</span> <span class="n">raise_runtimeerror</span>
+
+        <span class="n">app</span> <span class="o">=</span> <span class="n">Flask</span><span class="p">(</span><span class="s1">&#39;test&#39;</span><span class="p">)</span>
+        <span class="n">app</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">container_source_root</span><span class="p">,</span>
+            <span class="s1">&#39;VERBOSE_COMPILE&#39;</span><span class="p">:</span> <span class="kc">True</span>
+        <span class="p">})</span>
+        <span class="k">with</span> <span class="n">app</span><span class="o">.</span><span class="n">app_context</span><span class="p">():</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">assertDictEqual</span><span class="p">(</span>
+                <span class="n">compiler</span><span class="o">.</span><span class="n">do_compile</span><span class="p">(</span><span class="s2">&quot;1234&quot;</span><span class="p">,</span> <span class="s2">&quot;asdf&quot;</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                    <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">,</span> <span class="s2">&quot;pdf&quot;</span><span class="p">,</span>
+                                    <span class="n">token</span><span class="o">=</span><span class="s2">&quot;footoken&quot;</span><span class="p">),</span>
+                <span class="p">{</span>
+                    <span class="s1">&#39;source_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;output_format&#39;</span><span class="p">:</span> <span class="s1">&#39;pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;owner&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                    <span class="s1">&#39;checksum&#39;</span><span class="p">:</span> <span class="s1">&#39;asdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;task_id&#39;</span><span class="p">:</span> <span class="s1">&#39;1234/asdf/pdf&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;failed&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;reason&#39;</span><span class="p">:</span> <span class="s1">&#39;storage&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;description&#39;</span><span class="p">:</span> <span class="s1">&#39;Failed to store result&#39;</span><span class="p">,</span>
+                    <span class="s1">&#39;size_bytes&#39;</span><span class="p">:</span> <span class="mi">0</span>
+                <span class="p">}</span>
+            <span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="TestRun"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun">[docs]</a><span class="k">class</span> <span class="nc">TestRun</span><span class="p">(</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Tests for :func:`.compiler._run`.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="TestRun.test_run"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun.test_run">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.run_docker&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.current_app&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_current_app</span><span class="p">,</span> <span class="n">mock_dock</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compilation is successful.&quot;&quot;&quot;</span>
+        <span class="n">source_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">root</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">source_dir</span><span class="p">)</span>
+        <span class="n">source_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;foo.tar.gz&#39;</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;tex_cache&#39;</span><span class="p">)</span>
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;tex_logs&#39;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">,</span> <span class="s1">&#39;foo.pdf&#39;</span><span class="p">),</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;autotex.log&#39;</span><span class="p">),</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">mock_current_app</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;CONVERTER_DOCKER_IMAGE&#39;</span><span class="p">:</span> <span class="s1">&#39;foo/image:1234&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;HOST_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="s1">&#39;/dev/null/here&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">root</span>
+        <span class="p">}</span>
+        <span class="n">mock_dock</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;wooooo&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">pkg</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">SourcePackage</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="n">source_path</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">)</span>
+        <span class="n">out_path</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">_run</span><span class="p">(</span><span class="n">pkg</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                           <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">out_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;/tex_cache/foo.pdf&#39;</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">log_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;/tex_logs/autotex.log&#39;</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">source_dir</span><span class="p">)</span>  <span class="c1"># Cleanup.</span></div>
+
+<div class="viewcode-block" id="TestRun.test_run_fails"><a class="viewcode-back" href="../../../api/compiler.tests.test_compiler.html#compiler.tests.test_compiler.TestRun.test_run_fails">[docs]</a>    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.run_docker&#39;</span><span class="p">)</span>
+    <span class="nd">@mock</span><span class="o">.</span><span class="n">patch</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{compiler.__name__}</span><span class="s1">.current_app&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_run_fails</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mock_current_app</span><span class="p">,</span> <span class="n">mock_dock</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Compilation fails.&quot;&quot;&quot;</span>
+        <span class="n">source_dir</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">mkdtemp</span><span class="p">()</span>
+        <span class="n">root</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">source_dir</span><span class="p">)</span>
+        <span class="n">source_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;foo.tar.gz&#39;</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">source_path</span><span class="p">,</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="n">cache_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;tex_cache&#39;</span><span class="p">)</span>
+        <span class="n">log_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">source_dir</span><span class="p">,</span> <span class="s1">&#39;tex_logs&#39;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">cache_dir</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">log_dir</span><span class="p">)</span>
+        <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">log_dir</span><span class="p">,</span> <span class="s1">&#39;autotex.log&#39;</span><span class="p">),</span> <span class="s1">&#39;a&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+        <span class="n">mock_current_app</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;CONVERTER_DOCKER_IMAGE&#39;</span><span class="p">:</span> <span class="s1">&#39;foo/image:1234&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;HOST_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="s1">&#39;/dev/null/here&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;CONTAINER_SOURCE_ROOT&#39;</span><span class="p">:</span> <span class="n">root</span>
+        <span class="p">}</span>
+        <span class="n">mock_dock</span><span class="o">.</span><span class="n">return_value</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;wooooo&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+        <span class="n">pkg</span> <span class="o">=</span> <span class="n">domain</span><span class="o">.</span><span class="n">SourcePackage</span><span class="p">(</span><span class="s1">&#39;1234&#39;</span><span class="p">,</span> <span class="n">source_path</span><span class="p">,</span> <span class="s1">&#39;asdf1234=&#39;</span><span class="p">)</span>
+        <span class="n">out_path</span><span class="p">,</span> <span class="n">log_path</span> <span class="o">=</span> <span class="n">compiler</span><span class="o">.</span><span class="n">_run</span><span class="p">(</span><span class="n">pkg</span><span class="p">,</span> <span class="s2">&quot;arXiv:1234&quot;</span><span class="p">,</span>
+                                           <span class="s2">&quot;http://arxiv.org/abs/1234&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertIsNone</span><span class="p">(</span><span class="n">out_path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">assertTrue</span><span class="p">(</span><span class="n">log_path</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;/tex_logs/autotex.log&#39;</span><span class="p">))</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">source_dir</span><span class="p">)</span>   <span class="c1"># Cleanup.</span></div></div>
+
+<span class="c1">#</span>
+<span class="c1"># class TestCompile(TestCase):</span>
+<span class="c1">#     &quot;&quot;&quot;Tests for :func:`compiler.start_compilation`.&quot;&quot;&quot;</span>
+<span class="c1">#</span>
+<span class="c1">#     @mock.patch(f&#39;{compiler.__name__}.Store&#39;)</span>
+<span class="c1">#     @mock.patch(f&#39;{compiler.__name__}.FileManager.get_source_content&#39;)</span>
+<span class="c1">#     def test_real_compiler(self, mock_get_source_content, mock_store):</span>
+<span class="c1">#         &quot;&quot;&quot;The compilation succeeds, and storage works without a hitch.&quot;&quot;&quot;</span>
+<span class="c1">#         source_id = &#39;1902.00123&#39;</span>
+<span class="c1">#         checksum = &#39;asdf12345checksum&#39;</span>
+<span class="c1">#         source_dir = mkdtemp()</span>
+<span class="c1">#         fpath = os.path.join(source_dir, &#39;real-test.tar.gz&#39;)</span>
+<span class="c1">#         shutil.copy(os.path.join(data_dir, &#39;real-test.tar.gz&#39;), fpath)</span>
+<span class="c1">#</span>
+<span class="c1">#         mock_get_source_content.return_value = domain.SourcePackage(</span>
+<span class="c1">#             path=fpath,</span>
+<span class="c1">#             source_id=source_id,</span>
+<span class="c1">#             etag=checksum</span>
+<span class="c1">#         )</span>
+<span class="c1">#</span>
+<span class="c1">#         app = create_app()</span>
+<span class="c1">#         with app.app_context():</span>
+<span class="c1">#             data = compiler.start_compilation(source_id, checksum)</span>
+<span class="c1">#         self.assertEqual(data[&#39;source_id&#39;], source_id)</span>
+<span class="c1">#         self.assertEqual(data[&#39;checksum&#39;], checksum)</span>
+<span class="c1">#         self.assertEqual(data[&#39;output_format&#39;], &#39;pdf&#39;)</span>
+<span class="c1">#</span>
+<span class="c1">#         stored_product = mock_store.store.call_args[0][0]</span>
+<span class="c1">#         self.assertEqual(stored_product.task.status,</span>
+<span class="c1">#                          domain.Status.COMPLETED)</span>
+<span class="c1">#         self.assertEqual(stored_product.task.format,</span>
+<span class="c1">#                          domain.Format.PDF)</span>
+<span class="c1">#         self.assertEqual(stored_product.task.checksum,</span>
+<span class="c1">#                          checksum)</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../architecture.html">Architecture</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/modules.html">compiler</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

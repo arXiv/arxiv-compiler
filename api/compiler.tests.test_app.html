@@ -1,0 +1,259 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>compiler.tests.test_app module &#8212; arXiv Compilation Service 0.1 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="compiler.tests.test_compiler module" href="compiler.tests.test_compiler.html" />
+    <link rel="prev" title="compiler.tests package" href="compiler.tests.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-compiler.tests.test_app">
+<span id="compiler-tests-test-app-module"></span><h1>compiler.tests.test_app module<a class="headerlink" href="#module-compiler.tests.test_app" title="Permalink to this headline">¶</a></h1>
+<p>Test the compiler application as a whole.</p>
+<dl class="class">
+<dt id="compiler.tests.test_app.TestCompilerApp">
+<em class="property">class </em><code class="descclassname">compiler.tests.test_app.</code><code class="descname">TestCompilerApp</code><span class="sig-paren">(</span><em>methodName='runTest'</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">unittest.case.TestCase</span></code></p>
+<p>The the app API.</p>
+<dl class="staticmethod">
+<dt id="compiler.tests.test_app.TestCompilerApp.raise_does_not_exist">
+<em class="property">static </em><code class="descname">raise_does_not_exist</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.raise_does_not_exist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.raise_does_not_exist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raise <code class="xref py py-class docutils literal notranslate"><span class="pre">store.DoesNotExist</span></code>.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="compiler.tests.test_app.TestCompilerApp.raise_no_such_task">
+<em class="property">static </em><code class="descname">raise_no_such_task</code><span class="sig-paren">(</span><em>*args</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.raise_no_such_task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.raise_no_such_task" title="Permalink to this definition">¶</a></dt>
+<dd><p>Raise <code class="xref py py-class docutils literal notranslate"><span class="pre">compiler.NoSuchTask</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.setUp">
+<code class="descname">setUp</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.setUp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.setUp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create a test app and client.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_log">
+<code class="descname">test_get_log</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_log"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_log" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationLog</span></code> endpoint with valid data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_log_invalid_format">
+<code class="descname">test_get_log_invalid_format</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_log_invalid_format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_log_invalid_format" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationLog</span></code> for unsupported format.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_log_nononexistant">
+<code class="descname">test_get_log_nononexistant</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_log_nononexistant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_log_nononexistant" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationLog</span></code> for nonexistant compilation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_log_not_owner">
+<code class="descname">test_get_log_not_owner</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_log_not_owner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_log_not_owner" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationLog</span></code> by someone who is not the owner.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_nonexistant">
+<code class="descname">test_get_nonexistant</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_nonexistant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_nonexistant" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET a nonexistant endpoint.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_product">
+<code class="descname">test_get_product</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationProduct</span></code> endpoint with valid data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_product_invalid_format">
+<code class="descname">test_get_product_invalid_format</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_product_invalid_format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_product_invalid_format" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationProduct</span></code> for unsupported format.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_product_nononexistant">
+<code class="descname">test_get_product_nononexistant</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_product_nononexistant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_product_nononexistant" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationProduct</span></code> for nonexistant compilation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_product_not_owner">
+<code class="descname">test_get_product_not_owner</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_product_not_owner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_product_not_owner" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationProduct</span></code> by someone not the owner.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_status">
+<code class="descname">test_get_status</code><span class="sig-paren">(</span><em>mock_session</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_status" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getServiceStatus</span></code> endpoint.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_status_completed">
+<code class="descname">test_get_status_completed</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_status_completed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_status_completed" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET the <code class="docutils literal notranslate"><span class="pre">getCompilationStatus</span></code> endpoint with valid data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_status_invalid_format">
+<code class="descname">test_get_status_invalid_format</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_status_invalid_format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_status_invalid_format" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET <code class="docutils literal notranslate"><span class="pre">getCompilationStatus</span></code> for unsupported format.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_status_nonexistant">
+<code class="descname">test_get_status_nonexistant</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_status_nonexistant"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_status_nonexistant" title="Permalink to this definition">¶</a></dt>
+<dd><p>GET <code class="docutils literal notranslate"><span class="pre">getCompilationStatus</span></code> for nonexistant task.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_get_status_not_owner">
+<code class="descname">test_get_status_not_owner</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_get_status_not_owner"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_get_status_not_owner" title="Permalink to this definition">¶</a></dt>
+<dd><p>Someone other than the owner requests <code class="docutils literal notranslate"><span class="pre">getCompilationStatus</span></code>.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_post_bad_request">
+<code class="descname">test_post_bad_request</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_post_bad_request"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_post_bad_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>POST the <code class="docutils literal notranslate"><span class="pre">requestCompilation</span></code> endpoint without data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_post_compilation_product_exists">
+<code class="descname">test_post_compilation_product_exists</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_post_compilation_product_exists"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_post_compilation_product_exists" title="Permalink to this definition">¶</a></dt>
+<dd><p>POST <code class="docutils literal notranslate"><span class="pre">requestCompilation</span></code> for existant product.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_post_request_compile">
+<code class="descname">test_post_request_compile</code><span class="sig-paren">(</span><em>mock_fm</em>, <em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_post_request_compile"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_post_request_compile" title="Permalink to this definition">¶</a></dt>
+<dd><p>POST the <code class="docutils literal notranslate"><span class="pre">requestCompilation</span></code> endpoint with valid data.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_post_task_start_failed">
+<code class="descname">test_post_task_start_failed</code><span class="sig-paren">(</span><em>mock_fm</em>, <em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_post_task_start_failed"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_post_task_start_failed" title="Permalink to this definition">¶</a></dt>
+<dd><p>Could not start compilation.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="compiler.tests.test_app.TestCompilerApp.test_product_exists_unauthorized">
+<code class="descname">test_product_exists_unauthorized</code><span class="sig-paren">(</span><em>mock_store</em>, <em>mock_compiler</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/tests/test_app.html#TestCompilerApp.test_product_exists_unauthorized"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.tests.test_app.TestCompilerApp.test_product_exists_unauthorized" title="Permalink to this definition">¶</a></dt>
+<dd><p>POST <code class="docutils literal notranslate"><span class="pre">requestCompilation</span></code> for existant product, wrong owner.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">arXiv Compilation Service</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">compiler</a><ul>
+  <li><a href="compiler.html">compiler package</a><ul>
+  <li><a href="compiler.tests.html">compiler.tests package</a><ul>
+      <li>Previous: <a href="compiler.tests.html" title="previous chapter">compiler.tests package</a></li>
+      <li>Next: <a href="compiler.tests.test_compiler.html" title="next chapter">compiler.tests.test_compiler module</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, arXiv-NG Team.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="../_sources/api/compiler.tests.test_app.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

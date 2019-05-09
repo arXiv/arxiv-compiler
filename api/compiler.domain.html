@@ -1,14 +1,13 @@
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 
 <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
-    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>compiler.domain module &#8212; arXiv Compilation Service 0.1 documentation</title>
     <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
     <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
     <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
     <script type="text/javascript" src="../_static/jquery.js"></script>
     <script type="text/javascript" src="../_static/underscore.js"></script>
@@ -34,14 +33,13 @@
 
           <div class="body" role="main">
             
-  <div class="section" id="compiler-domain-module">
-<h1>compiler.domain module<a class="headerlink" href="#compiler-domain-module" title="Permalink to this headline">¶</a></h1>
-<blockquote>
-<div><span class="target" id="module-compiler.domain"></span><p>Domain class for the compiler service.</p>
+  <div class="section" id="module-compiler.domain">
+<span id="compiler-domain-module"></span><h1>compiler.domain module<a class="headerlink" href="#module-compiler.domain" title="Permalink to this headline">¶</a></h1>
+<p>Domain class for the compiler service.</p>
 <dl class="class">
 <dt id="compiler.domain.Format">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Format</code><a class="reference internal" href="../_modules/compiler/domain.html#Format"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Format" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/enum.html#enum.Enum" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
 <p>Compilation formats supported by this service.</p>
 <dl class="attribute">
 <dt id="compiler.domain.Format.DVI">
@@ -62,12 +60,22 @@
 <dt id="compiler.domain.Format.content_type">
 <code class="descname">content_type</code><a class="headerlink" href="#compiler.domain.Format.content_type" title="Permalink to this definition">¶</a></dt>
 <dd><p>The mime-type for this format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="attribute">
 <dt id="compiler.domain.Format.ext">
 <code class="descname">ext</code><a class="headerlink" href="#compiler.domain.Format.ext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Filename extension for the compilation product.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
@@ -75,7 +83,7 @@
 <dl class="class">
 <dt id="compiler.domain.Product">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Product</code><a class="reference internal" href="../_modules/compiler/domain.html#Product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Product" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
 <p>Content of a compilation product itself.</p>
 <dl class="attribute">
 <dt id="compiler.domain.Product.checksum">
@@ -100,7 +108,7 @@
 <dl class="class">
 <dt id="compiler.domain.Reason">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Reason</code><a class="reference internal" href="../_modules/compiler/domain.html#Reason"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Reason" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/enum.html#enum.Enum" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
 <p>Specific reasons for a (usually failure) outcome.</p>
 <dl class="attribute">
 <dt id="compiler.domain.Reason.AUTHORIZATION">
@@ -152,7 +160,7 @@
 <dl class="class">
 <dt id="compiler.domain.SourcePackage">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">SourcePackage</code><a class="reference internal" href="../_modules/compiler/domain.html#SourcePackage"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.SourcePackage" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
 <p>Source package content, retrieved from file management service.</p>
 <dl class="attribute">
 <dt id="compiler.domain.SourcePackage.etag">
@@ -177,7 +185,7 @@
 <dl class="class">
 <dt id="compiler.domain.SourcePackageInfo">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">SourcePackageInfo</code><a class="reference internal" href="../_modules/compiler/domain.html#SourcePackageInfo"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.SourcePackageInfo" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
 <p>Current state of the source package in the file managment service.</p>
 <dl class="attribute">
 <dt id="compiler.domain.SourcePackageInfo.etag">
@@ -196,7 +204,7 @@
 <dl class="class">
 <dt id="compiler.domain.Status">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Status</code><a class="reference internal" href="../_modules/compiler/domain.html#Status"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Status" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/enum.html#enum.Enum" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">enum.Enum</span></code></a></p>
 <p>Represents the status of a requested compilation.</p>
 <dl class="attribute">
 <dt id="compiler.domain.Status.COMPLETED">
@@ -218,20 +226,8 @@
 <dl class="class">
 <dt id="compiler.domain.Task">
 <em class="property">class </em><code class="descclassname">compiler.domain.</code><code class="descname">Task</code><a class="reference internal" href="../_modules/compiler/domain.html#Task"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task" title="Permalink to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.7)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#tuple" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">tuple</span></code></a></p>
 <p>Represents the state of a compilation product in the store.</p>
-<dl class="attribute">
-<dt id="compiler.domain.Task.Formats">
-<code class="descname">Formats</code><a class="headerlink" href="#compiler.domain.Task.Formats" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#compiler.domain.Format" title="compiler.domain.Format"><code class="xref py py-class docutils literal notranslate"><span class="pre">Format</span></code></a></p>
-</dd></dl>
-
-<dl class="attribute">
-<dt id="compiler.domain.Task.Statuses">
-<code class="descname">Statuses</code><a class="headerlink" href="#compiler.domain.Task.Statuses" title="Permalink to this definition">¶</a></dt>
-<dd><p>alias of <a class="reference internal" href="#compiler.domain.Status" title="compiler.domain.Status"><code class="xref py py-class docutils literal notranslate"><span class="pre">Status</span></code></a></p>
-</dd></dl>
-
 <dl class="attribute">
 <dt id="compiler.domain.Task.checksum">
 <code class="descname">checksum</code><a class="headerlink" href="#compiler.domain.Task.checksum" title="Permalink to this definition">¶</a></dt>
@@ -243,6 +239,11 @@
 <dt id="compiler.domain.Task.content_type">
 <code class="descname">content_type</code><a class="headerlink" href="#compiler.domain.Task.content_type" title="Permalink to this definition">¶</a></dt>
 <dd><p>Mime type for the output format of this compilation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="attribute">
@@ -255,12 +256,22 @@
 <dt id="compiler.domain.Task.ext">
 <code class="descname">ext</code><a class="headerlink" href="#compiler.domain.Task.ext" title="Permalink to this definition">¶</a></dt>
 <dd><p>Filename extension for the compilation product.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="classmethod">
 <dt id="compiler.domain.Task.from_dict">
-<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>data: dict</em><span class="sig-paren">)</span> &#x2192; compiler.domain.Task<a class="reference internal" href="../_modules/compiler/domain.html#Task.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.from_dict" title="Permalink to this definition">¶</a></dt>
+<em class="property">classmethod </em><code class="descname">from_dict</code><span class="sig-paren">(</span><em>data</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/domain.html#Task.from_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.from_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a <a class="reference internal" href="#compiler.domain.Task" title="compiler.domain.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a> instance from raw data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#compiler.domain.Task" title="compiler.domain.Task"><code class="xref py py-class docutils literal notranslate"><span class="pre">Task</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="attribute">
@@ -268,6 +279,12 @@
 <code class="descname">output_format</code><a class="headerlink" href="#compiler.domain.Task.output_format" title="Permalink to this definition">¶</a></dt>
 <dd><p>The target format of the compilation.</p>
 <p>One of <code class="xref py py-attr docutils literal notranslate"><span class="pre">PDF</span></code>, <code class="xref py py-attr docutils literal notranslate"><span class="pre">DVI</span></code>, or <code class="xref py py-attr docutils literal notranslate"><span class="pre">PS</span></code>.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="compiler.domain.Task.owner">
+<code class="descname">owner</code><a class="headerlink" href="#compiler.domain.Task.owner" title="Permalink to this definition">¶</a></dt>
+<dd><p>The owner of this resource.</p>
 </dd></dl>
 
 <dl class="attribute">
@@ -304,13 +321,17 @@ of this compilation status is the product of this compilation.</p>
 
 <dl class="method">
 <dt id="compiler.domain.Task.to_dict">
-<code class="descname">to_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; dict<a class="reference internal" href="../_modules/compiler/domain.html#Task.to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.to_dict" title="Permalink to this definition">¶</a></dt>
+<code class="descname">to_dict</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/compiler/domain.html#Task.to_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#compiler.domain.Task.to_dict" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generate a dict representation of this object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#dict" title="(in Python v3.6)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>
 
-</div></blockquote>
 </div>
 
 
@@ -332,6 +353,7 @@ of this compilation status is the product of this compilation.</p>
 <h3>Navigation</h3>
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../architecture.html">Architecture</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">compiler</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="compiler.html">compiler package</a></li>
 </ul>
@@ -357,8 +379,6 @@ of this compilation status is the product of this compilation.</p>
     <form class="search" action="../search.html" method="get">
       <input type="text" name="q" />
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
     </div>
 </div>
@@ -379,7 +399,7 @@ of this compilation status is the product of this compilation.</p>
       &copy;2018, arXiv-NG Team.
       
       |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.4</a>
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.1</a>
       &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
       
       |
