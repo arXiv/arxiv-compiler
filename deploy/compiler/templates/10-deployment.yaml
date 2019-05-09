@@ -68,7 +68,7 @@ spec:
         #     path: /status
         #     port: 8000
         env:
-        - name: LOGEVEL
+        - name: LOGLEVEL
           value: "{{ .Values.loglevel }}"
         - name: REDIS_ENDPOINT
           value: "{{ .Values.redis.host }}"
@@ -88,6 +88,22 @@ spec:
           value: "{{ .Values.s3.submission.bucket }}-{{ .Values.namespace }}"
         - name: KUBE_TOKEN
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
+        {{ if .Values.filemanager.override }}
+        - name: FILEMANAGER_SERVICE_HOST
+          value: "{{ .Values.filemanager.host }}"
+        - name: FILEMANAGER_SERVICE_PORT
+          value: "{{ .Values.filemanager.port }}"
+        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+          value: "{{ .Values.filemanager.proto }}"
+        - name: FILEMANAGER_PATH
+          value: "{{ .Values.filemanager.path }}"
+        - name: FILEMANAGER_CONTENT_PATH
+          value: "{{ .Values.filemanager.content_path }}"
+        {{ end }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
 
 
 ---
@@ -198,3 +214,19 @@ spec:
           value: "{{ .Values.converter.image }}"
         - name: HOST_SOURCE_ROOT
           value: /sources
+        {{ if .Values.filemanager.override }}
+        - name: FILEMANAGER_SERVICE_HOST
+          value: "{{ .Values.filemanager.host }}"
+        - name: FILEMANAGER_SERVICE_PORT
+          value: "{{ .Values.filemanager.port }}"
+        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+          value: "{{ .Values.filemanager.proto }}"
+        - name: FILEMANAGER_PATH
+          value: "{{ .Values.filemanager.path }}"
+        - name: FILEMANAGER_CONTENT_PATH
+          value: "{{ .Values.filemanager.content_path }}"
+        {{ end }}
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace

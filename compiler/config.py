@@ -42,7 +42,7 @@ FILEMANAGER_CONTENT_PATH = os.environ.get('FILEMANAGER_CONTENT_PATH',
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 S3_BUCKETS = [
-    ('arxiv', 'arxiv-compiler'),
+    # ('arxiv', 'arxiv-compiler'),
     ('submission', os.environ.get('S3_SUBMISSION_BUCKET',
                                   'arxiv-compiler-submission'))
 ]

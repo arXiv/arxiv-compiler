@@ -33,3 +33,11 @@ s3:
 converter.image: arxiv/converter:0.9
 
 loglevel: 10
+
+filemanager:
+  override: true
+  host: "arxiv.org"
+  port: "443"
+  proto: "https"
+  path: "/"
+  content_path: "/src/{source_id}"
