@@ -11,7 +11,7 @@ A key requirement for this integration is the ability to pass uploads to
 the file management service as they are being received by this UI application.
 """
 from functools import wraps
-from typing import MutableMapping, Tuple, Optional, Any
+from typing import MutableMapping, Tuple, Optional, Any, Hashable
 import json
 import re
 import os
@@ -34,7 +34,10 @@ logger = logging.getLogger(__name__)
 
 
 class Default(dict):
-    def __missing__(self, key):
+    """A more palatable dict for string formatting."""
+
+    def __missing__(self, key: str) -> str:
+        """Return a key when missing rather than raising a KeyError."""
         return key
 
 

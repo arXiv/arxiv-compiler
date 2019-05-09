@@ -1,4 +1,4 @@
-"""
+r"""
 
 Parameters supported by autotex "converter" image.
 
@@ -87,7 +87,7 @@ class TaskCreationFailed(RuntimeError):
 
 
 class CorruptedSource(RuntimeError):
-    """"The source content is corrupted."""
+    """The source content is corrupted."""
 
 
 class AuthorizationFailed(RuntimeError):

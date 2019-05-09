@@ -3,9 +3,8 @@ Provides the main API blueprint for compilation.
 
 Notes
 -----
-
-- mypy doesn't have types for flask.Headers.extend, so those lines are
-  excluded from type checking.
+mypy doesn't have types for flask.Headers.extend, so those lines are
+excluded from type checking.
 
 """
 
