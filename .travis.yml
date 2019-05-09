@@ -16,6 +16,7 @@ script:
   - pipenv run nose2 --with-coverage
 after_success:
   - coveralls
+  - "./tests/lintstats.sh"
 deploy:
 - provider: script
   script:
