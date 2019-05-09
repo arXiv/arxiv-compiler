@@ -210,7 +210,7 @@ spec:
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
         - name: DOCKER_HOST
           value: tcp://localhost:2375
-        - name: COMPILER_DOCKER_IMAGE
+        - name: CONVERTER_DOCKER_IMAGE
           value: "{{ .Values.converter.image }}"
         - name: HOST_SOURCE_ROOT
           value: /sources

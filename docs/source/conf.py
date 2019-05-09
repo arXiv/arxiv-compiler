@@ -16,6 +16,11 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(os.path.abspath('..'))
+sys.path.append(os.path.abspath('../..'))
+
+from compiler.factory import create_app
+app = create_app()
+app.app_context().push()
 
 
 # -- Project information -----------------------------------------------------
@@ -41,10 +46,17 @@ release = '0.1'
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx_autodoc_typehints',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.graphviz',
+    'sphinx.ext.todo',
     'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
-    'sphinx.ext.githubpages',
+    'sphinx.ext.githubpages'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -184,4 +196,13 @@ epub_exclude_files = ['search.html']
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'python':  ('https://docs.python.org/3.6', None),
+    'arxitecture':  ('https://arxiv.github.io/arxiv-arxitecture/', None),
+    'arxiv.taxonomy': ('https://arxiv.github.io/arxiv-base', None),
+    'arxiv.base':  ('https://arxiv.github.io/arxiv-base', None),
+    'arxiv.users':  ('https://arxiv.github.io/arxiv-auth', None),
+    'browse':  ('https://arxiv.github.io/arxiv-browse/', None),
+    'search':  ('https://arxiv.github.io/arxiv-search/', None),
+    'zero':  ('https://arxiv.github.io/arxiv-zero/', None),
+}

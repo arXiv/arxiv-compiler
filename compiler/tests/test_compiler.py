@@ -447,7 +447,7 @@ class TestRun(TestCase):
         open(os.path.join(log_dir, 'autotex.log'), 'a').close()
 
         mock_current_app.config = {
-            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': root
         }
@@ -474,7 +474,7 @@ class TestRun(TestCase):
         open(os.path.join(log_dir, 'autotex.log'), 'a').close()
 
         mock_current_app.config = {
-            'COMPILER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': root
         }

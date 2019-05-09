@@ -36,7 +36,7 @@ For example:
 ```bash
 $ mkdir /tmp/compilestuff     # Docker needs access to this.
 $ export HOST_SOURCE_ROOT=/tmp/compilestuff
-$ export COMPILER_DOCKER_IMAGE=[name (including transport) of converter image]
+$ export CONVERTER_DOCKER_IMAGE=[name (including transport) of converter image]
 $ export FILEMANAGER_ENDPOINT=https://arxiv.org  # Get public sources.
 $ export FILEMANAGER_CONTENT_PATH=/src/{source_id}
 ```
@@ -153,3 +153,22 @@ $ curl -H 'Authorization: {JWT}' http://127.0.0.1:8000/1901.00123/%22Thu%2C%2003
 
 You can get the content at:
 http://127.0.0.1:8000/1901.00123/%22Thu%2C%2003%20Jan%202019%2001:04:33%20GMT%22/pdf/content
+
+
+## Documentation
+
+The latest documentation can be found at
+https://arxiv.github.io/arxiv-compiler.
+
+### Building
+
+```bash
+sphinx-apidoc -o docs/source/api/ -e -f -M compiler *test*/*
+cd docs/
+make html SPHINXBUILD=$(pipenv --venv)/bin/sphinx-build
+```
+
+
+## License
+
+See [LICENSE](./LICENSE).

@@ -8,7 +8,7 @@ DEBUG = os.environ.get('DEBUG') == '1'
 
 SERVER_NAME = os.environ.get('SEARCH_SERVER_NAME', None)
 """
-the name and port number of the server. Required for subdomain support
+The name and port number of the server. Required for subdomain support
 (e.g.: 'myapp.dev:5000') Note that localhost does not support subdomains so
 setting this to 'localhost' does not help. Setting a SERVER_NAME also by
 default enables URL generation without a request context but with an
@@ -23,36 +23,76 @@ cookie as path value.
 """
 
 JWT_SECRET = os.environ.get('JWT_SECRET', 'foosecret')
+"""Secret key for auth tokens."""
+
 SECRET_KEY = os.environ.get('FLASK_SECRET', 'fooflasksecret')
 
 FILEMANAGER_HOST = os.environ.get('FILEMANAGER_SERVICE_HOST', 'arxiv.org')
+"""Hostname of the filemanager service."""
+
 FILEMANAGER_PORT = os.environ.get('FILEMANAGER_SERVICE_PORT', '443')
-FILEMANAGER_PROTO = os.environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO', 'https')
+"""Filemanager service HTTP(S) port."""
+
+FILEMANAGER_PROTO = os.environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO',
+                                   'https')
+"""Protocol for calling the filemanager service. Default is ``https``."""
+
 FILEMANAGER_PATH = os.environ.get('FILEMANAGER_PATH', 'filemanager/api')
+"""Path to the base filemanager service API endpoint."""
+
 FILEMANAGER_ENDPOINT = os.environ.get(
     'FILEMANAGER_ENDPOINT',
     f'{FILEMANAGER_PROTO}://{FILEMANAGER_HOST}:{FILEMANAGER_PORT}'
     f'/{FILEMANAGER_PATH}'
 )
+"""Full URI for the base filemanager service API endpoint."""
+
 FILEMANAGER_VERIFY = bool(int(os.environ.get('FILEMANAGER_VERIFY', '1')))
+"""Enable/disable TLS certificate verification for the filemanager service."""
+
 FILEMANAGER_CONTENT_PATH = os.environ.get('FILEMANAGER_CONTENT_PATH',
                                            '/{source_id}/content')
+"""
+Sub-path template for retrieving source packages from the filemanager service.
+
+Should use the `curly-brace format syntax
+<https://docs.python.org/3.4/library/string.html#format-examples>`_. Currently
+supports the ``source_id`` key.
+"""
 
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
+"""AWS S3 endpoint. Default is ``None`` (use the "real" S3 service)."""
+
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
+"""Enable/disable TLS certificate verification for S3."""
+
 S3_BUCKETS = [
     # ('arxiv', 'arxiv-compiler'),
     ('submission', os.environ.get('S3_SUBMISSION_BUCKET',
                                   'arxiv-compiler-submission'))
 ]
+"""
+Buckets for storing compilation products and logs.
+
+This is a list of 2-tuples, containing a name for the bucket within the
+compiler service and the name of the bucket on S3.
+"""
+
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
+"""Access key ID for AWS, authorized for S3 access."""
+
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', None)
+"""Secret key for AWS, authorized for S3 access."""
+
 AWS_REGION = os.environ.get('AWS_REGION', 'us-east-1')
+"""AWS region. Defaults to ``us-east-1``."""
 
 REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
+"""Hostname of the Redis cluster endpoint."""
 
-COMPILER_DOCKER_IMAGE = os.environ.get('COMPILER_DOCKER_IMAGE')
+CONVERTER_DOCKER_IMAGE = os.environ.get('CONVERTER_DOCKER_IMAGE')
+"""Image name (including tag) for the TeX converter."""
 
 HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', tempfile.mkdtemp())
 """Temporary directories containing source packages go in here."""
@@ -68,14 +108,30 @@ AUTH_UPDATED_SESSION_REF = True
 LOGLEVEL = 10
 
 VAULT_ENABLED = bool(int(os.environ.get('VAULT_ENABLED', '0')))
+"""Enable/disable secret retrieval from Vault."""
+
 KUBE_TOKEN = os.environ.get('KUBE_TOKEN', 'fookubetoken')
+"""Service account token for authenticating with Vault. May be a file path."""
+
 VAULT_HOST = os.environ.get('VAULT_HOST', 'foovaulthost')
+"""Vault hostname/address."""
+
 VAULT_PORT = os.environ.get('VAULT_PORT', '1234')
+"""Vault API port."""
+
 VAULT_ROLE = os.environ.get('VAULT_ROLE', 'compiler')
+"""Vault role linked to this application's service account."""
+
 VAULT_CERT = os.environ.get('VAULT_CERT')
+"""Path to CA certificate for TLS verification when talking to Vault."""
+
 VAULT_SCHEME = os.environ.get('VAULT_SCHEME', 'https')
+"""Default is ``https``."""
+
 NAMESPACE = os.environ.get('NAMESPACE')
+"""Namespace in which this service is deployed; to quality keys for secrets."""
 NS_AFFIX = '' if NAMESPACE == 'production' else f'-{NAMESPACE}'
+
 VAULT_REQUESTS = [
     {'type': 'generic',
      'name': 'JWT_SECRET',
@@ -88,3 +144,4 @@ VAULT_REQUESTS = [
      'mount_point': f'aws{NS_AFFIX}/',
      'role': os.environ.get('VAULT_CREDENTIAL')}
 ]
+"""Requests for Vault secrets."""

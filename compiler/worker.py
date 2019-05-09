@@ -34,7 +34,7 @@ def get_secrets(*args: Any, **kwargs: Any) -> None:
 @celeryd_init.connect
 def verify_converter_image_up_to_date(*args: Any, **kwargs: Any) -> None:
     """Upon startup, pull the compiler image."""
-    image = app.config['COMPILER_DOCKER_IMAGE']
+    image = app.config['CONVERTER_DOCKER_IMAGE']
     ecr_registry, _ = image.split('/', 1)
     client = docker.from_env()
 

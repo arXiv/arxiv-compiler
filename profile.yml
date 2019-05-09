@@ -52,7 +52,7 @@ application:
     description: Contains compiler products.
   - name: converter-image
     type: image
-    var: COMPILER_DOCKER_IMAGE
+    var: CONVERTER_DOCKER_IMAGE
     value: 626657773168.dkr.ecr.us-east-1.amazonaws.com/arxiv/converter:0.8
     description: Image to be executed within DinD container.
   - name: task-queue

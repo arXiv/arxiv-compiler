@@ -8,6 +8,8 @@ celery_app = Celery('compiler',
                     backend=celeryconfig.result_backend,
                     result_backend=celeryconfig.result_backend,
                     broker=celeryconfig.broker_url)
+"""The celery application instance used in both the API and the worker."""
+
 celery_app.autodiscover_tasks(['compiler'], related_name='compiler',
                               force=True)
 celery_app.conf.task_default_queue = 'compiler-worker'
@@ -20,4 +22,3 @@ celery_app.conf.task_publish_retry_policy = \
     celeryconfig.task_publish_retry_policy
 celery_app.conf.redis_socket_timeout = 5
 celery_app.conf.redis_socket_connect_timeout = 5
-print(celery_app.conf)

@@ -1,49 +1,48 @@
 r"""
+Dispatching and execution of compilation tasks.
 
-Parameters supported by autotex "converter" image.
+Parameters supported by autotex "converter" image::
 
-```
- -C cache directory [defaults to paper/format specific directory in PS_CACHE]
- -D pass through for -D dvips flag
- -f output format, only sensible use is -f fInm for pdf generation
- -u add a psmapfile to dvips command "-u +psmapfile"
- -h print usage
- -k do not delete temporary directory
- -P pass through for -P dvips flag
- -p id of paper to process (pre 2007 archive/papernum or new numerical id
-    yymm.\\d{4,5}) (required!)
- -d id to use for decrytion (overrides default to -p id)
- -s do not add stamp to PostScript
- -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
- -v verbose logging, that is, print log messages to STDOUT
-    (they are always logged to auto_gen_ps.log)
- -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
- -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
- -X cache DVI file (default: no)
- -Y don't copy PostScript or PDF to cache
- -Z don't gzip PostScript before moving to cache
- -T override the default AUTOTEX_TIMEOUT setting with user value
-```
+     -C cache directory [defaults to paper/format specific directory in PS_CACHE]
+     -D pass through for -D dvips flag
+     -f output format, only sensible use is -f fInm for pdf generation
+     -u add a psmapfile to dvips command "-u +psmapfile"
+     -h print usage
+     -k do not delete temporary directory
+     -P pass through for -P dvips flag
+     -p id of paper to process (pre 2007 archive/papernum or new numerical id
+        yymm.\\d{4,5}) (required!)
+     -d id to use for decrytion (overrides default to -p id)
+     -s do not add stamp to PostScript
+     -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+     -v verbose logging, that is, print log messages to STDOUT
+        (they are always logged to auto_gen_ps.log)
+     -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
+     -W working directory [defaults to paper/version specific dir in PS_GEN_TMP]
+     -X cache DVI file (default: no)
+     -Y don't copy PostScript or PDF to cache
+     -Z don't gzip PostScript before moving to cache
+     -T override the default AUTOTEX_TIMEOUT setting with user value
+
 
 We're going to use:
 
-- -f output format, only sensible use is -f fInm for pdf generation (fInm, dvi,
-  ps)
-- -p id of paper to process (pre 2007 archive/papernum or new numerical id
+- ``-f`` output format, only sensible use is -f fInm for pdf generation (fInm,
+  dvi, ps)
+- ``-p`` id of paper to process (pre 2007 archive/papernum or new numerical id
   yymm.\\d{4,5}) (required!)
-- -s do not add stamp to PostScript
-- -T override the default AUTOTEX_TIMEOUT setting with user value
-
-- -u add a psmapfile to dvips command "-u +psmapfile"
-- -P pass through for -P dvips flag
-- -t pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
-- -D pass through for -D dvips flag
-
-- -d id to use for decrytion (overrides default to -p id)
+- ``-s`` do not add stamp to PostScript
+- ``-T`` override the default AUTOTEX_TIMEOUT setting with user value
+- ``-u`` add a psmapfile to dvips command "-u +psmapfile"
+- ``-P`` pass through for -P dvips flag
+- ``-t`` pass through for -t dvips flag (letter, legal, ledger, a4, a3, landscape)
+- ``-D`` pass through for -D dvips flag
+- ``-d`` id to use for decrytion (overrides default to -p id)
 
 Always do this:
-- -q quiet - don't send emails to tex_admin (not the inverse of verbose!)
-- -Y don't copy PostScript or PDF to cache
+
+- ``-q`` quiet - don't send emails to tex_admin (not the inverse of verbose!)
+- ``-Y`` don't copy PostScript or PDF to cache
 
 """
 
@@ -425,7 +424,7 @@ def _run(source: SourcePackage,
     # converter container. We are assuming that the image is not running in
     # the same container as this worker application.
     source_dir, fname = os.path.split(source.path)
-    image = current_app.config['COMPILER_DOCKER_IMAGE']
+    image = current_app.config['CONVERTER_DOCKER_IMAGE']
     host_source_root = current_app.config['HOST_SOURCE_ROOT']
     container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
     leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')

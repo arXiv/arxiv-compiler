@@ -1,5 +1,5 @@
 compiler
-=========
+========
 
 .. toctree::
    :maxdepth: 4
