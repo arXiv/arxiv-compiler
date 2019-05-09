@@ -33,6 +33,7 @@ coverage = "*"
 importlib_resources = "*"
 sphinx = "*"
 sphinx-autodoc-typehints = "*"
+pydocstyle = "*"
 
 [requires]
 python_version = "3.6"
