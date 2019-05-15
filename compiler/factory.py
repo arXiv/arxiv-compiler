@@ -101,5 +101,5 @@ def wait_for_service(service: IAwaitable, delay: int = 2) -> None:
     logger.info('await %s', service_name)
     while not service.is_available():
         logger.info('service %s is not available; try again', service_name)
-        time.sleep(2)
+        time.sleep(delay)
     logger.info('service %s is available!', service_name)

@@ -60,7 +60,7 @@ Should use the `curly-brace format syntax
 supports the ``source_id`` key.
 """
 FILEMANAGER_STATUS_ENDPOINT = os.environ.get('FILEMANAGER_STATUS_ENDPOINT',
-                                             '/status')
+                                             'status')
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 """AWS S3 endpoint. Default is ``None`` (use the "real" S3 service)."""
