@@ -26,7 +26,6 @@ ENV ARXIV_HOME "https://arxiv.org"
 ADD compiler /opt/arxiv/compiler/
 ADD wsgi.py /opt/arxiv/
 ADD uwsgi.ini /opt/arxiv/
-ADD bootstrap.py /opt/arxiv/
 ADD app.py /opt/arxiv/
 ADD bin/start_worker.sh /opt/arxiv/
 ADD bin/start_api.sh /opt/arxiv/

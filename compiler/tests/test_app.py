@@ -22,10 +22,7 @@ class TestCompilerApp(TestCase):
         self.app = factory.create_app()
         self.client = self.app.test_client()
         self.app.config['JWT_SECRET'] = 'foosecret'
-        self.app.config['S3_BUCKETS'] = [
-            # ('arxiv', 'arxiv-compiler'),
-            ('submission', 'test-submission-bucket')
-        ]
+        self.app.config['S3_BUCKET'] = 'test-submission-bucket'
         self.user_id = '123'
         with self.app.app_context():
             self.token = generate_token(self.user_id, 'foo@user.com',

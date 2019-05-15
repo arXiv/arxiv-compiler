@@ -12,10 +12,7 @@ from ... import domain
 mock_app_config = mock.MagicMock(return_value={
     'S3_ENDPOINT': None,
     'S3_VERIFY': True,
-    'S3_BUCKETS': [
-        ('arxiv', 'arxiv-compiler'),
-        ('submission', 'arxiv-compiler-submission')
-    ],
+    'S3_BUCKET': 'arxiv-compiler',
     'AWS_ACCESS_KEY_ID': 'foo_id',
     'AWS_SECRET_ACCESS_KEY': 'foosecretkey',
     'AWS_REGION': 'us-east-1'
@@ -30,7 +27,7 @@ class TestStore(TestCase):
     def test_set_get_compilation_status(self):
         """Test setting and getting compilation status."""
         store = Store.current_session()
-        store.create_bucket()
+        store._create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -103,7 +100,7 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation products."""
         store = Store.current_session()
         content = io.BytesIO(b'somepdfcontent')
-        store.create_bucket()
+        store._create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,
@@ -133,7 +130,7 @@ class TestStore(TestCase):
         """Test storing and retrieving compilation logs."""
         store = Store.current_session()
         content = io.BytesIO(b'some log output')
-        store.create_bucket()
+        store._create_bucket()
         status_pdf = domain.Task(
             source_id='12345',
             output_format=domain.Format.PDF,

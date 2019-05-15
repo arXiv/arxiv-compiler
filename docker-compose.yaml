@@ -5,6 +5,7 @@ x-base-service:
   tty: true
   environment:
     SECRET_KEY: "not secure only use for development"
+    JWT_SECRET: "foosecret"
     DOCKER_HOST: "unix:///var/run/docker.sock"
     REDIS_ENDPOINT: "compiler-test-redis"
     AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -18,12 +19,13 @@ x-base-service:
     FILEMANAGER_SERVICE_PORT_443_PROTO: "https"
     FILEMANAGER_PATH: "/"
     FILEMANAGER_CONTENT_PATH: "/src/{source_id}"
+    FILEMANAGER_STATUS_ENDPOINT: ""
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
     HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
     VERBOSE_COMPILE: 1
-    VAULT_ENABLED: "1"
+    VAULT_ENABLED: "0"
     NAMESPACE: "production"
     KUBE_TOKEN: "fookubetoken"
     VAULT_HOST: "mock-compiler-vault"
@@ -31,6 +33,8 @@ x-base-service:
     VAULT_ROLE: "compiler"
     VAULT_CREDENTIAL: "foocredential"
     VAULT_SCHEME: "http"
+    WAIT_FOR_SERVICES: 1
+    WAIT_ON_STARTUP: 5
 
 services:
   compiler-test-redis:
@@ -40,6 +44,9 @@ services:
       - compiler-test
     ports:
       - "6379:6379"
+    logging:
+      driver: none
+
   compiler-test-localstack:
     image: atlassianlabs/localstack
     container_name: compiler-test-localstack
@@ -51,11 +58,13 @@ services:
     environment:
       USE_SSL: 'true'
       DEBUG: 'true'
+    logging:
+      driver: none
 
   compiler-test-api:
     << : *base-service
     build: .
-    command: pipenv run flask run -h 0.0.0.0 -p 8000
+    # command: pipenv run flask run -h 0.0.0.0 -p 8000
     depends_on:
      - "compiler-test-localstack"
      - "compiler-test-redis"

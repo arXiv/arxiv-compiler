@@ -52,7 +52,7 @@ class FileManager(service.HTTPIntegration):
     def is_available(self) -> bool:
         """Check our connection to the filemanager service."""
         config = get_application_config()
-        status_endpoint = config.get('FILEMANAGER_STATUS_ENDPOINT', '/status')
+        status_endpoint = config.get('FILEMANAGER_STATUS_ENDPOINT', 'status')
         try:
             response = self.request('get', status_endpoint)
             return bool(response.status_code == 200)

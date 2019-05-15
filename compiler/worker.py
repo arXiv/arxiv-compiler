@@ -1,5 +1,6 @@
 """Initialize the Celery application."""
 
+import os
 from typing import Any
 from base64 import b64decode
 

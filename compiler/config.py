@@ -51,7 +51,7 @@ FILEMANAGER_VERIFY = bool(int(os.environ.get('FILEMANAGER_VERIFY', '1')))
 """Enable/disable TLS certificate verification for the filemanager service."""
 
 FILEMANAGER_CONTENT_PATH = os.environ.get('FILEMANAGER_CONTENT_PATH',
-                                           '/{source_id}/content')
+                                          '/{source_id}/content')
 """
 Sub-path template for retrieving source packages from the filemanager service.
 
@@ -59,7 +59,8 @@ Should use the `curly-brace format syntax
 <https://docs.python.org/3.4/library/string.html#format-examples>`_. Currently
 supports the ``source_id`` key.
 """
-
+FILEMANAGER_STATUS_ENDPOINT = os.environ.get('FILEMANAGER_STATUS_ENDPOINT',
+                                             '/status')
 # Configuration for object store.
 S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 """AWS S3 endpoint. Default is ``None`` (use the "real" S3 service)."""
@@ -67,17 +68,8 @@ S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 """Enable/disable TLS certificate verification for S3."""
 
-S3_BUCKETS = [
-    # ('arxiv', 'arxiv-compiler'),
-    ('submission', os.environ.get('S3_SUBMISSION_BUCKET',
-                                  'arxiv-compiler-submission'))
-]
-"""
-Buckets for storing compilation products and logs.
-
-This is a list of 2-tuples, containing a name for the bucket within the
-compiler service and the name of the bucket on S3.
-"""
+S3_BUCKET = os.environ.get('S3_BUCKET', 'arxiv-compiler')
+"""Bucket for storing compilation products and logs."""
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
 """Access key ID for AWS, authorized for S3 access."""
@@ -145,3 +137,6 @@ VAULT_REQUESTS = [
      'role': os.environ.get('VAULT_CREDENTIAL')}
 ]
 """Requests for Vault secrets."""
+
+WAIT_FOR_SERVICES = bool(int(os.environ.get('WAIT_FOR_SERVICES', '0')))
+WAIT_ON_STARTUP = int(os.environ.get('WAIT_ON_STARTUP', '0'))
