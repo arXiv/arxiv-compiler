@@ -8,16 +8,16 @@ See `the celery docs
 import os
 from urllib import parse
 
-AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
-REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
-"""Hostname of the Redis cluster endpoint."""
-
-broker_url = "redis://%s:6379/0" % REDIS_ENDPOINT
+broker_url = "redis://%s:6379/0" % os.environ.get('REDIS_ENDPOINT')
 """URI for the Redis cluster endpoint used for task queue."""
 
-result_backend = "redis://%s:6379/0" % REDIS_ENDPOINT
+result_backend = "redis://%s:6379/0" % os.environ.get('REDIS_ENDPOINT')
 """URI for the Redis cluster endpoint used as a result backend."""
+
+backend = results = result_backend
+
+redis_socket_timeout = 5
+redis_socket_connect_timeout = 5
 
 broker_transport_options = {
     'queue_name_prefix': 'compiler-',
@@ -28,6 +28,8 @@ broker_transport_options = {
 }
 worker_prefetch_multiplier = 1
 """Don't let workers grab a whole bunch of tasks at once."""
+
+task_default_queue = 'compiler-worker'
 
 task_acks_late = True
 """

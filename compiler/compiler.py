@@ -93,15 +93,22 @@ class AuthorizationFailed(RuntimeError):
     """The request was not authorized."""
 
 
-def is_available() -> bool:
+def is_available(await_result: bool = False) -> bool:
     """Verify that we can start compilations."""
     logger.debug('check connection to task queue')
     try:
-        do_nothing.apply_async()
+        task = do_nothing.apply_async()
     except Exception:
         logger.debug('could not connect to task queue')
         return False
     logger.debug('connection to task queue ok')
+    if await_result:
+        try:
+            logger.debug('waiting for task result')
+            task.get()    # Blocks until result is available.
+        except Exception as e:
+            logger.error('Encounted exception while awaiting result: %s', e)
+            return False
     return True
 
 

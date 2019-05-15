@@ -49,7 +49,7 @@ class FileManager(service.HTTPIntegration):
 
         service_name = "filemanager"
 
-    def is_available(self) -> bool:
+    def is_available(self, **kwargs: Any) -> bool:
         """Check our connection to the filemanager service."""
         config = get_application_config()
         status_endpoint = config.get('FILEMANAGER_STATUS_ENDPOINT', 'status')
