@@ -24,7 +24,7 @@ In addition, the following infrastructure parts are required:
 ## Running the compiler service locally
 
 The easiest way to get up and running is to launch the whole service group
-using Docker Compose. You will need to pull the converter image ahead of time.
+using Docker Compose. You will need to pull the [converter](https://github.com/arXiv/arxiv-converter/tree/develop) image ahead of time.
 
 If you do not have an instance of the file manager service running, you can
 try compiling published sources on the public arXiv.org site.
