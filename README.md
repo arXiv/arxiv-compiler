@@ -127,7 +127,7 @@ Vary: User-Agent
 Content-Type: application/x-eprint-tar
 ```
 
-**Note that the quote are included as part of the value of the ETag/checksum
+**Note that the quotation marks are included as part of the value of the ETag/checksum
 field in the request.**
 
 ### Checking the compilation status endpoint
