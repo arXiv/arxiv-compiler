@@ -89,11 +89,12 @@ def compile(request_data: MultiDict, token: str, session: Session,
             raise BadRequest(f'Unsupported format: {requested_format}') from e
     else:
         output_format = Format.PDF
+
     source_id = request_data.get('source_id', None)
     checksum = request_data.get('checksum', None)
-    if source_id is None:
-        logger.debug('Missing required parameter: source_id')
-        raise BadRequest('Missing required parameter: source_id')
+    if source_id is None or not source_id.isdecimal():
+        logger.debug('Missing or invalid source_id: %s', source_id)
+        raise BadRequest(f'Missing or invalid source_id: {source_id}')
     if checksum is None:
         logger.debug('Missing required parameter: checksum')
         raise BadRequest('Missing required parameter: checksum')
@@ -157,6 +158,8 @@ def get_status(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
+    if not source_id.isdecimal():
+        raise BadRequest(f'Invalid source_id: {source_id}')
     try:
         product_format = Format(output_format)
     except ValueError as e:
@@ -196,6 +199,8 @@ def get_product(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
+    if not source_id.isdecimal():
+        raise BadRequest(f'Invalid source_id: {source_id}')
     store = Store.current_session()
     try:
         product_format = Format(output_format)
@@ -251,6 +256,8 @@ def get_log(source_id: str, checksum: str, output_format: str,
         product_format = Format(output_format)
     except ValueError as e:
         raise BadRequest(f'Unsupported format: {output_format}') from e
+    if not source_id.isdecimal():
+        raise BadRequest(f'Invalid source_id: {source_id}')
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
