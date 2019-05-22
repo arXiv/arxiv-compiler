@@ -107,6 +107,10 @@ def compile(request_data: MultiDict, token: str, session: Session,
     stamp_link: Optional[str] = request_data.get('stamp_link', None)
 
     logger.debug('%s: request compilation with %s', __name__, request_data)
+
+    # Unless we are forcing recompilation, we do not want to compile the same
+    # source twice. So we check our storage for a compilation (successful or
+    # not) corresponding to the requested source package.
     if not force:
         info = _status_from_store(source_id, checksum, output_format)
         if info is not None:
