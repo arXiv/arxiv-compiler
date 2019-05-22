@@ -76,6 +76,9 @@ For requests in your browser, you can use something like
 [requestly](https://chrome.google.com/webstore/detail/requestly-redirect-url-mo/mdnleldcmiljblolnjhpnblkcekpdkpa?hl=en)
 to automatically add the auth header to your requests.
 
+[Advanced Rest Client](https://install.advancedrestclient.com/install) is also
+handy for this purpose.
+
 ### Request compilation
 
 ```bash
