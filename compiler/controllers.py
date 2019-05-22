@@ -82,7 +82,10 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     """
     if 'output_format' in request_data:
-        output_format = Format(request_data['output_format'])
+        try:
+            output_format = Format(request_data['output_format'])
+        except ValueError as e:
+            raise BadRequest(f'Unsupported format: {output_format}') from e
     else:
         output_format = Format.PDF
     source_id = request_data.get('source_id', None)
@@ -151,8 +154,8 @@ def get_status(source_id: str, checksum: str, output_format: str,
     """
     try:
         product_format = Format(output_format)
-    except ValueError:
-        raise BadRequest('Invalid format')
+    except ValueError as e:
+        raise BadRequest(f'Unsupported format: {output_format}') from e
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
     info = _status_from_store(source_id, checksum, product_format)
@@ -191,8 +194,8 @@ def get_product(source_id: str, checksum: str, output_format: str,
     store = Store.current_session()
     try:
         product_format = Format(output_format)
-    except ValueError:  # Not a valid format.
-        raise BadRequest('Invalid format')
+    except ValueError as e:
+        raise BadRequest(f'Unsupported format: {output_format}') from e
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
@@ -241,8 +244,8 @@ def get_log(source_id: str, checksum: str, output_format: str,
     store = Store.current_session()
     try:
         product_format = Format(output_format)
-    except ValueError:  # Not a valid format.
-        raise BadRequest('Invalid format')
+    except ValueError as e:
+        raise BadRequest(f'Unsupported format: {output_format}') from e
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
