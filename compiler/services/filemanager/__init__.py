@@ -10,23 +10,16 @@ for downpath processing, e.g. compilation.
 A key requirement for this integration is the ability to pass uploads to
 the file management service as they are being received by this UI application.
 """
-from functools import wraps
-from typing import MutableMapping, Tuple, Optional, Any, Hashable
+
+from typing import Optional, Any
 import json
 import re
 import os
-from urllib.parse import urlparse, urlunparse, urlencode
-import dateutil.parser
-import tempfile
 
 import requests
-from urllib3.util.retry import Retry
-from werkzeug.datastructures import FileStorage
-
 from arxiv.integration.api import status, service
-from arxiv.integration.api import exceptions
 from arxiv.base import logging
-from arxiv.base.globals import get_application_config, get_application_global
+from arxiv.base.globals import get_application_config
 
 from ...domain import SourcePackageInfo, SourcePackage
 
