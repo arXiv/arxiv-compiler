@@ -21,6 +21,29 @@ logger = logging.getLogger(__name__)
 
 Response = Tuple[dict, int, dict]
 
+urlsafe_base64_alphabet = (set(range(65, 91))         # A-Z
+                           | set(range(97, 123))      # a-z
+                           | set(range(48, 58))       # 0-9
+                           | set((45, 95, 61)))       # -_=
+"""
+Ordinal representation of the URL-safe Base64 alphabet.
+
+RFC 3548 `defines <https://tools.ietf.org/html/rfc3548.html#page-5>`_ the
+base 64 alphabet as ``A-Za-z0-9+/=``. The Python base64 module `describes
+<https://docs.python.org/3/library/base64.html#base64.urlsafe_b64encode>`_
+the URL-safe alphabet as the standard Base64 alphabet with ``-``
+substituted for ``+`` and ``_`` substituted for ``/``.
+"""
+
+
+def is_urlsafe_base64(val: str) -> bool:
+    """
+    Determine whether a string is exclusively from the urlsafe base64 alphabet.
+
+    See :const:`.urlsafe_base64_alphabet`.
+    """
+    return bool(len(set((ord(c) for c in val)) - urlsafe_base64_alphabet) == 0)
+
 
 def _status_from_store(source_id: str, checksum: str,
                        output_format: Format) -> Optional[Task]:
@@ -92,12 +115,13 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     source_id = request_data.get('source_id', None)
     checksum = request_data.get('checksum', None)
+
     if source_id is None or not source_id.isdecimal():
         logger.debug('Missing or invalid source_id: %s', source_id)
         raise BadRequest(f'Missing or invalid source_id: {source_id}')
-    if checksum is None:
-        logger.debug('Missing required parameter: checksum')
-        raise BadRequest('Missing required parameter: checksum')
+    if checksum is None or not is_urlsafe_base64(checksum):
+        logger.debug('Not a valid source checksum: %s', checksum)
+        raise BadRequest(f'Not a valid source checksum: {checksum}')
 
     # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
