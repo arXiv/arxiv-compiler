@@ -361,7 +361,7 @@ def do_compile(source_id: str, checksum: str,
                         size_bytes=size_bytes)
         else:
             stat = Task(status=Status.FAILED,
-                        reason=Reason.ERROR,
+                        reason=Reason.COMPILATION,
                         source_id=source_id,
                         output_format=Format(output_format),
                         checksum=checksum,

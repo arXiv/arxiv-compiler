@@ -48,7 +48,7 @@ class Reason(Enum):
     CORRUPTED = "corrupted_source"
     STORAGE = "storage"
     CANCELLED = "cancelled"
-    ERROR = "compilation_errors"
+    COMPILATION = "compilation_errors"
     NETWORK = "network_error"
     NONE = None
 
