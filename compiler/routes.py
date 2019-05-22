@@ -8,21 +8,17 @@ excluded from type checking.
 
 """
 
-from typing import Callable, Union, Iterable, Tuple, Optional
-from functools import wraps
+from typing import Callable, Union
 from http import HTTPStatus as status
-from werkzeug.exceptions import Unauthorized, Forbidden, BadRequest
 from werkzeug.wrappers import Response as WkzResponse
 from flask.json import jsonify
-from flask import Blueprint, current_app, redirect, request, g, send_file
+from flask import Blueprint, redirect, request, send_file
 from flask import Response as FlaskResponse
 
 from arxiv.users.auth.decorators import scoped
 from arxiv.users.auth import scopes
 from arxiv.base import logging
-from arxiv.users.domain import Session, Scope
-from arxiv.users.auth import scopes
-from arxiv.users.auth.decorators import scoped
+from arxiv.users.domain import Scope
 
 from . import controllers
 from .domain import Task
