@@ -46,7 +46,7 @@ class TestRequestCompilation(TestCase):
 
         with self.assertRaises(BadRequest):
             controllers.compile(
-                MultiDict({'source_id': 1234}),
+                MultiDict({'source_id': '1234'}),
                 'footoken',
                 mock.MagicMock()
             )
@@ -65,7 +65,7 @@ class TestRequestCompilation(TestCase):
         mock_compiler.start_compilation.return_value = task_id
 
         request_data = MultiDict({
-            'source_id': 1234,
+            'source_id': '1234',
             'checksum': 'asdf12345zxcv',
             'output_format': 'pdf'
         })
@@ -88,7 +88,7 @@ class TestRequestCompilation(TestCase):
     def test_compile_exists(self, mock_store, mock_compiler):
         """Request for a compilation that already exists."""
         task_id = '123::asdf12345zxcv::pdf'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         token = "footoken"
@@ -118,7 +118,7 @@ class TestGetTask(TestCase):
     def test_get_info_completed(self, mock_store):
         """Request for a completed compilation."""
         task_id = '123::asdf12345zxcv::pdf'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.get_status.return_value \
@@ -137,7 +137,7 @@ class TestGetTask(TestCase):
     def test_get_info_in_progress(self, mock_store):
         """Request for a compilation in progress."""
         task_id = 'task1234'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.get_status.return_value \
@@ -155,7 +155,7 @@ class TestGetTask(TestCase):
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_info_nonexistant(self, mock_store):
         """Request for a nonexistant compilation."""
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.get_status.side_effect \
@@ -169,7 +169,7 @@ class TestGetTask(TestCase):
     def test_get_status_completed(self, mock_store):
         """Request for a completed compilation."""
         task_id = 'task1234'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.get_status.return_value \
@@ -188,7 +188,7 @@ class TestGetTask(TestCase):
     def test_get_status_in_progress(self, mock_store):
         """Request for a completed compilation."""
         task_id = 'task1234'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = Format.PDF
         mock_store.current_session.return_value.get_status.return_value \
@@ -211,7 +211,7 @@ class TestGetProduct(TestCase):
     def test_get_product_completed(self, mock_store):
         """Request for a completed compilation product."""
         task_id = 'task1234'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
@@ -236,7 +236,7 @@ class TestGetProduct(TestCase):
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_product_nonexistant(self, mock_store):
         """Request for a nonexistant compilation product."""
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.retrieve.side_effect \
@@ -254,7 +254,7 @@ class TestGetCompilationLog(TestCase):
     def test_get_log_completed(self, mock_store):
         """Request log for a completed compilation."""
         task_id = 'task1234'
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         product_checksum = 'thechecksumoftheproduct'
@@ -279,7 +279,7 @@ class TestGetCompilationLog(TestCase):
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_log_nonexistant(self, mock_store):
         """Request for a nonexistant compilation log."""
-        source_id = 1234
+        source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         mock_store.current_session.return_value.retrieve_log.side_effect \
