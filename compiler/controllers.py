@@ -105,23 +105,14 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     """
     if 'output_format' in request_data:
-        requested_format = request_data['output_format']
-        try:
-            output_format = Format(requested_format)
-        except ValueError as e:
-            raise BadRequest(f'Unsupported format: {requested_format}') from e
+        output_format = request_data['output_format']
     else:
-        output_format = Format.PDF
+        output_format = Format.PDF.value
 
     source_id = request_data.get('source_id', None)
     checksum = request_data.get('checksum', None)
-
-    if source_id is None or not source_id.isdecimal():
-        logger.debug('Missing or invalid source_id: %s', source_id)
-        raise BadRequest(f'Missing or invalid source_id: {source_id}')
-    if checksum is None or not is_urlsafe_base64(checksum):
-        logger.debug('Not a valid source checksum: %s', checksum)
-        raise BadRequest(f'Not a valid source checksum: {checksum}')
+    _validate_params(source_id, checksum, output_format)
+    product_format = Format(output_format)
 
     # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
@@ -137,22 +128,22 @@ def compile(request_data: MultiDict, token: str, session: Session,
     # source twice. So we check our storage for a compilation (successful or
     # not) corresponding to the requested source package.
     if not force:
-        info = _status_from_store(source_id, checksum, output_format)
+        info = _status_from_store(source_id, checksum, product_format)
         if info is not None:
             if not is_authorized(info):
                 raise Forbidden('Not authorized to compile this resource')
             logger.debug('compilation exists, redirecting')
-            return _redirect_to_status(source_id, checksum, output_format)
+            return _redirect_to_status(source_id, checksum, product_format)
 
     owner = _get_owner(source_id, checksum, token)
     try:
         compiler.start_compilation(source_id, checksum, stamp_label,
-                                   stamp_link, output_format, token=token,
+                                   stamp_link, product_format, token=token,
                                    owner=owner)
     except compiler.TaskCreationFailed as e:
         logger.error('Failed to start compilation: %s', e)
         raise InternalServerError('Failed to start compilation') from e
-    return _redirect_to_status(source_id, checksum, output_format,
+    return _redirect_to_status(source_id, checksum, product_format,
                                status.ACCEPTED)
 
 
@@ -182,12 +173,8 @@ def get_status(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    if not source_id.isdecimal():
-        raise BadRequest(f'Invalid source_id: {source_id}')
-    try:
-        product_format = Format(output_format)
-    except ValueError as e:
-        raise BadRequest(f'Unsupported format: {output_format}') from e
+    _validate_params(source_id, checksum, output_format)
+    product_format = Format(output_format)
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
     info = _status_from_store(source_id, checksum, product_format)
@@ -223,13 +210,8 @@ def get_product(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    if not source_id.isdecimal():
-        raise BadRequest(f'Invalid source_id: {source_id}')
-    store = Store.current_session()
-    try:
-        product_format = Format(output_format)
-    except ValueError as e:
-        raise BadRequest(f'Unsupported format: {output_format}') from e
+    _validate_params(source_id, checksum, output_format)
+    product_format = Format(output_format)
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
@@ -238,6 +220,7 @@ def get_product(source_id: str, checksum: str, output_format: str,
     if not is_authorized(info):
         raise Forbidden('Access denied')
 
+    store = Store.current_session()
     try:
         product = store.retrieve(source_id, checksum, product_format)
     except DoesNotExist as e:
@@ -275,13 +258,8 @@ def get_log(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    store = Store.current_session()
-    try:
-        product_format = Format(output_format)
-    except ValueError as e:
-        raise BadRequest(f'Unsupported format: {output_format}') from e
-    if not source_id.isdecimal():
-        raise BadRequest(f'Invalid source_id: {source_id}')
+    _validate_params(source_id, checksum, output_format)
+    product_format = Format(output_format)
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
@@ -290,6 +268,7 @@ def get_log(source_id: str, checksum: str, output_format: str,
     if not is_authorized(info):
         raise Forbidden('Access denied')
 
+    store = Store.current_session()
     try:
         product = store.retrieve_log(source_id, checksum, product_format)
     except DoesNotExist as e:
@@ -301,6 +280,20 @@ def get_log(source_id: str, checksum: str, output_format: str,
     }
     headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
     return data, status.OK, headers
+
+
+def _validate_params(source_id: str, checksum: str, output_fmt: str) -> None:
+    if not source_id or not source_id.isdecimal():
+        raise BadRequest(f'Invalid source_id: {source_id}')
+    if not checksum or not is_urlsafe_base64(checksum):
+        logger.debug('Not a valid source checksum: %s', checksum)
+        raise BadRequest(f'Not a valid source checksum: {checksum}')
+    try:
+        Format(output_fmt)
+    except ValueError as e:
+        raise BadRequest(f'Unsupported format: {output_fmt}') from e
+    if not source_id.isdecimal():
+        raise BadRequest(f'Invalid source_id: {source_id}')
 
 
 def _get_owner(source_id: str, checksum: str, token: str) -> Optional[str]:

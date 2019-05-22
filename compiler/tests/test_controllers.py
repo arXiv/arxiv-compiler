@@ -51,6 +51,36 @@ class TestRequestCompilation(TestCase):
                 mock.MagicMock()
             )
 
+    def test_bad_checksum(self):
+        """Request for a new compilation with a bad checksum value."""
+        request_params = MultiDict({
+            'source_id': '1234',
+            'checksum': 'as12345!@#$',
+            'output_format': 'pdf'
+        })
+        with self.assertRaises(BadRequest):
+            controllers.compile(request_params, 'footoken', mock.MagicMock())
+
+    def test_bad_source_id(self):
+        """Request for a new compilation with a bad source_id value."""
+        request_params = MultiDict({
+            'source_id': '1234!@#$',
+            'checksum': 'as12345=',
+            'output_format': 'pdf'
+        })
+        with self.assertRaises(BadRequest):
+            controllers.compile(request_params, 'footoken', mock.MagicMock())
+
+    def test_bad_format(self):
+        """Request for a new compilation with a bad output_format value."""
+        request_params = MultiDict({
+            'source_id': '1234',
+            'checksum': 'as12345=',
+            'output_format': 'fdp'
+        })
+        with self.assertRaises(BadRequest):
+            controllers.compile(request_params, 'footoken', mock.MagicMock())
+
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.compiler')
     @mock.patch(f'{controllers.__name__}.Store')
@@ -112,6 +142,21 @@ class TestRequestCompilation(TestCase):
 
 class TestGetTask(TestCase):
     """Tests for :func:`controllers.get_status`."""
+
+    def test_bad_checksum(self):
+        """Request for status with a bad checksum value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_status('1234', 'as12345!@#$', 'pdf')
+
+    def test_bad_source_id(self):
+        """Request for status with a bad source_id value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_status('1234!@#$', 'as12345=', 'pdf')
+
+    def test_bad_format(self):
+        """Request for status with a bad output_format value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_status('1234', 'as12345=', 'fdp')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.Store')
@@ -206,6 +251,21 @@ class TestGetTask(TestCase):
 class TestGetProduct(TestCase):
     """Tests for :func:`controllers.get_product`."""
 
+    def test_bad_checksum(self):
+        """Request with a bad checksum value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_product('1234', 'as12345!@#$', 'pdf')
+
+    def test_bad_source_id(self):
+        """Request with a bad source_id value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_product('1234!@#$', 'as12345=', 'pdf')
+
+    def test_bad_format(self):
+        """Request with a bad output_format value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_product('1234', 'as12345=', 'fdp')
+
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_product_completed(self, mock_store):
@@ -248,6 +308,21 @@ class TestGetProduct(TestCase):
 
 class TestGetCompilationLog(TestCase):
     """Tests for :func:`controllers.get_log`."""
+
+    def test_bad_checksum(self):
+        """Request with a bad checksum value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_log('1234', 'as12345!@#$', 'pdf')
+
+    def test_bad_source_id(self):
+        """Request with a bad source_id value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_log('1234!@#$', 'as12345=', 'pdf')
+
+    def test_bad_format(self):
+        """Request with a bad output_format value."""
+        with self.assertRaises(BadRequest):
+            controllers.get_log('1234', 'as12345=', 'fdp')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
     @mock.patch(f'{controllers.__name__}.Store')
