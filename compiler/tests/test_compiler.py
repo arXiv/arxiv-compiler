@@ -9,6 +9,7 @@ from operator import itemgetter
 
 import os.path
 import subprocess
+import docker
 
 from importlib_resources import read_binary
 
@@ -46,8 +47,8 @@ class TestStartCompilation(TestCase):
 
         mock_do_compile.apply_async.side_effect = raise_runtimeerror
         with self.assertRaises(compiler.TaskCreationFailed):
-            compiler.start_compilation('1234', 'asdf1234=',
-                                       'arXiv:1234', 'http://arxiv.org/abs/1234',
+            compiler.start_compilation('1234', 'asdf1234=', 'arXiv:1234',
+                                       'http://arxiv.org/abs/1234',
                                        output_format=domain.Format.PDF,
                                        token='footoken')
 
@@ -125,16 +126,20 @@ class TestDoCompile(TestCase):
     """Test main compilation routine."""
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_do_compile_success(self, mock_store, mock_run, mock_filemanager):
+    def test_do_compile_success(self, mock_store, mock_Compiler,
+                                mock_filemanager):
         """Everything goes according to plan."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
         _, log_path = mkstemp()
         with open(out_path, 'a') as f:
             f.write('something is not nothing')
-        mock_run.return_value = (out_path, log_path)
+
+        mock_Compiler.return_value.return_value = (out_path, log_path)
+        mock_Compiler.return_value.is_available.return_value = True
+
         app = Flask('test')
         app.config.update({
             'CONTAINER_SOURCE_ROOT': container_source_root,
@@ -159,9 +164,87 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_unauthorized(self, mock_store, mock_run, mock_filemanager):
+    def test_cannot_store_log(self, mock_store, mock_Compiler,
+                              mock_filemanager):
+        """Cannot store the log file after compilation."""
+        container_source_root = mkdtemp()
+        _, out_path = mkstemp()
+        _, log_path = mkstemp()
+        with open(out_path, 'a') as f:
+            f.write('something is not nothing')
+
+        mock_Compiler.return_value.return_value = (out_path, log_path)
+        mock_Compiler.return_value.is_available.return_value = True
+
+        mock_store.current_session.return_value.store_log.side_effect = \
+            RuntimeError
+
+        app = Flask('test')
+        app.config.update({
+            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'VERBOSE_COMPILE': True
+        })
+        with app.app_context():
+            self.assertDictEqual(
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
+                {
+                    'source_id': '1234',
+                    'output_format': 'pdf',
+                    'owner': None,
+                    'checksum': 'asdf',
+                    'task_id': '1234/asdf/pdf',
+                    'status': 'failed',
+                    'reason': 'storage',
+                    'description': 'Failed to store result',
+                    'size_bytes': 24
+                }
+            )
+
+    @mock.patch(f'{compiler.__name__}.FileManager')
+    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Store')
+    def test_docker_fails(self, mock_store, mock_Compiler, mock_filemanager):
+        """Compilation fails at Docker step"""
+        container_source_root = mkdtemp()
+        _, out_path = mkstemp()
+        _, log_path = mkstemp()
+        with open(out_path, 'a') as f:
+            f.write('something is not nothing')
+
+        mock_Compiler.return_value.side_effect = RuntimeError
+        mock_Compiler.return_value.is_available.return_value = True
+
+        app = Flask('test')
+        app.config.update({
+            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'VERBOSE_COMPILE': True
+        })
+        with app.app_context():
+            self.assertDictEqual(
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
+                {
+                    'source_id': '1234',
+                    'output_format': 'pdf',
+                    'owner': None,
+                    'checksum': 'asdf',
+                    'task_id': '1234/asdf/pdf',
+                    'status': 'failed',
+                    'reason': 'docker',
+                    'description': '',
+                    'size_bytes': 0
+                }
+            )
+
+    @mock.patch(f'{compiler.__name__}.FileManager')
+    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Store')
+    def test_unauthorized(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager is unauthorized."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
@@ -199,9 +282,9 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_forbidden(self, mock_store, mock_run, mock_filemanager):
+    def test_forbidden(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager is forbidden."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
@@ -239,9 +322,10 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_connection_failed(self, mock_store, mock_run, mock_filemanager):
+    def test_connection_failed(self, mock_store, mock_Compiler,
+                               mock_filemanager):
         """Request to filemanager fails."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
@@ -279,9 +363,9 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_not_found(self, mock_store, mock_run, mock_filemanager):
+    def test_not_found(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager fails because there is no source package."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
@@ -319,9 +403,10 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_source_corrupted(self, mock_store, mock_run, mock_filemanager):
+    def test_source_corrupted(self, mock_store, mock_Compiler,
+                              mock_filemanager):
         """There is a problem with the content of the source package."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
@@ -330,7 +415,8 @@ class TestDoCompile(TestCase):
         def raise_corrupted(*args, **kwargs):
             raise compiler.CorruptedSource('yuck', mock.MagicMock())
 
-        mock_run.side_effect = raise_corrupted
+        mock_Compiler.return_value.side_effect = raise_corrupted
+        mock_Compiler.return_value.is_available.return_value = True
 
         app = Flask('test')
         app.config.update({
@@ -356,14 +442,15 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_no_output(self, mock_store, mock_run, mock_filemanager):
+    def test_no_output(self, mock_store, mock_Compiler, mock_filemanager):
         """Compilation generates no output."""
         container_source_root = mkdtemp()
         _, log_path = mkstemp()
 
-        mock_run.return_value = (None, log_path)
+        mock_Compiler.return_value.return_value = (None, log_path)
+        mock_Compiler.return_value.is_available.return_value = True
 
         app = Flask('test')
         app.config.update({
@@ -389,14 +476,16 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}._run')
+    @mock.patch(f'{compiler.__name__}.Compiler')
     @mock.patch(f'{compiler.__name__}.Store')
-    def test_cannot_save(self, mock_store, mock_run, mock_filemanager):
+    def test_cannot_save(self, mock_store, mock_Compiler, mock_filemanager):
         """There is a problem storing the results."""
         container_source_root = mkdtemp()
         _, out_path = mkstemp()
         _, log_path = mkstemp()
-        mock_run.return_value = (out_path, log_path)
+
+        mock_Compiler.return_value.return_value = (out_path, log_path)
+        mock_Compiler.return_value.is_available.return_value = True
 
         def raise_runtimeerror(*args, **kwargs):
             raise RuntimeError('yuck', mock.MagicMock())
@@ -428,63 +517,157 @@ class TestDoCompile(TestCase):
             )
 
 
-class TestRun(TestCase):
-    """Tests for :func:`.compiler._run`."""
+class TestCompiler(TestCase):
+    """Tests for :class:`.compiler.Compiler`."""
 
-    @mock.patch(f'{compiler.__name__}.run_docker')
+    def setUp(self):
+        """Create temporary working directories and files."""
+        self.source_dir = tempfile.mkdtemp()
+        self.root, _ = os.path.split(self.source_dir)
+        self.source_path = os.path.join(self.source_dir, 'foo.tar.gz')
+        open(self.source_path, 'a').close()
+        self.cache_dir = os.path.join(self.source_dir, 'tex_cache')
+        self.log_dir = os.path.join(self.source_dir, 'tex_logs')
+
+    def tearDown(self):
+        """Clean up temporary working directory."""
+        shutil.rmtree(self.source_dir)  # Cleanup.
+
+    @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_run(self, mock_current_app, mock_dock):
-        """Compilation is successful."""
-        source_dir = tempfile.mkdtemp()
-        root, _ = os.path.split(source_dir)
-        source_path = os.path.join(source_dir, 'foo.tar.gz')
-        open(source_path, 'a').close()
-        cache_dir = os.path.join(source_dir, 'tex_cache')
-        log_dir = os.path.join(source_dir, 'tex_logs')
-        os.makedirs(cache_dir)
-        os.makedirs(log_dir)
-        open(os.path.join(cache_dir, 'foo.pdf'), 'a').close()
-        open(os.path.join(log_dir, 'autotex.log'), 'a').close()
-
+    def test_is_available(self, mock_current_app, mock_DockerClient):
+        """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': root
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
         }
-        mock_dock.return_value = (0, 'wooooo', '')
-        pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg, "arXiv:1234",
-                                           "http://arxiv.org/abs/1234")
+
+        compile = compiler.Compiler()
+
+        self.assertTrue(compile.is_available())
+        self.assertEqual(mock_DockerClient.return_value.info.call_count, 1,
+                         "info call to API was made once")
+
+    @mock.patch(f'{compiler.__name__}.DockerClient')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_is_not_available(self, mock_current_app, mock_DockerClient):
+        """Test :func:`.Compiler.is_available` if a Docker API call passes."""
+        mock_current_app.config = {
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+        }
+
+        def raise_APIError(*args, **kwargs):
+            raise docker.errors.APIError('Nope')
+
+        mock_DockerClient.return_value.info.side_effect = raise_APIError
+
+        compile = compiler.Compiler()
+
+        self.assertFalse(compile.is_available(), 'Compiler is not available')
+        self.assertEqual(mock_DockerClient.return_value.info.call_count, 1,
+                         "info call to API was made once")
+
+    @mock.patch(f'{compiler.__name__}.DockerClient')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_run(self, mock_current_app, mock_DockerClient):
+        """Compilation is successful."""
+        os.makedirs(self.cache_dir)
+        os.makedirs(self.log_dir)
+
+        open(os.path.join(self.cache_dir, 'foo.pdf'), 'a').close()
+        open(os.path.join(self.log_dir, 'autotex.log'), 'a').close()
+
+        mock_current_app.config = {
+            'CONVERTER_DOCKER_IMAGE': 'foo/image',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+        }
+        # mock_dock.return_value = (0, 'wooooo', '')
+        mock_DockerClient.return_value.containers.run.return_value = b'foologs'
+        pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
+        compile = compiler.Compiler()
+        out_path, log_path = compile(pkg, "arXiv:1234",
+                                     "http://arxiv.org/abs/1234")
         self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
-        shutil.rmtree(source_dir)  # Cleanup.
 
-    @mock.patch(f'{compiler.__name__}.run_docker')
+    @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_run_fails(self, mock_current_app, mock_dock):
-        """Compilation fails."""
-        source_dir = tempfile.mkdtemp()
-        root, _ = os.path.split(source_dir)
-        source_path = os.path.join(source_dir, 'foo.tar.gz')
-        open(source_path, 'a').close()
-        cache_dir = os.path.join(source_dir, 'tex_cache')
-        log_dir = os.path.join(source_dir, 'tex_logs')
-        os.makedirs(cache_dir)
-        os.makedirs(log_dir)
-        open(os.path.join(log_dir, 'autotex.log'), 'a').close()
+    def test_run_logfile_fails(self, mock_current_app, mock_DockerClient):
+        """Compilation is successful but there is no log file."""
+        os.makedirs(self.cache_dir)
+
+        open(os.path.join(self.cache_dir, 'foo.pdf'), 'a').close()
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': root
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
         }
-        mock_dock.return_value = (0, 'wooooo', '')
-        pkg = domain.SourcePackage('1234', source_path, 'asdf1234=')
-        out_path, log_path = compiler._run(pkg, "arXiv:1234",
-                                           "http://arxiv.org/abs/1234")
+        # mock_dock.return_value = (0, 'wooooo', '')
+        mock_DockerClient.return_value.containers.run.return_value = b'foologs'
+        pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
+        compile = compiler.Compiler()
+        out_path, log_path = compile(pkg, "arXiv:1234",
+                                     "http://arxiv.org/abs/1234")
+
+        self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
+        self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
+
+        with open(log_path, 'rb') as f:
+            self.assertEqual(f.read(), b'foologs')
+
+    @mock.patch(f'{compiler.__name__}.DockerClient')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_docker_api_fails(self, mock_current_app, mock_DockerClient):
+        """Compilation fails."""
+
+        mock_current_app.config = {
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+        }
+
+        def raise_APIError(*args, **kwargs):
+            raise docker.errors.APIError('Nope')
+
+        mock_DockerClient.return_value.containers.run.side_effect = \
+            raise_APIError
+        pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
+        compile = compiler.Compiler()
+        with self.assertRaises(RuntimeError):
+            compile(pkg, "arXiv:1234", "http://arxiv.org/abs/1234")
+
+    @mock.patch(f'{compiler.__name__}.DockerClient')
+    @mock.patch(f'{compiler.__name__}.current_app')
+    def test_run_fails(self, mock_current_app, mock_DockerClient):
+        """Compilation fails."""
+        os.makedirs(self.cache_dir)
+        os.makedirs(self.log_dir)
+        open(os.path.join(self.log_dir, 'autotex.log'), 'a').close()
+
+        mock_current_app.config = {
+            'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'HOST_SOURCE_ROOT': '/dev/null/here',
+            'CONTAINER_SOURCE_ROOT': self.root,
+            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+        }
+        # mock_dock.return_value = (0, 'wooooo', '')
+        mock_DockerClient.return_value.containers.run.return_value = b'foologs'
+        pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
+        compile = compiler.Compiler()
+        out_path, log_path = compile(pkg, "arXiv:1234",
+                                     "http://arxiv.org/abs/1234")
         self.assertIsNone(out_path)
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
-        shutil.rmtree(source_dir)   # Cleanup.
 
 #
 # class TestCompile(TestCase):

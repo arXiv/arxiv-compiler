@@ -50,6 +50,7 @@ class Reason(Enum):
     CANCELLED = "cancelled"
     COMPILATION = "compilation_errors"
     NETWORK = "network_error"
+    DOCKER = "docker"
     NONE = None
 
 

@@ -283,7 +283,10 @@ def get_log(source_id: str, checksum: str, output_format: str,
 
 
 def _validate_params(source_id: str, checksum: str, output_fmt: str) -> None:
-    if not source_id or not source_id.isdecimal():
+    # TODO: isnumeric() doesn't really work here, because we want to support
+    # arXiv IDs (Which look like floats). We should really just make sure that
+    # there are no bogus characters... a-zA-Z0-9.-_ should all be Ok.
+    if not source_id or not source_id.isnumeric():
         raise BadRequest(f'Invalid source_id: {source_id}')
     if not checksum or not is_urlsafe_base64(checksum):
         logger.debug('Not a valid source checksum: %s', checksum)
@@ -292,7 +295,7 @@ def _validate_params(source_id: str, checksum: str, output_fmt: str) -> None:
         Format(output_fmt)
     except ValueError as e:
         raise BadRequest(f'Unsupported format: {output_fmt}') from e
-    if not source_id.isdecimal():
+    if not source_id.isnumeric():
         raise BadRequest(f'Invalid source_id: {source_id}')
 
 

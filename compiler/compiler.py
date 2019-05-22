@@ -62,6 +62,11 @@ from flask import current_app
 from celery.result import AsyncResult
 from celery.signals import after_task_publish
 
+import docker
+from docker import DockerClient
+from docker.errors import ContainerError, APIError
+from requests.exceptions import ConnectionError
+
 from arxiv.base import logging
 from arxiv.integration.api import exceptions
 
@@ -164,15 +169,6 @@ def start_compilation(source_id: str, checksum: str,
                           task_id=task_id,
                           owner=owner))
     return task_id
-
-
-def _get_task_kwargs(task_id: str) -> dict:
-    i = inspect()
-    for t in chain(i.active(), i.reserved(), i.scheduled()):
-        if i['id'] == task_id:
-            kwargs: dict = i['kwargs']
-            return kwargs
-    raise RuntimeError('Task not found')
 
 
 def get_task(source_id: str, checksum: str,
@@ -284,6 +280,7 @@ def do_compile(source_id: str, checksum: str,
     out_path: Optional[str] = None
     log_path: Optional[str] = None
     size_bytes = 0
+    _format = Format(output_format)
 
     stat = None
     try:
@@ -295,7 +292,7 @@ def do_compile(source_id: str, checksum: str,
                     reason=Reason.AUTHORIZATION,
                     description=description,
                     source_id=source_id,
-                    output_format=Format(output_format),
+                    output_format=_format,
                     checksum=checksum,
                     task_id=task_id,
                     owner=owner,
@@ -306,7 +303,7 @@ def do_compile(source_id: str, checksum: str,
                     reason=Reason.NETWORK,
                     description=description,
                     source_id=source_id,
-                    output_format=Format(output_format),
+                    output_format=_format,
                     checksum=checksum,
                     task_id=task_id,
                     owner=owner,
@@ -317,7 +314,7 @@ def do_compile(source_id: str, checksum: str,
                     reason=Reason.MISSING,
                     description=description,
                     source_id=source_id,
-                    output_format=Format(output_format),
+                    output_format=_format,
                     checksum=checksum,
                     task_id=task_id,
                     owner=owner,
@@ -332,20 +329,40 @@ def do_compile(source_id: str, checksum: str,
     """
 
     # 2. Generate the compiled files
+
     if not stat:
+        compile = Compiler()
+        if not compile.is_available():
+            stat = Task(status=Status.FAILED,
+                        reason=Reason.DOCKER,
+                        source_id=source_id,
+                        output_format=_format,
+                        checksum=checksum,
+                        task_id=task_id,
+                        owner=owner,
+                        size_bytes=size_bytes)
+
         try:
-            out_path, log_path = _run(source,
-                                      stamp_label=stamp_label,
-                                      stamp_link=stamp_link,
-                                      output_format=Format(output_format),
-                                      verbose=verbose)
+            out_path, log_path = compile(source, stamp_label=stamp_label,
+                                         stamp_link=stamp_link,
+                                         output_format=_format,
+                                         verbose=verbose)
             if out_path is not None:
                 size_bytes = _file_size(out_path)
         except CorruptedSource:
             stat = Task(status=Status.FAILED,
                         reason=Reason.CORRUPTED,
                         source_id=source_id,
-                        output_format=Format(output_format),
+                        output_format=_format,
+                        checksum=checksum,
+                        task_id=task_id,
+                        owner=owner,
+                        size_bytes=size_bytes)
+        except RuntimeError:
+            stat = Task(status=Status.FAILED,
+                        reason=Reason.DOCKER,
+                        source_id=source_id,
+                        output_format=_format,
                         checksum=checksum,
                         task_id=task_id,
                         owner=owner,
@@ -354,7 +371,7 @@ def do_compile(source_id: str, checksum: str,
         if out_path is not None:
             stat = Task(status=Status.COMPLETED,
                         source_id=source_id,
-                        output_format=Format(output_format),
+                        output_format=_format,
                         checksum=checksum,
                         task_id=task_id,
                         owner=owner,
@@ -363,7 +380,7 @@ def do_compile(source_id: str, checksum: str,
             stat = Task(status=Status.FAILED,
                         reason=Reason.COMPILATION,
                         source_id=source_id,
-                        output_format=Format(output_format),
+                        output_format=_format,
                         checksum=checksum,
                         task_id=task_id,
                         owner=owner,
@@ -376,7 +393,7 @@ def do_compile(source_id: str, checksum: str,
                     reason=Reason.STORAGE,
                     description=str(e),
                     source_id=source_id,
-                    output_format=Format(output_format),
+                    output_format=_format,
                     checksum=checksum,
                     task_id=task_id,
                     owner=owner,
@@ -413,139 +430,161 @@ def _store_compilation_result(status: Task, out_path: Optional[str],
     logger.debug('_store_compilation_result: ok')
 
 
-# TODO: use ``docker`` Python API instead of subprocess.
-# TODO: rename []_dvips_flag parameters when we figure out what they mean.
-# TODO: can we get rid of any of these?
-def _run(source: SourcePackage,
-         stamp_label: Optional[str], stamp_link: Optional[str],
-         output_format: Format = Format.PDF,
-         add_stamp: bool = True, timeout: int = 600,
-         add_psmapfile: bool = False, P_dvips_flag: bool = False,
-         dvips_layout: str = 'letter', D_dvips_flag: bool = False,
-         id_for_decryption: Optional[str] = None,
-         tex_tree_timestamp: Optional[str] = None,
-         verbose: bool = True) -> Tuple[Optional[str], Optional[str]]:
-    """Compile a TeX source package."""
-    # We need the path to the directory container the source package on the
-    # host machine, so that we can correctly mount the volume in the
-    # converter container. We are assuming that the image is not running in
-    # the same container as this worker application.
-    source_dir, fname = os.path.split(source.path)
-    image = current_app.config['CONVERTER_DOCKER_IMAGE']
-    host_source_root = current_app.config['HOST_SOURCE_ROOT']
-    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
-    leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
-    host_source_dir = os.path.join(host_source_root, leaf_path)
-    out_path: Optional[str]
+class Compiler:
+    """Integrates with Docker to perform compilation using converter image."""
 
-    options = [
-        (True, '-S /autotex'),
-        (True, f'-p {source.source_id}'),
-        (True, f'-f {output_format.value}'),  # Doesn't do what it seems.
-        (stamp_label is not None, f'-l "{stamp_label}"'),
-        (stamp_link is not None, f'-L "{stamp_link}"'),
-        (True, f'-T {timeout}'),
-        (True, f'-t {dvips_layout}'),
-        (True, '-q'),
-        (verbose, '-v'),
-        (not add_stamp, '-s'),
-        (add_psmapfile, '-u'),
-        (P_dvips_flag, '-P'),
-        (id_for_decryption is not None, f'-d {id_for_decryption}'),
-        (tex_tree_timestamp is not None, f'-U {tex_tree_timestamp}')
-    ]
+    def is_available(self, **kwargs: Any) -> bool:
+        """Make sure that we can connect to the Docker API."""
+        try:
+            self._new_client().info()
+        except (APIError, ConnectionError) as e:
+            logger.error('Error when connecting to Docker API: %s', e)
+            return False
+        return True
 
-    args = [arg for opt, arg in options if opt]
+    def _new_client(self) -> DockerClient:
+        """Make a new Docker client."""
+        return DockerClient(current_app.config['DOCKER_HOST'])
 
-    logger.debug('run image %s with args %s', image, args)
-    code, stdout, stderr = run_docker(image, args=args,
-                                      volumes=[(host_source_dir, '/autotex')])
-    # TODO: not sure about this.
-    # if "Removing leading `/' from member names" in stderr:
-    #     raise CorruptedSource("Source package has member with absolute path")
+    @property
+    def image(self) -> Tuple[str, str, str]:
+        """Get the name of the image used for compilation."""
+        image_name = current_app.config['CONVERTER_DOCKER_IMAGE']
+        try:
+            image_name, image_tag = image_name.split(':', 1)
+        except ValueError:
+            image_tag = 'latest'
+        return f'{image_name}:{image_tag}', image_name, image_tag
 
-    # Now we have to figure out what went right or wrong.
-    ext = Format(output_format).ext
+    def _pull_image(self, client: Optional[DockerClient] = None) -> None:
+        """Tell the Docker API to pull our converter image."""
+        if client is None:
+            client = self._new_client()
+        _, name, tag = self.image
+        client.images.pull(name, tag)
 
-    cache = os.path.join(source_dir, 'tex_cache')
-    try:
+    # TODO: rename []_dvips_flag parameters when we figure out what they mean.
+    # TODO: can we get rid of any of these?
+    def __call__(self, source: SourcePackage, stamp_label: Optional[str],
+                 stamp_link: Optional[str], output_format: Format = Format.PDF,
+                 add_stamp: bool = True, timeout: int = 600,
+                 add_psmapfile: bool = False, P_dvips_flag: bool = False,
+                 dvips_layout: str = 'letter', D_dvips_flag: bool = False,
+                 id_for_decryption: Optional[str] = None,
+                 tex_tree_timestamp: Optional[str] = None,
+                 verbose: bool = True) -> Tuple[Optional[str], Optional[str]]:
+        """
+        Compile a TeX source package.
+
+        Parameters
+        ----------
+        source : :class:`.SourcePackage`
+            TeX source package to compile.
+        stamp_label : str
+            Text used for the stamp/watermark on the left margin of the PDF.
+        stamp_link : str
+            URL for the hyperlink target of the stamp/watermark.
+        output_format : :class:`.Format`
+            Only currently supported format is :const:`.Format.PDF`.
+        add_stamp : bool
+            Whether or not to add the stamp/watermark (default True).
+        timeout : int
+            Value for the ``AUTOTEX_TIMEOUT`` parameter (seconds).
+        add_psmapfile : bool
+            If True, adds a psmapfile to dvips command "-u +psmapfile"
+            (default False).
+        P_dvips_flag : bool
+        dvips_layout : str
+            Default is ``'letter'``.
+        D_dvips_flag : bool
+        id_for_decryption : str or None
+            If provided, id to use for decrytion (overrides default to -p id).
+        tex_tree_timestamp : str or None
+        verbose : bool
+            Compile in verbose mode (default True).
+
+        Returns
+        -------
+        str
+            Path to the created PDF file.
+        str
+            Path to the TeX compilation log file.
+
+        """
+        # We need the path to the directory container the source package on the
+        # host machine, so that we can correctly mount the volume in the
+        # converter container. We are assuming that the image is not running in
+        # the same container as this worker application.
+        source_dir, fname = os.path.split(source.path)
+        host_source_root = current_app.config['HOST_SOURCE_ROOT']
+        container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+        leaf_path = source_dir.split(container_source_root, 1)[1].strip('/')
+        host_source_dir = os.path.join(host_source_root, leaf_path)
+        out_path: Optional[str]
+
+        options = [
+            (True, '-S /autotex'),
+            (True, f'-p {source.source_id}'),
+            (True, f'-f {output_format.value}'),  # Doesn't do what it seems.
+            (stamp_label is not None, f'-l "{stamp_label}"'),
+            (stamp_link is not None, f'-L "{stamp_link}"'),
+            (True, f'-T {timeout}'),
+            (True, f'-t {dvips_layout}'),
+            (True, '-q'),
+            (verbose, '-v'),
+            (not add_stamp, '-s'),
+            (add_psmapfile, '-u'),
+            (P_dvips_flag, '-P'),
+            (id_for_decryption is not None, f'-d {id_for_decryption}'),
+            (tex_tree_timestamp is not None, f'-U {tex_tree_timestamp}')
+        ]
+
+        args = [arg for opt, arg in options if opt]
+
+        client = self._new_client()
+        image, _, _ = self.image
+        try:
+            self._pull_image(client)
+            volumes = {host_source_dir: {'bind': '/autotex', 'mode': 'rw'}}
+            log: bytes = client.containers.run(image, ' '.join(args),
+                                               volumes=volumes)
+        except (ContainerError, APIError) as e:
+            raise RuntimeError(f'Compilation failed for {source.path}') from e
+
+        # Now we have to figure out what went right or wrong.
+        ext = Format(output_format).ext
+
+        cache = os.path.join(source_dir, 'tex_cache')
+
         # The converter image has some heuristics for naming (e.g. adding a
         # version affix). But at the end of the day there should be only one
         # file in the format that we requested, so that's as specific as we
         # should need to be.
-        cache_results = [f for f in os.listdir(cache) if f.endswith(f'.{ext}')]
-        oname = cache_results[0]
-        out_path = os.path.join(cache, oname)
-    except IndexError:  # The expected output isn't here.
-        # Normally I'd prefer to raise an exception if the compilation failed,
-        # but we still have work to do.
-        out_path = None
+        oname: Optional[str] = None
+        for fname in os.listdir(cache):
+            if fname.endswith(f'.{ext}'):
+                oname = fname
+                break
+        if oname is None:       # The expected output isn't here.
+            out_path = None     # But we still have work to do.
+        else:
+            out_path = os.path.join(cache, oname)
 
-    # There are all kinds of ways in which compilation can fail. In many cases,
-    # we'll have log output even if the compilation failed, and we don't want
-    # to ignore that output.
-    tex_log_path = os.path.join(source_dir, 'tex_logs', 'autotex.log')
+        # There are all kinds of ways in which compilation can fail. In many
+        # cases, we'll have log output even if the compilation failed, and we
+        # don't want to ignore that output.
+        tex_log_path = os.path.join(source_dir, 'tex_logs', 'autotex.log')
 
-    # Sometimes the log file does not get written, in which case we can fall
-    # back to the stdout from the converter subprocess.
-    if not os.path.exists(tex_log_path):
-        log_dir = os.path.split(tex_log_path)[0]
-        if not os.path.exists(log_dir):
-            os.makedirs(log_dir)
-        with open(tex_log_path, 'w') as f:
-            f.write(stdout)
+        # Sometimes the log file does not get written, in which case we can
+        # fall back to the stdout from the converter subprocess.
+        if not os.path.exists(tex_log_path):
+            log_dir = os.path.split(tex_log_path)[0]
+            if not os.path.exists(log_dir):
+                os.makedirs(log_dir)
+            with open(tex_log_path, 'wb') as f:
+                f.write(log)
 
-    return out_path, tex_log_path
-
-
-def run_docker(image: str, volumes: list = [], ports: list = [],
-               args: List[str] = [], daemon: bool = False) -> ProcessResult:
-    """
-    Run a generic docker image.
-
-    In our uses, we wish to set the userid to that of running process (getuid)
-    by default. Additionally, we do not expose any ports for running services
-    making this a rather simple function.
-
-    Parameters
-    ----------
-    image : str
-        Name of the docker image in the format 'repository/name:tag'
-    volumes : list of tuple of str
-        List of volumes to mount in the format [host_dir, container_dir].
-    args : str
-        Arguments to the image's run cmd (set by Dockerfile CMD)
-    daemon : boolean
-        If True, launches the task to be run forever
-
-    Returns
-    -------
-    int
-        Compilation exit code.
-    str
-        STDOUT from compilation.
-    str
-        STDERR from compilation.
-
-    """
-    # we are only running strings formatted by us, so let's build the command
-    # then split it so that it can be run by subprocess
-    # opt_user = '-u {}'.format(os.getuid())
-    opt_volumes = ' '.join(['-v {}:{}'.format(hd, cd) for hd, cd in volumes])
-    opt_ports = ' '.join(['-p {}:{}'.format(hp, cp) for hp, cp in ports])
-    cmd = 'docker run --rm {} {} {} /bin/autotex.pl {}'.format(
-        opt_ports, opt_volumes, image, ' '.join(args)
-    )
-    logger.debug('Full compile command: %s', cmd)
-    result = subprocess.run(cmd, stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE, shell=True)
-
-    logger.error('Docker exited with %i', result.returncode)
-    logger.error('STDOUT: %s', result.stdout)
-    logger.error('STDERR: %s', result.stderr)
-    return (result.returncode,
-            result.stdout.decode('utf-8'),
-            result.stderr.decode('utf-8'))
+        return out_path, tex_log_path
 
 
 def _get_task_id(source_id: str, checksum: str, output_format: Format) -> str:
