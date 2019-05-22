@@ -82,10 +82,11 @@ def compile(request_data: MultiDict, token: str, session: Session,
 
     """
     if 'output_format' in request_data:
+        requested_format = request_data['output_format']
         try:
-            output_format = Format(request_data['output_format'])
+            output_format = Format(requested_format)
         except ValueError as e:
-            raise BadRequest(f'Unsupported format: {output_format}') from e
+            raise BadRequest(f'Unsupported format: {requested_format}') from e
     else:
         output_format = Format.PDF
     source_id = request_data.get('source_id', None)
