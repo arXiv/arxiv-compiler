@@ -2,6 +2,7 @@
 
 from unittest import TestCase, mock
 import json
+import os
 import requests
 
 from arxiv.integration.api import exceptions, status
@@ -208,6 +209,76 @@ class TestGetUpload(TestCase):
         self.assertEqual(info.etag, etag)
         self.assertEqual(info.source_id, source_id)
         self.assertIsInstance(info.path, str)
+
+    @mock.patch('arxiv.integration.api.service.current_app', mock_app)
+    @mock.patch('arxiv.integration.api.service.requests.Session')
+    def test_get_upload_with_filename(self, mock_Session):
+        """Get upload with an explicit filename in ``content-disposition``."""
+        etag = 'asdf12345checksum'
+        source_id = '123456'
+        content = b'foocontent'
+        mock_iter_content = mock.MagicMock(return_value=[content])
+        mock_Session.return_value = mock.MagicMock(
+            get=mock.MagicMock(
+                return_value=mock.MagicMock(
+                    status_code=status.OK,
+                    iter_content=mock_iter_content,
+                    headers={'ETag': etag,
+                             'content-disposition': 'filename=foo.tar.gz'}
+                )
+            )
+        )
+        info = FileManager.get_source_content(source_id, 'footoken')
+        self.assertIsInstance(info, domain.SourcePackage)
+        self.assertEqual(info.etag, etag)
+        self.assertEqual(info.source_id, source_id)
+        self.assertIsInstance(info.path, str)
+        self.assertEqual(info.path, '/tmp/foo.tar.gz')
+        self.assertTrue(os.path.exists(info.path))
+
+    @mock.patch('arxiv.integration.api.service.current_app', mock_app)
+    @mock.patch('arxiv.integration.api.service.requests.Session')
+    def test_get_upload_with_suspicious_filename(self, mock_Session):
+        """Get upload with a suspicious filename in ``content-disposition``."""
+        etag = 'asdf12345checksum'
+        source_id = '123456'
+        content = b'foocontent'
+        mock_iter_content = mock.MagicMock(return_value=[content])
+        filename = '../whereDoesThisGetWritten.txt'
+        mock_Session.return_value = mock.MagicMock(
+            get=mock.MagicMock(
+                return_value=mock.MagicMock(
+                    status_code=status.OK,
+                    iter_content=mock_iter_content,
+                    headers={'ETag': etag,
+                             'content-disposition': f'filename={filename}'}
+                )
+            )
+        )
+        with self.assertRaises(RuntimeError):
+            FileManager.get_source_content(source_id, 'footoken')
+
+    @mock.patch('arxiv.integration.api.service.current_app', mock_app)
+    @mock.patch('arxiv.integration.api.service.requests.Session')
+    def test_get_upload_with_malicious_filename(self, mock_Session):
+        """Get upload with a malicious filename in ``content-disposition``."""
+        etag = 'asdf12345checksum'
+        source_id = '123456'
+        content = b'foocontent'
+        mock_iter_content = mock.MagicMock(return_value=[content])
+        filename = '//bin/bash'
+        mock_Session.return_value = mock.MagicMock(
+            get=mock.MagicMock(
+                return_value=mock.MagicMock(
+                    status_code=status.OK,
+                    iter_content=mock_iter_content,
+                    headers={'ETag': etag,
+                             'content-disposition': f'filename={filename}'}
+                )
+            )
+        )
+        with self.assertRaises(RuntimeError):
+            FileManager.get_source_content(source_id, 'footoken')
 
     @mock.patch('arxiv.integration.api.service.current_app', mock_app)
     @mock.patch('arxiv.integration.api.service.requests.Session')

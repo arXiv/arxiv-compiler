@@ -113,7 +113,12 @@ class FileManager(service.HTTPIntegration):
         if path.startswith('https://arxiv.org/src'):
             filename.rstrip('.gz')
 
-        source_file_path = os.path.join(source_dir, filename)
+        source_file_path = os.path.abspath(os.path.join(source_dir, filename))
+        if not source_file_path.startswith(source_dir):
+            logger.error('Source file path would escape working filesystem'
+                         ' context; may be malicious: %s', source_file_path)
+            raise RuntimeError(f'Bad source file path: {source_file_path}')
+
         with open(source_file_path, 'wb') as f:
             for chunk in response.iter_content(1024):
                 if chunk:
