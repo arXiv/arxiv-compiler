@@ -39,7 +39,7 @@ For example:
 
 ```bash
 $ mkdir /tmp/compilestuff     # Docker needs access to this.
-$ export HOST_SOURCE_ROOT=/tmp/compilestuff
+$ export DIND_SOURCE_ROOT=/tmp/compilestuff
 $ export CONVERTER_DOCKER_IMAGE=[name (including transport) of converter image]
 $ export FILEMANAGER_ENDPOINT=https://arxiv.org  # Get public sources.
 $ export FILEMANAGER_CONTENT_PATH=/src/{source_id}

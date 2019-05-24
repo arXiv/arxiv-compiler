@@ -24,7 +24,7 @@ x-base-service:
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1
-    HOST_SOURCE_ROOT: "${HOST_SOURCE_ROOT}"
+    DIND_SOURCE_ROOT: "${DIND_SOURCE_ROOT}"
     VERBOSE_COMPILE: 1
     VAULT_ENABLED: "0"
     NAMESPACE: "production"
@@ -86,7 +86,7 @@ services:
       - compiler-test
 
     volumes:
-      - "${HOST_SOURCE_ROOT}:/tmp"
+      - "${DIND_SOURCE_ROOT}:/tmp"
       - /var/run/docker.sock:/var/run/docker.sock
 
   mock-compiler-vault:

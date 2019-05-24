@@ -3,6 +3,9 @@
 import os
 import tempfile
 
+NAMESPACE = os.environ.get('NAMESPACE')
+"""Namespace in which this service is deployed; to quality keys for secrets."""
+
 DEBUG = os.environ.get('DEBUG') == '1'
 """enable/disable debug mode"""
 
@@ -72,7 +75,7 @@ S3_ENDPOINT = os.environ.get('S3_ENDPOINT', None)
 S3_VERIFY = bool(int(os.environ.get('S3_VERIFY', 1)))
 """Enable/disable TLS certificate verification for S3."""
 
-S3_BUCKET = os.environ.get('S3_BUCKET', 'arxiv-compiler')
+S3_BUCKET = os.environ.get('S3_BUCKET', f'compiler-submission-{NAMESPACE}')
 """Bucket for storing compilation products and logs."""
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', None)
@@ -90,11 +93,19 @@ REDIS_ENDPOINT = os.environ.get('REDIS_ENDPOINT')
 CONVERTER_DOCKER_IMAGE = os.environ.get('CONVERTER_DOCKER_IMAGE')
 """Image name (including tag) for the TeX converter."""
 
-HOST_SOURCE_ROOT = os.environ.get('HOST_SOURCE_ROOT', tempfile.mkdtemp())
-"""Temporary directories containing source packages go in here."""
+DIND_SOURCE_ROOT = os.environ.get('DIND_SOURCE_ROOT', tempfile.mkdtemp())
+"""
+Path where sources are stored on the docker host that runs converter.
 
-CONTAINER_SOURCE_ROOT = os.environ.get('CONTAINER_SOURCE_ROOT', '/tmp')
-"""Temporary directories containing source packages go in here."""
+This must be the same underlying volume as :const:`WORKER_SOURCE_ROOT`.
+"""
+
+WORKER_SOURCE_ROOT = os.environ.get('WORKER_SOURCE_ROOT', '/tmp')
+"""
+Path where sources are stored on the worker.
+
+This must be the same underlying volume as :const:`DIND_SOURCE_ROOT`.
+"""
 
 VERBOSE_COMPILE = bool(int(os.environ.get('VERBOSE_COMPILE', 0)))
 """If 1 (True), converter image is run in verbose mode."""
@@ -124,8 +135,6 @@ VAULT_CERT = os.environ.get('VAULT_CERT')
 VAULT_SCHEME = os.environ.get('VAULT_SCHEME', 'https')
 """Default is ``https``."""
 
-NAMESPACE = os.environ.get('NAMESPACE')
-"""Namespace in which this service is deployed; to quality keys for secrets."""
 NS_AFFIX = '' if NAMESPACE == 'production' else f'-{NAMESPACE}'
 
 VAULT_REQUESTS = [
@@ -144,5 +153,6 @@ VAULT_REQUESTS = [
 
 WAIT_FOR_SERVICES = bool(int(os.environ.get('WAIT_FOR_SERVICES', '0')))
 WAIT_ON_STARTUP = int(os.environ.get('WAIT_ON_STARTUP', '0'))
+WAIT_FOR_WORKER = int(os.environ.get('WAIT_FOR_WORKER', '0'))
 
 DOCKER_HOST = os.environ.get('DOCKER_HOST', 'unix:///var/run/docker.sock')

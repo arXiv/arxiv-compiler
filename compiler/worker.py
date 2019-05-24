@@ -9,14 +9,14 @@ from celery.signals import task_prerun, celeryd_init, worker_init, celeryd_init
 import boto3
 
 from arxiv.vault.manager import ConfigManager
-from .factory import create_worker_app
+from .factory import create_app as create_flask_app
 from .celery import celery_app
 
-app = create_worker_app()
+app = create_flask_app()
 app.app_context().push()    # type: ignore
 
 if app.config['VAULT_ENABLED']:
-    __secrets__ = ConfigManager(app.config)
+    __secrets__ = app.middlewares['VaultMiddleware'].secrets
 else:
     __secrets__ = None
 

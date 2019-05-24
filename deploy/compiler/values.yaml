@@ -42,6 +42,7 @@ filemanager:
   path: "/"
   content_path: "/src/{source_id}"
   verify_checksum: "0"
+  status_endpoint: ""
 
 
 ingress:

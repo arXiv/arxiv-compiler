@@ -263,9 +263,9 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
     """
     logger.debug("do compile for %s @ %s to %s", src_id, chk,
                  output_format)
-    container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
+    worker_source_root = current_app.config['WORKER_SOURCE_ROOT']
     verbose = current_app.config['VERBOSE_COMPILE']
-    src_dir = tempfile.mkdtemp(dir=container_source_root)
+    src_dir = tempfile.mkdtemp(dir=worker_source_root)
 
     out: Optional[str] = None
     log: Optional[str] = None
@@ -324,6 +324,7 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
         logger.error('Encounted error: %s', traceback.format_exc())
         if disposition is None:
             disposition = (Status.FAILED, Reason.NONE, 'Unknown error')
+        logger.error(disposition[2])
     finally:
         status, reason, description = disposition
         task = Task(status=status, reason=reason, description=description,
@@ -458,15 +459,12 @@ class Converter:
             Path to the TeX compilation log file.
 
         """
-        # We need the path to the directory container the source package on the
-        # host machine, so that we can correctly mount the volume in the
-        # converter container. We are assuming that the image is not running in
-        # the same container as this worker application.
+        dind_source_root = current_app.config['DIND_SOURCE_ROOT']
+        worker_source_root = current_app.config['WORKER_SOURCE_ROOT']
+
         src_dir, fname = os.path.split(source.path)
-        host_source_root = current_app.config['HOST_SOURCE_ROOT']
-        container_source_root = current_app.config['CONTAINER_SOURCE_ROOT']
-        leaf_path = src_dir.split(container_source_root, 1)[1].strip('/')
-        host_source_dir = os.path.join(host_source_root, leaf_path)
+        leaf_path = src_dir.split(worker_source_root, 1)[1].strip('/')
+        dind_src_dir = os.path.join(dind_source_root, leaf_path)
         out: Optional[str]
 
         options = [
@@ -493,7 +491,7 @@ class Converter:
         args.insert(0, "/bin/autotex.pl")
         try:
             self._pull_image(client)
-            volumes = {host_source_dir: {'bind': '/autotex', 'mode': 'rw'}}
+            volumes = {dind_src_dir: {'bind': '/autotex', 'mode': 'rw'}}
             log: bytes = client.containers.run(image, ' '.join(args),
                                                volumes=volumes)
         except (ContainerError, APIError) as e:

@@ -66,7 +66,8 @@ def create_app() -> Flask:
             store_service = store.Store.current_session()
             store_service.initialize()
             wait_for(filemanager_service)
-            wait_for(compiler, await_result=True)
+            if app.config['WAIT_FOR_WORKER']:
+                wait_for(compiler, await_result=True)
 
         logger.info('All upstream services are available; ready to start')
 

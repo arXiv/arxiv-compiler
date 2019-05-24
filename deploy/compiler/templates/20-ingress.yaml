@@ -5,7 +5,7 @@ metadata:
   namespace: "{{ .Values.namespace }}"
   labels:
     subsystem: "{{ .Values.labels.subsystem }}"
-    container: "{{ default "search-api" .Values.deployment.name }}"
+    container: "{{ default "compiler" .Values.deployment.name }}"
     service-group: api
   annotations:
     ingress.kubernetes.io/configuration-snippet: |

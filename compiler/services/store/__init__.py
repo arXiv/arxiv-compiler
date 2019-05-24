@@ -187,7 +187,8 @@ class Store:
             Raised if no status exists for the provided parameters.
 
         """
-        key = self.STATUS_KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt)
+        key = self.STATUS_KEY.format(src_id=src_id, chk=chk,
+                                     out_fmt=out_fmt.value)
         resp = self._get(key)
         data = json.loads(resp['Body'].read().decode('utf-8'))
         return Task.from_dict(data)
@@ -204,7 +205,7 @@ class Store:
         """
         body = json.dumps(task.to_dict()).encode('utf-8')
         key = self.STATUS_KEY.format(src_id=task.source_id, chk=task.checksum,
-                                     out_fmt=task.output_format)
+                                     out_fmt=task.output_format.value)
         self._put(key, body, 'application/json')
 
     def store(self, product: Product) -> None:
@@ -223,7 +224,7 @@ class Store:
 
         k = self.KEY.format(src_id=product.task.source_id,
                             chk=product.task.checksum,
-                            out_fmt=product.task.output_format,
+                            out_fmt=product.task.output_format.value,
                             ext=product.task.output_format.ext)
         self._put(k, product.stream.read(), product.task.content_type)
         self.set_status(product.task)
@@ -244,7 +245,7 @@ class Store:
         :class:`Product`
 
         """
-        key = self.KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt,
+        key = self.KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt.value,
                               ext=out_fmt.ext)
         resp = self._get(key)
         return Product(stream=resp['Body'], checksum=resp['ETag'][1:-1])
@@ -265,7 +266,7 @@ class Store:
             raise TypeError('Output format must not be None')
         key = self.LOG_KEY.format(src_id=product.task.source_id,
                                   chk=product.task.checksum,
-                                  out_fmt=product.task.output_format,
+                                  out_fmt=product.task.output_format.value,
                                   ext=product.task.output_format.ext)
         self._put(key, product.stream.read(), 'text/plain')
         self.set_status(product.task)
@@ -286,8 +287,8 @@ class Store:
         :class:`Product`
 
         """
-        key = self.LOG_KEY.format(src_id=src_id, chk=chk, out_fmt=out_fmt,
-                                  ext=out_fmt.ext)
+        key = self.LOG_KEY.format(src_id=src_id, chk=chk,
+                                  out_fmt=out_fmt.value, ext=out_fmt.ext)
         resp = self._get(key)
         return Product(stream=resp['Body'], checksum=resp['ETag'][1:-1])
 

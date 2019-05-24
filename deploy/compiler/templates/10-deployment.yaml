@@ -27,8 +27,8 @@ spec:
         container: "{{ default "compiler" .Values.deployment.name }}"
         service-group: "{{ .Values.labels.service_group }}"
         log-style: uwsgi
-      annotations:
-        prometheus.io/scrape: 'true'
+      # annotations:
+      #   prometheus.io/scrape: 'true'
     spec:
       serviceAccount: compiler
       volumes:
@@ -101,11 +101,15 @@ spec:
           value: "{{ .Values.filemanager.content_path }}"
         - name: FILEMANAGER_VERIFY_CHECKSUM
           value: "{{ .Values.filemanager.verify_checksum }}"
+        - name: FILEMANAGER_STATUS_ENDPOINT
+          value: "{{ .Values.filemanager.status_endpoint }}"
         {{ end }}
         - name: WAIT_FOR_SERVICES
           value: "1"
         - name: WAIT_ON_STARTUP
-          value: "5"
+          value: "10"
+        - name: WAIT_FOR_WORKER
+          value: "1"
         - name: NAMESPACE
           valueFrom:
             fieldRef:
@@ -132,8 +136,8 @@ spec:
         container: "{{ default "compiler" .Values.deployment.name }}-worker"
         service-group: "{{ .Values.labels.service_group }}"
         log-style: celery
-      annotations:
-        prometheus.io/scrape: 'true'
+      # annotations:
+      #   prometheus.io/scrape: 'true'
     spec:
       serviceAccount: compiler
       volumes:
@@ -166,6 +170,8 @@ spec:
           mountPath: /var/lib/docker
         - name: sources
           mountPath: /sources
+        - name: vault-token
+          mountPath: /etc/vault
         - name: vault-certificate
           mountPath: /etc/vault-certificate
           readOnly: true
@@ -189,6 +195,11 @@ spec:
           mountPath: /var/run/celery
         - name: sources
           mountPath: /sources
+        - name: vault-token
+          mountPath: /etc/vault
+        - name: vault-certificate
+          mountPath: /etc/vault-certificate
+          readOnly: true
         command:
           - /opt/arxiv/start_worker.sh
           - -A compiler.worker.celery_app
@@ -218,7 +229,9 @@ spec:
           value: tcp://localhost:2375
         - name: CONVERTER_DOCKER_IMAGE
           value: "{{ .Values.converter.image }}"
-        - name: HOST_SOURCE_ROOT
+        - name: DIND_SOURCE_ROOT
+          value: /sources
+        - name: WORKER_SOURCE_ROOT
           value: /sources
         {{ if .Values.filemanager.override }}
         - name: FILEMANAGER_SERVICE_HOST
@@ -233,11 +246,15 @@ spec:
           value: "{{ .Values.filemanager.content_path }}"
         - name: FILEMANAGER_VERIFY_CHECKSUM
           value: "{{ .Values.filemanager.verify_checksum }}"
+        - name: FILEMANAGER_STATUS_ENDPOINT
+          value: "{{ .Values.filemanager.status_endpoint }}"
         {{ end }}
         - name: WAIT_FOR_SERVICES
           value: "1"
         - name: WAIT_ON_STARTUP
-          value: "5"
+          value: "10"
+        - name: LOGLEVEL
+          value: "{{ .Values.loglevel }}"
         - name: NAMESPACE
           valueFrom:
             fieldRef:

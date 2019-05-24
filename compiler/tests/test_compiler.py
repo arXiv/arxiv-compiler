@@ -142,7 +142,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -183,7 +183,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -220,7 +220,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -259,7 +259,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -299,7 +299,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -340,7 +340,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -380,7 +380,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True
         })
         with app.app_context():
@@ -420,7 +420,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True,
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -456,7 +456,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True,
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -499,7 +499,7 @@ class TestDoCompile(TestCase):
 
         app = Flask('test')
         app.config.update({
-            'CONTAINER_SOURCE_ROOT': container_source_root,
+            'WORKER_SOURCE_ROOT': container_source_root,
             'VERBOSE_COMPILE': True,
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -547,8 +547,8 @@ class TestCompiler(TestCase):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -575,8 +575,8 @@ class TestCompiler(TestCase):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookey',
             'AWS_SECRET_ACCESS_KEY': 'foosecret'
@@ -613,8 +613,8 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -648,8 +648,8 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -682,8 +682,8 @@ class TestCompiler(TestCase):
         """Compilation fails."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
@@ -718,8 +718,8 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
-            'HOST_SOURCE_ROOT': '/dev/null/here',
-            'CONTAINER_SOURCE_ROOT': self.root,
+            'DIND_SOURCE_ROOT': '/dev/null/here',
+            'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
             'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
