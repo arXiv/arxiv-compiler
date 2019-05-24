@@ -50,6 +50,10 @@ FILEMANAGER_ENDPOINT = os.environ.get(
 FILEMANAGER_VERIFY = bool(int(os.environ.get('FILEMANAGER_VERIFY', '1')))
 """Enable/disable TLS certificate verification for the filemanager service."""
 
+FILEMANAGER_VERIFY_CHECKSUM = \
+    bool(int(os.environ.get('FILEMANAGER_VERIFY_CHECKSUM', '1')))
+"""Enable/disable verification of the source package checksum."""
+
 FILEMANAGER_CONTENT_PATH = os.environ.get('FILEMANAGER_CONTENT_PATH',
                                           '/{source_id}/content')
 """
@@ -140,3 +144,5 @@ VAULT_REQUESTS = [
 
 WAIT_FOR_SERVICES = bool(int(os.environ.get('WAIT_FOR_SERVICES', '0')))
 WAIT_ON_STARTUP = int(os.environ.get('WAIT_ON_STARTUP', '0'))
+
+DOCKER_HOST = os.environ.get('DOCKER_HOST', 'unix:///var/run/docker.sock')

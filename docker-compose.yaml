@@ -20,6 +20,7 @@ x-base-service:
     FILEMANAGER_PATH: "/"
     FILEMANAGER_CONTENT_PATH: "/src/{source_id}"
     FILEMANAGER_STATUS_ENDPOINT: ""
+    FILEMANAGER_VERIFY_CHECKSUM: 0
     LOGLEVEL: 10
     FLASK_APP: /opt/arxiv/app.py
     FLASK_DEBUG: 1

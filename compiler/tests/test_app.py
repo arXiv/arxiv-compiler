@@ -23,6 +23,8 @@ class TestCompilerApp(TestCase):
         self.client = self.app.test_client()
         self.app.config['JWT_SECRET'] = 'foosecret'
         self.app.config['S3_BUCKET'] = 'test-submission-bucket'
+        self.app.config['AWS_ACCESS_KEY_ID'] = 'fookey'
+        self.app.config['AWS_SECRET_ACCESS_KEY'] = 'foosecret'
         self.user_id = '123'
         with self.app.app_context():
             self.token = generate_token(self.user_id, 'foo@user.com',

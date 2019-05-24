@@ -1,7 +1,9 @@
 """Request controllers."""
 
+import string
 from typing import Tuple, Optional, Callable, Any
 from http import HTTPStatus as status
+from base64 import urlsafe_b64encode
 
 from werkzeug import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound, InternalServerError, \
@@ -11,6 +13,7 @@ from flask import url_for
 
 from arxiv.users.domain import Session
 from arxiv.base import logging
+from arxiv.base.globals import get_application_config
 
 from .services import Store, filemanager
 from .services.store import DoesNotExist
@@ -104,15 +107,10 @@ def compile(request_data: MultiDict, token: str, session: Session,
         Headers to add to response.
 
     """
-    if 'output_format' in request_data:
-        output_format = request_data['output_format']
-    else:
-        output_format = Format.PDF.value
-
-    source_id = request_data.get('source_id', None)
-    checksum = request_data.get('checksum', None)
-    _validate_params(source_id, checksum, output_format)
-    product_format = Format(output_format)
+    source_id = _validate_source_id(request_data.get('source_id', None))
+    checksum = _validate_checksum(request_data.get('checksum', None))
+    product_format = _validate_output_format(
+        request_data.get('output_format', Format.PDF.value))
 
     # We don't want to compile the same source package twice.
     force = request_data.get('force', False)
@@ -173,8 +171,10 @@ def get_status(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    _validate_params(source_id, checksum, output_format)
-    product_format = Format(output_format)
+    source_id = _validate_source_id(source_id)
+    checksum = _validate_checksum(checksum)
+    product_format = _validate_output_format(output_format)
+
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
     info = _status_from_store(source_id, checksum, product_format)
@@ -210,8 +210,9 @@ def get_product(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    _validate_params(source_id, checksum, output_format)
-    product_format = Format(output_format)
+    source_id = _validate_source_id(source_id)
+    checksum = _validate_checksum(checksum)
+    product_format = _validate_output_format(output_format)
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
@@ -258,8 +259,9 @@ def get_log(source_id: str, checksum: str, output_format: str,
         Headers to add to response.
 
     """
-    _validate_params(source_id, checksum, output_format)
-    product_format = Format(output_format)
+    source_id = _validate_source_id(source_id)
+    checksum = _validate_checksum(checksum)
+    product_format = _validate_output_format(output_format)
 
     # Verify that the requester is authorized to view this resource.
     info = _status_from_store(source_id, checksum, product_format)
@@ -282,21 +284,39 @@ def get_log(source_id: str, checksum: str, output_format: str,
     return data, status.OK, headers
 
 
-def _validate_params(source_id: str, checksum: str, output_fmt: str) -> None:
-    # TODO: isnumeric() doesn't really work here, because we want to support
-    # arXiv IDs (Which look like floats). We should really just make sure that
-    # there are no bogus characters... a-zA-Z0-9.-_ should all be Ok.
-    if not source_id or not source_id.isnumeric():
+def _validate_source_id(source_id: str) -> str:
+    if not source_id or not _is_valid_source_id(source_id):
         raise BadRequest(f'Invalid source_id: {source_id}')
+    return source_id
+
+
+def _validate_checksum(checksum: str) -> str:
+    verify = get_application_config().get('FILEMANAGER_VERIFY_CHECKSUM', True)
     if not checksum or not is_urlsafe_base64(checksum):
+        # If we are not verifying the checksum, attempt to create a URL-safe
+        # value that we can use to identify the source package for our own
+        # purposes.
+        if checksum and not verify:
+            try:
+                checksum_bytes = urlsafe_b64encode(checksum.encode('utf-8'))
+                return checksum_bytes.decode('utf-8')
+            except UnicodeDecodeError:
+                pass
         logger.debug('Not a valid source checksum: %s', checksum)
         raise BadRequest(f'Not a valid source checksum: {checksum}')
+    return checksum
+
+
+def _validate_output_format(output_format: str) -> Format:
     try:
-        Format(output_fmt)
+        return Format(output_format)
     except ValueError as e:
-        raise BadRequest(f'Unsupported format: {output_fmt}') from e
-    if not source_id.isnumeric():
-        raise BadRequest(f'Invalid source_id: {source_id}')
+        raise BadRequest(f'Unsupported format: {output_format}') from e
+
+
+def _is_valid_source_id(source_id: str) -> bool:
+    allowed = set(string.ascii_letters) | set(string.digits) | set('.-_')
+    return bool(len(set(source_id) - allowed) == 0)
 
 
 def _get_owner(source_id: str, checksum: str, token: str) -> Optional[str]:

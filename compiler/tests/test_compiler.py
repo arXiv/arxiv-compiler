@@ -126,7 +126,7 @@ class TestDoCompile(TestCase):
     """Test main compilation routine."""
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_do_compile_success(self, mock_store, mock_Compiler,
                                 mock_filemanager):
@@ -158,13 +158,13 @@ class TestDoCompile(TestCase):
                     'task_id': '1234/asdf/pdf',
                     'status': 'completed',
                     'reason': None,
-                    'description': '',
+                    'description': 'Success!',
                     'size_bytes': 24
                 }
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_cannot_store_log(self, mock_store, mock_Compiler,
                               mock_filemanager):
@@ -205,7 +205,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_docker_fails(self, mock_store, mock_Compiler, mock_filemanager):
         """Compilation fails at Docker step"""
@@ -242,7 +242,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_unauthorized(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager is unauthorized."""
@@ -282,7 +282,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_forbidden(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager is forbidden."""
@@ -322,7 +322,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_connection_failed(self, mock_store, mock_Compiler,
                                mock_filemanager):
@@ -363,7 +363,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_not_found(self, mock_store, mock_Compiler, mock_filemanager):
         """Request to filemanager fails because there is no source package."""
@@ -403,7 +403,7 @@ class TestDoCompile(TestCase):
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_source_corrupted(self, mock_store, mock_Compiler,
                               mock_filemanager):
@@ -421,7 +421,9 @@ class TestDoCompile(TestCase):
         app = Flask('test')
         app.config.update({
             'CONTAINER_SOURCE_ROOT': container_source_root,
-            'VERBOSE_COMPILE': True
+            'VERBOSE_COMPILE': True,
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
         })
         with app.app_context():
             self.assertDictEqual(
@@ -436,13 +438,13 @@ class TestDoCompile(TestCase):
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'corrupted_source',
-                    'description': '',
+                    'description': 'Source package is corrupted',
                     'size_bytes': 0
                 }
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_no_output(self, mock_store, mock_Compiler, mock_filemanager):
         """Compilation generates no output."""
@@ -455,7 +457,9 @@ class TestDoCompile(TestCase):
         app = Flask('test')
         app.config.update({
             'CONTAINER_SOURCE_ROOT': container_source_root,
-            'VERBOSE_COMPILE': True
+            'VERBOSE_COMPILE': True,
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
         })
         with app.app_context():
             self.assertDictEqual(
@@ -470,13 +474,13 @@ class TestDoCompile(TestCase):
                     'task_id': '1234/asdf/pdf',
                     'status': 'failed',
                     'reason': 'compilation_errors',
-                    'description': '',
+                    'description': 'Failed',
                     'size_bytes': 0
                 }
             )
 
     @mock.patch(f'{compiler.__name__}.FileManager')
-    @mock.patch(f'{compiler.__name__}.Compiler')
+    @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
     def test_cannot_save(self, mock_store, mock_Compiler, mock_filemanager):
         """There is a problem storing the results."""
@@ -496,7 +500,9 @@ class TestDoCompile(TestCase):
         app = Flask('test')
         app.config.update({
             'CONTAINER_SOURCE_ROOT': container_source_root,
-            'VERBOSE_COMPILE': True
+            'VERBOSE_COMPILE': True,
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
         })
         with app.app_context():
             self.assertDictEqual(
@@ -533,32 +539,54 @@ class TestCompiler(TestCase):
         """Clean up temporary working directory."""
         shutil.rmtree(self.source_dir)  # Cleanup.
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_is_available(self, mock_current_app, mock_DockerClient):
+    def test_is_available(self, mock_current_app, mock_DockerClient,
+                          mock_boto3_client):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+        }
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
         }
 
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
 
         self.assertTrue(compile.is_available())
         self.assertEqual(mock_DockerClient.return_value.info.call_count, 1,
                          "info call to API was made once")
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_is_not_available(self, mock_current_app, mock_DockerClient):
+    def test_is_not_available(self, mock_current_app, mock_DockerClient,
+                              mock_boto3_client):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookey',
+            'AWS_SECRET_ACCESS_KEY': 'foosecret'
+        }
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
         }
 
         def raise_APIError(*args, **kwargs):
@@ -566,15 +594,16 @@ class TestCompiler(TestCase):
 
         mock_DockerClient.return_value.info.side_effect = raise_APIError
 
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
 
         self.assertFalse(compile.is_available(), 'Compiler is not available')
         self.assertEqual(mock_DockerClient.return_value.info.call_count, 1,
                          "info call to API was made once")
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_run(self, mock_current_app, mock_DockerClient):
+    def test_run(self, mock_current_app, mock_DockerClient, mock_boto3_client):
         """Compilation is successful."""
         os.makedirs(self.cache_dir)
         os.makedirs(self.log_dir)
@@ -586,20 +615,32 @@ class TestCompiler(TestCase):
             'CONVERTER_DOCKER_IMAGE': 'foo/image',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
         }
-        # mock_dock.return_value = (0, 'wooooo', '')
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
+        }
+
+
         mock_DockerClient.return_value.containers.run.return_value = b'foologs'
         pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
         out_path, log_path = compile(pkg, "arXiv:1234",
                                      "http://arxiv.org/abs/1234")
         self.assertTrue(out_path.endswith('/tex_cache/foo.pdf'))
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_run_logfile_fails(self, mock_current_app, mock_DockerClient):
+    def test_run_logfile_fails(self, mock_current_app, mock_DockerClient,
+                               mock_boto3_client):
         """Compilation is successful but there is no log file."""
         os.makedirs(self.cache_dir)
 
@@ -609,12 +650,21 @@ class TestCompiler(TestCase):
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+        }
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
         }
         # mock_dock.return_value = (0, 'wooooo', '')
         mock_DockerClient.return_value.containers.run.return_value = b'foologs'
         pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
         out_path, log_path = compile(pkg, "arXiv:1234",
                                      "http://arxiv.org/abs/1234")
 
@@ -624,16 +674,26 @@ class TestCompiler(TestCase):
         with open(log_path, 'rb') as f:
             self.assertEqual(f.read(), b'foologs')
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_docker_api_fails(self, mock_current_app, mock_DockerClient):
+    def test_docker_api_fails(self, mock_current_app, mock_DockerClient,
+                              mock_boto3_client):
         """Compilation fails."""
-
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+        }
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
         }
 
         def raise_APIError(*args, **kwargs):
@@ -642,13 +702,15 @@ class TestCompiler(TestCase):
         mock_DockerClient.return_value.containers.run.side_effect = \
             raise_APIError
         pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
         with self.assertRaises(RuntimeError):
             compile(pkg, "arXiv:1234", "http://arxiv.org/abs/1234")
 
+    @mock.patch(f'{compiler.__name__}.boto3.client')
     @mock.patch(f'{compiler.__name__}.DockerClient')
     @mock.patch(f'{compiler.__name__}.current_app')
-    def test_run_fails(self, mock_current_app, mock_DockerClient):
+    def test_run_fails(self, mock_current_app, mock_DockerClient,
+                       mock_boto3_client):
         """Compilation fails."""
         os.makedirs(self.cache_dir)
         os.makedirs(self.log_dir)
@@ -658,12 +720,22 @@ class TestCompiler(TestCase):
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
             'HOST_SOURCE_ROOT': '/dev/null/here',
             'CONTAINER_SOURCE_ROOT': self.root,
-            'DOCKER_HOST': 'unix:///var/run/docker.sock'
+            'DOCKER_HOST': 'unix:///var/run/docker.sock',
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
         }
+        mock_boto3_client.return_value.get_authorization_token.return_value = {
+            'authorizationData': [
+                {
+                    'authorizationToken': b'Zm9vOmJhcg=='
+                }
+            ]
+        }
+
         # mock_dock.return_value = (0, 'wooooo', '')
         mock_DockerClient.return_value.containers.run.return_value = b'foologs'
         pkg = domain.SourcePackage('1234', self.source_path, 'asdf1234=')
-        compile = compiler.Compiler()
+        compile = compiler.Converter()
         out_path, log_path = compile(pkg, "arXiv:1234",
                                      "http://arxiv.org/abs/1234")
         self.assertIsNone(out_path)

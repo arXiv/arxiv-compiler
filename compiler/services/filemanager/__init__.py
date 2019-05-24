@@ -54,6 +54,11 @@ class FileManager(service.HTTPIntegration):
             return False
         return True
 
+    @property
+    def _must_verify_checksum(self) -> bool:
+        config = get_application_config()
+        return config.get('FILEMANAGER_VERIFY_CHECKSUM', True)
+
     def owner(self, source_id: str, checksum: str, token: str) \
             -> Optional[str]:
         """Get the owner of a source package."""
@@ -62,7 +67,7 @@ class FileManager(service.HTTPIntegration):
                                       '/{source_id}/content')
         path = content_endpoint.format_map(Default(source_id=source_id))
         response = self.request('head', path, token)
-        if response.headers['ETag'] != checksum:
+        if self._must_verify_checksum and response.headers['ETag'] != checksum:
             raise RuntimeError('Not the resource we were looking for')
         owner: Optional[str] = response.headers.get('ARXIV-OWNER')
         return owner

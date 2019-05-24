@@ -24,7 +24,11 @@ In addition, the following infrastructure parts are required:
 ## Running the compiler service locally
 
 The easiest way to get up and running is to launch the whole service group
-using Docker Compose. You will need to pull the [converter](https://github.com/arXiv/arxiv-converter/tree/develop) image ahead of time.
+using Docker Compose. You will need to pull the
+[converter](https://github.com/arXiv/arxiv-converter/tree/develop) image ahead
+of time, or it will be  pulled on the first compilation request. Note that you
+will need to provide valid AWS credentials with ECR read access as env vars
+when starting docker-compose.
 
 If you do not have an instance of the file manager service running, you can
 try compiling published sources on the public arXiv.org site.
@@ -39,6 +43,8 @@ $ export HOST_SOURCE_ROOT=/tmp/compilestuff
 $ export CONVERTER_DOCKER_IMAGE=[name (including transport) of converter image]
 $ export FILEMANAGER_ENDPOINT=https://arxiv.org  # Get public sources.
 $ export FILEMANAGER_CONTENT_PATH=/src/{source_id}
+$ export AWS_ACCESS_KEY_ID={access key with ECR access}
+$ export AWS_SECRET_ACCESS_KEY={secret key with ECR access}
 ```
 
 And then run with:
