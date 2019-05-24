@@ -99,7 +99,13 @@ spec:
           value: "{{ .Values.filemanager.path }}"
         - name: FILEMANAGER_CONTENT_PATH
           value: "{{ .Values.filemanager.content_path }}"
+        - name: FILEMANAGER_VERIFY_CHECKSUM
+          value: "{{ .Values.filemanager.verify_checksum }}"
         {{ end }}
+        - name: WAIT_FOR_SERVICES
+          value: "1"
+        - name: WAIT_ON_STARTUP
+          value: "5"
         - name: NAMESPACE
           valueFrom:
             fieldRef:
@@ -225,7 +231,13 @@ spec:
           value: "{{ .Values.filemanager.path }}"
         - name: FILEMANAGER_CONTENT_PATH
           value: "{{ .Values.filemanager.content_path }}"
+        - name: FILEMANAGER_VERIFY_CHECKSUM
+          value: "{{ .Values.filemanager.verify_checksum }}"
         {{ end }}
+        - name: WAIT_FOR_SERVICES
+          value: "1"
+        - name: WAIT_ON_STARTUP
+          value: "5"
         - name: NAMESPACE
           valueFrom:
             fieldRef:

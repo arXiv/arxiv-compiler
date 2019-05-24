@@ -41,3 +41,9 @@ filemanager:
   proto: "https"
   path: "/"
   content_path: "/src/{source_id}"
+  verify_checksum: "0"
+
+
+ingress:
+  host: "development.arxiv.org"
+  path: "/compiler"

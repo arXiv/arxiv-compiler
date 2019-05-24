@@ -44,6 +44,8 @@ def create_app() -> Flask:
     if app.config['VAULT_ENABLED']:
         middleware.insert(0, vault.middleware.VaultMiddleware)
     wrap(app, middleware)
+    if app.config['VAULT_ENABLED']:
+        app.middlewares['VaultMiddleware'].update_secrets({})
 
     # Leaving this here for future performance tuning. - Erick
     #
