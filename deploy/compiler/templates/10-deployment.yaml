@@ -104,6 +104,8 @@ spec:
         - name: FILEMANAGER_STATUS_ENDPOINT
           value: "{{ .Values.filemanager.status_endpoint }}"
         {{ end }}
+        - name: APPLICATION_ROOT
+          value: "{{ .Values.ingress.path }}"
         - name: WAIT_FOR_SERVICES
           value: "1"
         - name: WAIT_ON_STARTUP
@@ -231,6 +233,8 @@ spec:
           value: "{{ .Values.converter.image }}"
         - name: DIND_SOURCE_ROOT
           value: /sources
+        - name: VERBOSE_COMPILE
+          value: "1"
         - name: WORKER_SOURCE_ROOT
           value: /sources
         {{ if .Values.filemanager.override }}
