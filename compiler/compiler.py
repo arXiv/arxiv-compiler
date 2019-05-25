@@ -320,7 +320,7 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
         size_bytes = _file_size(out)
         disposition = (Status.COMPLETED, Reason.NONE, 'Success!')
 
-    except Exception as e:
+    except Exception:
         logger.error('Encounted error: %s', traceback.format_exc())
         if disposition is None:
             disposition = (Status.FAILED, Reason.NONE, 'Unknown error')
@@ -338,9 +338,9 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
             with open(out, 'rb') as f:
                 store.store(Product(stream=f, task=task))
         if log is not None:
-            with open(log, 'rb') as f:
-                store.store_log(Product(stream=f, task=task))
-        store.set_status(task)
+            with open(log, 'rb') as log_f:
+                store.store_log(Product(stream=log_f, task=task))
+        # store.set_status(task)
         logger.debug('_store_result: ok')
     except Exception as e:
         logger.error('Failed to store result: %s', e)
@@ -493,7 +493,7 @@ class Converter:
             self._pull_image(client)
             volumes = {dind_src_dir: {'bind': '/autotex', 'mode': 'rw'}}
             log: bytes = client.containers.run(image, ' '.join(args),
-                                               volumes=volumes)
+                                               volumes=volumes, stderr=True)
         except (ContainerError, APIError) as e:
             raise RuntimeError(f'Compilation failed for {source.path}') from e
 
@@ -523,7 +523,8 @@ class Converter:
 
         # Sometimes the log file does not get written, in which case we can
         # fall back to the stdout from the converter subprocess.
-        if not os.path.exists(tex_log):
+        if not os.path.exists(tex_log) or _file_size(tex_log) == 0:
+            logger.debug('No TeX log file; using stdout')
             log_dir = os.path.split(tex_log)[0]
             if not os.path.exists(log_dir):
                 os.makedirs(log_dir)

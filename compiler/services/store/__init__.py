@@ -268,7 +268,9 @@ class Store:
                                   chk=product.task.checksum,
                                   out_fmt=product.task.output_format.value,
                                   ext=product.task.output_format.ext)
-        self._put(key, product.stream.read(), 'text/plain')
+        log_bytes = product.stream.read()
+        logger.debug('Storing %s bytes of log', len(log_bytes))
+        self._put(key, log_bytes, 'text/plain')
         self.set_status(product.task)
 
     def retrieve_log(self, src_id: str, chk: str, out_fmt: Format) -> Product:

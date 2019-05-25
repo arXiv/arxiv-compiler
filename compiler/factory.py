@@ -74,44 +74,6 @@ def create_app() -> Flask:
     return app
 
 
-def create_worker_app() -> Flask:
-    """Create an instance of the compiler worker app."""
-    from . import celeryconfig
-    app = Flask(__name__)
-    celery_app.config_from_object(celeryconfig)
-    filemanager.FileManager.init_app(app)
-    store.Store.init_app(app)
-    app.config.from_pyfile('config.py')
-
-    Base(app)
-    auth.Auth(app)
-
-    app.register_blueprint(routes.blueprint)
-    # Leaving this here for future performance tuning. - Erick
-    #
-    # app.config['PROFILE'] = True
-    # app.config['DEBUG'] = True
-    # app.wsgi_app = ProfilerMiddleware(app.wsgi_app, restrictions=[100],
-    #                                   sort_by=('cumtime', ))
-    #
-
-    if app.config['WAIT_FOR_SERVICES']:
-        with app.app_context():
-            logger.info('initialize and wait for upstream services')
-            # Adding a wait here can help keep boto3 from getting stuck if
-            # we are starting localstack at the same time. This can probably
-            # just be 0 (default) in production.
-            time.sleep(app.config['WAIT_ON_STARTUP'])
-            filemanager_service = filemanager.FileManager.current_session()
-            store_service = store.Store.current_session()
-            store_service.initialize()
-            wait_for(filemanager_service)
-
-        logger.info('All upstream services are available; ready to start')
-
-    return app
-
-
 class IAwaitable(Protocol):
     """An object that provides an ``is_available`` predicate."""
 
