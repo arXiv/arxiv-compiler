@@ -46,8 +46,9 @@ class FileManager(service.HTTPIntegration):
         """Check our connection to the filemanager service."""
         config = get_application_config()
         status_endpoint = config.get('FILEMANAGER_STATUS_ENDPOINT', 'status')
+        timeout: float = kwargs.get('timeout', 0.2)
         try:
-            response = self.request('get', status_endpoint)
+            response = self.request('get', status_endpoint, timeout=timeout)
             return bool(response.status_code == 200)
         except Exception as e:
             logger.error('Error when calling filemanager: %s', e)

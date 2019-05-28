@@ -107,8 +107,10 @@ def compile(request_data: MultiDict, token: str, session: Session,
         Headers to add to response.
 
     """
-    source_id = _validate_source_id(request_data.get('source_id', None))
-    checksum = _validate_checksum(request_data.get('checksum', None))
+    # Since these may originate from a JSON payload, values may be deserialized
+    # as int; cast to str to ensure that we are passing the correct type.
+    source_id = _validate_source_id(str(request_data.get('source_id', '')))
+    checksum = _validate_checksum(str(request_data.get('checksum', '')))
     product_format = _validate_output_format(
         request_data.get('output_format', Format.PDF.value))
 

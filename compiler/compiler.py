@@ -375,10 +375,12 @@ class Converter:
     def _new_client(self) -> DockerClient:
         """Make a new Docker client."""
         client = DockerClient(base_url=current_app.config['DOCKER_HOST'])
-        # Log in to the ECR registry with Docker.
-        username, password = self._get_ecr_login()
-        ecr_registry, _ = self.image[0].split('/', 1)
-        client.login(username, password, registry=ecr_registry)
+        # Log in to the ECR registry with Docker only if we require the
+        # ability to pull the converter image.
+        if current_app.config['CONVERTER_IMAGE_PULL']:
+            username, password = self._get_ecr_login()
+            ecr_registry, _ = self.image[0].split('/', 1)
+            client.login(username, password, registry=ecr_registry)
         return client
 
     @property
@@ -406,10 +408,12 @@ class Converter:
 
     def _pull_image(self, client: Optional[DockerClient] = None) -> None:
         """Tell the Docker API to pull our converter image."""
+        logger.info('Pulling converter image...')
         if client is None:
             client = self._new_client()
         _, name, tag = self.image
         client.images.pull(name, tag)
+        logger.info('Done pulling converter image')
 
     # TODO: rename []_dvips_flag parameters when we figure out what they mean.
     # TODO: can we get rid of any of these?
@@ -461,6 +465,7 @@ class Converter:
         """
         dind_source_root = current_app.config['DIND_SOURCE_ROOT']
         worker_source_root = current_app.config['WORKER_SOURCE_ROOT']
+        should_pull_image = current_app.config['CONVERTER_IMAGE_PULL']
 
         src_dir, fname = os.path.split(source.path)
         leaf_path = src_dir.split(worker_source_root, 1)[1].strip('/')
@@ -490,7 +495,8 @@ class Converter:
         image, _, _ = self.image
         args.insert(0, "/bin/autotex.pl")
         try:
-            self._pull_image(client)
+            if should_pull_image:
+                self._pull_image(client)
             volumes = {dind_src_dir: {'bind': '/autotex', 'mode': 'rw'}}
             log: bytes = client.containers.run(image, ' '.join(args),
                                                volumes=volumes, stderr=True)
