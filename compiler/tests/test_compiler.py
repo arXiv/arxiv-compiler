@@ -547,6 +547,7 @@ class TestCompiler(TestCase):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
@@ -575,6 +576,7 @@ class TestCompiler(TestCase):
         """Test :func:`.Compiler.is_available` if a Docker API call passes."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
@@ -613,6 +615,7 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
@@ -648,11 +651,13 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
             'AWS_ACCESS_KEY_ID': 'fookeyid',
-            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey',
+            'WAIT_FOR_SERVICES': False
         }
         mock_boto3_client.return_value.get_authorization_token.return_value = {
             'authorizationData': [
@@ -682,6 +687,7 @@ class TestCompiler(TestCase):
         """Compilation fails."""
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
@@ -718,6 +724,7 @@ class TestCompiler(TestCase):
 
         mock_current_app.config = {
             'CONVERTER_DOCKER_IMAGE': 'foo/image:1234',
+            'CONVERTER_IMAGE_PULL': False,
             'DIND_SOURCE_ROOT': '/dev/null/here',
             'WORKER_SOURCE_ROOT': self.root,
             'DOCKER_HOST': 'unix:///var/run/docker.sock',
