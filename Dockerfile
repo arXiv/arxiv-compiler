@@ -5,11 +5,9 @@ FROM arxiv/base:0.15.6
 # MySQL is needed for the arxiv-auth package.
 RUN yum install -y which mysql mysql-devel && yum -y clean all
 
-# We're doing d-in-d stuff here, so need Docker in the container.
-RUN curl https://get.docker.com/ > getdocker.sh
-RUN /bin/sh getdocker.sh
-
 WORKDIR /opt/arxiv
+
+ENV PIP_CACHE_DIR /dev/null
 
 # Install Python dependencies with pipenv.
 RUN pip install -U pip pipenv uwsgi
@@ -24,11 +22,7 @@ ENV ARXIV_HOME "https://arxiv.org"
 
 # Add the code in this repo.
 ADD compiler /opt/arxiv/compiler/
-ADD wsgi.py /opt/arxiv/
-ADD uwsgi.ini /opt/arxiv/
-ADD app.py /opt/arxiv/
-ADD bin/start_worker.sh /opt/arxiv/
-ADD bin/start_api.sh /opt/arxiv/
+ADD wsgi.py uwsgi.ini app.py bin/start_worker.sh /opt/arxiv/
 
 EXPOSE 8000
 
