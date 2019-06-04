@@ -24,6 +24,8 @@ ENV ARXIV_HOME "https://arxiv.org"
 ADD compiler /opt/arxiv/compiler/
 ADD wsgi.py uwsgi.ini app.py bin/start_worker.sh /opt/arxiv/
 
+ENV APPLICATION_ROOT "/"
+
 EXPOSE 8000
 
 ENTRYPOINT ["pipenv", "run"]

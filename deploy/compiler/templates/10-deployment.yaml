@@ -19,7 +19,7 @@ metadata:
     service-group: "{{ .Values.labels.service_group }}"
     log-style: uwsgi
 spec:
-  replicas: 1
+  replicas: {{ int .Values.scaling.api_replicas }}
   template:
     metadata:
       labels:
@@ -37,6 +37,7 @@ spec:
       - name: vault-certificate
         secret:
           secretName: vault-certificate
+
       containers:
       - name: "{{ default "compiler" .Values.deployment.name }}"
         image: arxiv/compiler:{{ .Values.image.tag }}
@@ -49,6 +50,13 @@ spec:
           readOnly: true
         ports:
         - containerPort: 8000
+
+        readinessProbe:
+          periodSeconds: 5
+          httpGet:
+            path: "{{ .Values.ingress.path }}/status"
+            port: 8000
+
         resources:
           limits:
             cpu: 300m
@@ -88,22 +96,10 @@ spec:
           value: "{{ .Values.s3.submission.bucket }}-{{ .Values.namespace }}"
         - name: KUBE_TOKEN
           value: /var/run/secrets/kubernetes.io/serviceaccount/token
-        {{ if .Values.filemanager.override }}
-        - name: FILEMANAGER_SERVICE_HOST
-          value: "{{ .Values.filemanager.host }}"
-        - name: FILEMANAGER_SERVICE_PORT
-          value: "{{ .Values.filemanager.port }}"
-        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+        - name: FILEMANAGER_PROTO
           value: "{{ .Values.filemanager.proto }}"
-        - name: FILEMANAGER_PATH
-          value: "{{ .Values.filemanager.path }}"
-        - name: FILEMANAGER_CONTENT_PATH
-          value: "{{ .Values.filemanager.content_path }}"
-        - name: FILEMANAGER_VERIFY_CHECKSUM
-          value: "{{ .Values.filemanager.verify_checksum }}"
-        - name: FILEMANAGER_STATUS_ENDPOINT
-          value: "{{ .Values.filemanager.status_endpoint }}"
-        {{ end }}
+        - name: NAMESPACE
+          value: "{{ .Values.namespace }}"
         - name: APPLICATION_ROOT
           value: "{{ .Values.ingress.path }}"
         - name: WAIT_FOR_SERVICES
@@ -112,10 +108,6 @@ spec:
           value: "10"
         - name: WAIT_FOR_WORKER
           value: "1"
-        - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
 
 
 ---
@@ -130,7 +122,7 @@ metadata:
     service-group: backend
     log-style: celery
 spec:
-  replicas: 1
+  replicas: {{ int .Values.scaling.worker_replicas }}
   template:
     metadata:
       labels:
@@ -237,22 +229,6 @@ spec:
           value: "1"
         - name: WORKER_SOURCE_ROOT
           value: /sources
-        {{ if .Values.filemanager.override }}
-        - name: FILEMANAGER_SERVICE_HOST
-          value: "{{ .Values.filemanager.host }}"
-        - name: FILEMANAGER_SERVICE_PORT
-          value: "{{ .Values.filemanager.port }}"
-        - name: FILEMANAGER_SERVICE_PORT_443_PROTO
-          value: "{{ .Values.filemanager.proto }}"
-        - name: FILEMANAGER_PATH
-          value: "{{ .Values.filemanager.path }}"
-        - name: FILEMANAGER_CONTENT_PATH
-          value: "{{ .Values.filemanager.content_path }}"
-        - name: FILEMANAGER_VERIFY_CHECKSUM
-          value: "{{ .Values.filemanager.verify_checksum }}"
-        - name: FILEMANAGER_STATUS_ENDPOINT
-          value: "{{ .Values.filemanager.status_endpoint }}"
-        {{ end }}
         - name: WAIT_FOR_SERVICES
           value: "1"
         - name: WAIT_ON_STARTUP
@@ -263,3 +239,19 @@ spec:
           value: "{{ .Values.filemanager.proto }}"
         - name: NAMESPACE
           value: "{{ .Values.namespace }}"
+        # {{ if .Values.filemanager.override }}
+        # - name: FILEMANAGER_SERVICE_HOST
+        #   value: "{{ .Values.filemanager.host }}"
+        # - name: FILEMANAGER_SERVICE_PORT
+        #   value: "{{ .Values.filemanager.port }}"
+        # - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+        #   value: "{{ .Values.filemanager.proto }}"
+        # - name: FILEMANAGER_PATH
+        #   value: "{{ .Values.filemanager.path }}"
+        # - name: FILEMANAGER_CONTENT_PATH
+        #   value: "{{ .Values.filemanager.content_path }}"
+        # - name: FILEMANAGER_VERIFY_CHECKSUM
+        #   value: "{{ .Values.filemanager.verify_checksum }}"
+        # - name: FILEMANAGER_STATUS_ENDPOINT
+        #   value: "{{ .Values.filemanager.status_endpoint }}"
+        # {{ end }}

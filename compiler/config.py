@@ -9,7 +9,7 @@ NAMESPACE = environ.get('NAMESPACE')
 DEBUG = environ.get('DEBUG') == '1'
 """enable/disable debug mode"""
 
-SERVER_NAME = environ.get('SEARCH_SERVER_NAME', None)
+SERVER_NAME = environ.get('SERVER_NAME', None)
 """
 The name and port number of the server. Required for subdomain support
 (e.g.: 'myapp.dev:5000') Note that localhost does not support subdomains so

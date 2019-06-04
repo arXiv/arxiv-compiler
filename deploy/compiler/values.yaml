@@ -1,6 +1,11 @@
 labels:
   subsystem: submission-moderation
   service_group: backend
+
+scaling:
+  worker_replicas: "3"
+  api_replicas: "3"
+
 redis:
   host: task-queue-development
   port: 6379
