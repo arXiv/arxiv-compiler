@@ -52,7 +52,7 @@ spec:
         - containerPort: 8000
 
         readinessProbe:
-          periodSeconds: 5
+          periodSeconds: 30
           httpGet:
             path: "{{ .Values.ingress.path }}/status"
             port: 8000

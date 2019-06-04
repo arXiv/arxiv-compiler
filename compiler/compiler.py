@@ -340,7 +340,8 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
         if log is not None:
             with open(log, 'rb') as log_f:
                 store.store_log(Product(stream=log_f, task=task))
-        # store.set_status(task)
+        if out is None and log is None:
+            store.set_status(task)
         logger.debug('_store_result: ok')
     except Exception as e:
         logger.error('Failed to store result: %s', e)
@@ -500,8 +501,11 @@ class Converter:
             volumes = {dind_src_dir: {'bind': '/autotex', 'mode': 'rw'}}
             log: bytes = client.containers.run(image, ' '.join(args),
                                                volumes=volumes, stderr=True)
-        except (ContainerError, APIError) as e:
+        except APIError as e:
             raise RuntimeError(f'Compilation failed for {source.path}') from e
+        except ContainerError as e:
+            logger.error(f'Encountered ContainerError for {source.path}')
+            log = e.stderr
 
         # Now we have to figure out what went right or wrong.
         ext = Format(output_format).ext
