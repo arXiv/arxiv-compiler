@@ -35,10 +35,10 @@ converter.image: arxiv/converter:0.9
 loglevel: 10
 
 filemanager:
-  override: true
+  override: false
   host: "arxiv.org"
   port: "443"
-  proto: "https"
+  proto: "http"
   path: "/"
   content_path: "/src/{source_id}"
   verify_checksum: "0"

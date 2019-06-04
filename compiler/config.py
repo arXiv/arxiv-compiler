@@ -37,7 +37,7 @@ FILEMANAGER_PORT = environ.get('FILEMANAGER_SERVICE_PORT', '443')
 """Filemanager service HTTP(S) port."""
 
 FILEMANAGER_PROTO = environ.get('FILEMANAGER_SERVICE_PORT_443_PROTO',
-                                'https')
+                                environ.get('FILEMANAGER_PROTO', 'https'))
 """Protocol for calling the filemanager service. Default is ``https``."""
 
 FILEMANAGER_PATH = environ.get('FILEMANAGER_PATH', 'filemanager/api')

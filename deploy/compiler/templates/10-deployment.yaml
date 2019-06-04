@@ -156,7 +156,7 @@ spec:
           secretName: vault-certificate
 
       containers:
-      - name: dind-daemon
+      - name: compiler-dind-daemon
         image: docker:18.09.2-dind
         resources:
           requests:
@@ -259,7 +259,7 @@ spec:
           value: "10"
         - name: LOGLEVEL
           value: "{{ .Values.loglevel }}"
+        - name: FILEMANAGER_PROTO
+          value: "{{ .Values.filemanager.proto }}"
         - name: NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+          value: "{{ .Values.namespace }}"
