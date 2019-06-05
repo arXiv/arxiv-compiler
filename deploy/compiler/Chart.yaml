@@ -1,0 +1,7 @@
+name: compiler
+version: 0.0.1
+appVersion: 0.0.1
+description: LaTeX compiler service
+sources:
+  - https://github.com/arxiv/arxiv-compiler
+engine: gotpl

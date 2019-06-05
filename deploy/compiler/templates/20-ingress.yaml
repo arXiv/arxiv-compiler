@@ -1,0 +1,27 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: "{{ default "compiler" .Values.ingress.name }}"
+  namespace: "{{ .Values.namespace }}"
+  labels:
+    subsystem: "{{ .Values.labels.subsystem }}"
+    container: "{{ default "compiler" .Values.deployment.name }}"
+    service-group: api
+  annotations:
+    ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Request-Id: $req_id";
+    ingress.kubernetes.io/limit-connections: "4"
+    ingress.kubernetes.io/limit-rps: "16"
+    ingress.kubernetes.io/rewrite-target: /
+spec:
+  tls:  # This will use the default certificate for the ingress controller.
+  - hosts:
+    - "{{ .Values.ingress.host }}"
+  rules:
+  - host: "{{ .Values.ingress.host }}"
+    http:
+      paths:
+      - path: "{{ default "/compiler" .Values.ingress.path }}"
+        backend:
+          serviceName: "{{ default "compiler" .Values.service.name }}"
+          servicePort: 80

@@ -2,8 +2,20 @@
   "title": "Compilation Request",
   "description": "Describes the compilation request.",
   "additionalProperties": false,
+  "required": ["source_id", "checksum", "format"],
   "properties": {
+    "source_id": {"type": "integer"},
+    "checksum": {"type": "string"},
+    "format": {"type": "string"},
     "force": {"type": "boolean"},
-    "compiler": {"type": "string"}
-  } 
+    "compiler": {"type": "string"},
+    "stamp_label": {
+      "description": "Label to use in PS/PDF stamp/watermark",
+      "type": "string"
+    },
+    "stamp_link": {
+      "description": "Link to associate with label in PS/PDF stamp/watermark",
+      "type": "string"
+    }
+  }
 }

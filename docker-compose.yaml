@@ -1,0 +1,104 @@
+version: '3.4'
+x-base-service:
+  &base-service
+  stdin_open: true
+  tty: true
+  environment:
+    SECRET_KEY: "not secure only use for development"
+    JWT_SECRET: "foosecret"
+    DOCKER_HOST: "unix:///var/run/docker.sock"
+    REDIS_ENDPOINT: "compiler-test-redis"
+    AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+    AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+    AWS_S3_REGION_NAME: "us-east-1"
+    S3_ENDPOINT: "https://compiler-test-localstack:4572"
+    S3_VERIFY: 0
+    CONVERTER_DOCKER_IMAGE: "${CONVERTER_DOCKER_IMAGE}"
+    FILEMANAGER_SERVICE_HOST: "arxiv.org"
+    FILEMANAGER_SERVICE_PORT: "443"
+    FILEMANAGER_SERVICE_PORT_443_PROTO: "https"
+    FILEMANAGER_PATH: "/"
+    FILEMANAGER_CONTENT_PATH: "/src/{source_id}"
+    FILEMANAGER_STATUS_ENDPOINT: ""
+    FILEMANAGER_VERIFY_CHECKSUM: 0
+    LOGLEVEL: 10
+    FLASK_APP: /opt/arxiv/app.py
+    FLASK_DEBUG: 1
+    DIND_SOURCE_ROOT: "${DIND_SOURCE_ROOT}"
+    VERBOSE_COMPILE: 1
+    VAULT_ENABLED: "0"
+    NAMESPACE: "production"
+    KUBE_TOKEN: "fookubetoken"
+    VAULT_HOST: "mock-compiler-vault"
+    VAULT_PORT: "8200"
+    VAULT_ROLE: "compiler"
+    VAULT_CREDENTIAL: "foocredential"
+    VAULT_SCHEME: "http"
+    WAIT_FOR_SERVICES: 1
+    WAIT_ON_STARTUP: 5
+
+services:
+  compiler-test-redis:
+    image: redis
+    container_name: compiler-test-redis
+    networks:
+      - compiler-test
+    ports:
+      - "6379:6379"
+    logging:
+      driver: none
+
+  compiler-test-localstack:
+    image: atlassianlabs/localstack
+    container_name: compiler-test-localstack
+    networks:
+      - compiler-test
+    ports:
+      - "4572:4572"
+      - "4568:4568"
+    environment:
+      USE_SSL: 'true'
+      DEBUG: 'true'
+    logging:
+      driver: none
+
+  compiler-test-api:
+    << : *base-service
+    build: .
+    # command: pipenv run flask run -h 0.0.0.0 -p 8000
+    depends_on:
+     - "compiler-test-localstack"
+     - "compiler-test-redis"
+     - "compiler-test-worker"
+    networks:
+      - compiler-test
+    ports:
+      - "8000:8000"
+
+  compiler-test-worker:
+    << : *base-service
+    build: .
+    command: /opt/arxiv/start_worker.sh -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
+    depends_on:
+     - "compiler-test-localstack"
+     - "compiler-test-redis"
+    networks:
+      - compiler-test
+
+    volumes:
+      - "${DIND_SOURCE_ROOT}:/tmp"
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  mock-compiler-vault:
+    image: arxiv/mock-vault
+    build:
+      context: .
+      dockerfile: Dockerfile-mock-vault
+    container_name: mock-compiler-vault
+    environment:
+      JWT_SECRET: foosecret
+    networks:
+      - compiler-test
+
+networks:
+  compiler-test:

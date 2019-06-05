@@ -4,7 +4,7 @@ services:
   - docker
 cache: pip
 env:
-  - MIN_SCORE=9
+  - MIN_SCORE=9 BOTO_CONFIG=/dev/null   # This is the dumbest thing. https://github.com/travis-ci/travis-ci/issues/7940
 os:
   - linux
 python:
@@ -13,3 +13,20 @@ script:
   - pip install pipenv
   - pipenv install --dev
   - pipenv run openapi-spec-validator schema/openapi.yaml
+  - pipenv run nose2 --with-coverage
+after_success:
+  - coveralls
+  - "./tests/lintstats.sh"
+deploy:
+- provider: script
+  script:
+    ./deploy/make_and_push_images.sh compiler
+  on:
+    all_branches: true
+- provider: script
+  script:
+    ./deploy/make_and_push_images.sh compiler &&
+    ./deploy/install_helm.sh development &&
+    ./deploy/publish_helm_chart.sh
+  on:
+    tags: true
