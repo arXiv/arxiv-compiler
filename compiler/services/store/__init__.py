@@ -100,6 +100,7 @@ class Store:
         raise RuntimeError('Unhandled ClientError') from exc
 
     def __hash__(self) -> int:
+        """Generate a unique hash for this store session using its config."""
         return hash((self._bucket, self._region_name, self._endpoint_url,
                      self._verify, self._aws_access_key_id,
                      self._aws_secret_access_key))
