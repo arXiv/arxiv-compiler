@@ -3,8 +3,8 @@ labels:
   service_group: backend
 
 scaling:
-  worker_replicas: "1"
-  api_replicas: "1"
+  worker_replicas: "3"
+  api_replicas: "3"
 
 redis:
   host: task-queue-development
