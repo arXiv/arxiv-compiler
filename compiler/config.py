@@ -11,11 +11,17 @@ DEBUG = environ.get('DEBUG') == '1'
 
 SERVER_NAME = environ.get('SERVER_NAME', None)
 """
-The name and port number of the server. Required for subdomain support
-(e.g.: 'myapp.dev:5000') Note that localhost does not support subdomains so
-setting this to 'localhost' does not help. Setting a SERVER_NAME also by
-default enables URL generation without a request context but with an
-application context.
+Inform the application what host and port it is bound to. Required for
+subdomain route matching support.
+
+If set, will be used for the session cookie domain if SESSION_COOKIE_DOMAIN is
+not set. Modern web browsers will not allow setting cookies for domains without
+a dot.
+
+If set, url_for can generate external URLs with only an application context
+instead of a request context.
+
+Default: None
 """
 
 APPLICATION_ROOT = environ.get('APPLICATION_ROOT', '/')
