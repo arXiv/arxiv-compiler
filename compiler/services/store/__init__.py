@@ -204,8 +204,9 @@ class Store:
 
         """
         body = json.dumps(task.to_dict()).encode('utf-8')
+        fmt = task.output_format.value if task.output_format else 'pdf'
         key = self.STATUS_KEY.format(src_id=task.source_id, chk=task.checksum,
-                                     out_fmt=task.output_format.value)
+                                     out_fmt=fmt)
         self._put(key, body, 'application/json')
 
     def store(self, product: Product) -> None:

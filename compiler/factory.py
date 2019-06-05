@@ -56,7 +56,7 @@ def create_app() -> Flask:
     #
 
     if app.config['WAIT_FOR_SERVICES']:
-        with app.app_context():
+        with app.app_context():    # type: ignore
             logger.info('initialize and wait for upstream services')
             # Adding a wait here can help keep boto3 from getting stuck if
             # we are starting localstack at the same time. This can probably
@@ -67,7 +67,7 @@ def create_app() -> Flask:
             store_service.initialize()
             wait_for(filemanager_service)
             if app.config['WAIT_FOR_WORKER']:
-                wait_for(compiler, await_result=True)
+                wait_for(compiler, await_result=True)    # type: ignore
 
         logger.info('All upstream services are available; ready to start')
 
@@ -76,6 +76,8 @@ def create_app() -> Flask:
 
 class IAwaitable(Protocol):
     """An object that provides an ``is_available`` predicate."""
+
+    __name__: str
 
     def is_available(self, **kwargs: Any) -> bool:
         """Check whether an object (e.g. a service) is available."""

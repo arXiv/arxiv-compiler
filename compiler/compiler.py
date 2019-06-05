@@ -269,7 +269,8 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
 
     out: Optional[str] = None
     log: Optional[str] = None
-    disposition: Optional[Tuple[Status, Reason, str]] = None
+    disposition: Tuple[Status, Reason, str] \
+        = (Status.FAILED, Reason.NONE, 'Unknown error')
     source: Optional[SourcePackage] = None
     fmt = Format(output_format)
     task_id = _get_task_id(src_id, chk, fmt)
@@ -280,7 +281,6 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
         fm = FileManager.current_session()
         try:
             source = fm.get_source_content(src_id, token, save_to=src_dir)
-            logger.debug(f"{src_id} etag: {source.etag}")
         except (exceptions.RequestUnauthorized, exceptions.RequestForbidden):
             description = "There was a problem authorizing your request."
             disposition = (Status.FAILED, Reason.AUTHORIZATION, description)
@@ -293,6 +293,11 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
             description = 'Could not retrieve a matching source package'
             disposition = (Status.FAILED, Reason.MISSING, description)
             raise
+
+        if source is None:
+            description = 'Could not retrieve a matching source package'
+            disposition = (Status.FAILED, Reason.MISSING, description)
+            raise RuntimeError(description)
 
         # Compile source package to output format.
         convert = Converter()
@@ -322,8 +327,6 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
 
     except Exception:
         logger.error('Encounted error: %s', traceback.format_exc())
-        if disposition is None:
-            disposition = (Status.FAILED, Reason.NONE, 'Unknown error')
         logger.error(disposition[2])
     finally:
         status, reason, description = disposition

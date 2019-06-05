@@ -17,7 +17,7 @@ import re
 import os
 
 import requests
-from arxiv.integration.api import status, service
+from arxiv.integration.api import status, service, exceptions
 from arxiv.base import logging
 from arxiv.base.globals import get_application_config
 
@@ -58,7 +58,7 @@ class FileManager(service.HTTPIntegration):
     @property
     def _must_verify_checksum(self) -> bool:
         config = get_application_config()
-        return config.get('FILEMANAGER_VERIFY_CHECKSUM', True)
+        return bool(config.get('FILEMANAGER_VERIFY_CHECKSUM', True))
 
     def owner(self, source_id: str, checksum: str, token: str) \
             -> Optional[str]:
