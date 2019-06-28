@@ -329,7 +329,6 @@ def _get_owner(source_id: str, checksum: str, token: str) -> Optional[str]:
         try:
             owner: Optional[str] = fm.owner(source_id, checksum, token)
         except Exception as e:
-            logger.debug('No such source')
             raise NotFound('No such source') from e
     except (filemanager.exceptions.RequestForbidden,
             filemanager.exceptions.RequestUnauthorized):

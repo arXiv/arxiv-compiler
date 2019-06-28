@@ -69,6 +69,8 @@ class FileManager(service.HTTPIntegration):
         path = content_endpoint.format_map(Default(source_id=source_id))
         response = self.request('head', path, token)
         if self._must_verify_checksum and response.headers['ETag'] != checksum:
+            logger.error('checksum does not match: %s != %s', 
+                         response.headers['ETag'], checksum)
             raise RuntimeError('Not the resource we were looking for')
         owner: Optional[str] = response.headers.get('ARXIV-OWNER')
         return owner
