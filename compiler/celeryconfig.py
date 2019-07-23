@@ -31,7 +31,7 @@ worker_prefetch_multiplier = 1
 
 task_default_queue = 'compiler-worker'
 
-task_acks_late = True
+task_acks_late = False
 """
 Tasks are not acknowledged until they are finished.
 
@@ -46,3 +46,6 @@ task_publish_retry_policy = {
     'interval_max': 1,
     'interval_step': 0.2
 }
+
+result_extended = True
+"""Task metadata (e.g. args) are stored in the result backend."""

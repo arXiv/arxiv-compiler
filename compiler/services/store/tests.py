@@ -24,78 +24,6 @@ class TestStore(TestCase):
 
     @mock_s3
     @mock.patch(f'{store_.__name__}.get_application_config', mock_app_config)
-    def test_set_get_compilation_status(self):
-        """Test setting and getting compilation status."""
-        store = Store.current_session()
-        store._create_bucket()
-        status_pdf = domain.Task(
-            source_id='12345',
-            output_format=domain.Format.PDF,
-            checksum='abc123checksum',
-            task_id='foo-task-1234-6789',
-            status=domain.Status.IN_PROGRESS
-        )
-        store.set_status(status_pdf)
-
-        retrieved = store.get_status('12345', 'abc123checksum',
-                                     domain.Format.PDF)
-        self.assertEqual(status_pdf, retrieved)
-
-        # No compilation product for that checksum.
-        with self.assertRaises(store_.DoesNotExist):
-            store.get_status('12345', 'foocheck',
-                             domain.Format.PDF)
-        # No compilation product for that format.
-        with self.assertRaises(store_.DoesNotExist):
-            store.get_status('12345', 'abc123checksum',
-                             domain.Format.PS)
-
-        # New format for same upload ID/checksum.
-        status_ps = domain.Task(
-            source_id='12345',
-            output_format=domain.Format.PS,
-            checksum='abc123checksum',
-            task_id='foo-task-1234-6789',
-            status=domain.Status.IN_PROGRESS
-        )
-        store.set_status(status_ps)
-
-        retrieved_pdf = store.get_status('12345', 'abc123checksum',
-                                         domain.Format.PDF)
-        self.assertEqual(status_pdf, retrieved_pdf)
-        retrieved_ps = store.get_status('12345', 'abc123checksum',
-                                        domain.Format.PS)
-        self.assertEqual(status_ps, retrieved_ps)
-
-        # Change the status of the existing format/checksum.
-        status_ps_failed = domain.Task(
-            source_id='12345',
-            output_format=domain.Format.PS,
-            checksum='abc123checksum',
-            task_id='foo-task-1234-6789',
-            status=domain.Status.FAILED
-        )
-        store.set_status(status_ps_failed)
-        retrieved_ps = store.get_status('12345', 'abc123checksum',
-                                        domain.Format.PS)
-        self.assertEqual(status_ps_failed, retrieved_ps)
-
-        # Same format, new checksum.
-        status_ps_alt = domain.Task(
-            source_id='12345',
-            output_format=domain.Format.PS,
-            checksum='someotherchecksum1234',
-            task_id='foo-task-1234-6710',
-            status=domain.Status.COMPLETED
-        )
-        store.set_status(status_ps_alt)
-
-        retrieved_ps = store.get_status('12345', 'someotherchecksum1234',
-                                        domain.Format.PS)
-        self.assertEqual(status_ps_alt, retrieved_ps)
-
-    @mock_s3
-    @mock.patch(f'{store_.__name__}.get_application_config', mock_app_config)
     def test_store_retrieve(self):
         """Test storing and retrieving compilation products."""
         store = Store.current_session()
@@ -109,13 +37,8 @@ class TestStore(TestCase):
             size_bytes=309192,
             status=domain.Status.COMPLETED
         )
-        product = domain.Product(stream=content, task=status_pdf)
-        store.store(product)
-
-        rstatus_pdf = store.get_status('12345', 'abc123checksum',
-                                       domain.Format.PDF)
-        self.assertEqual(rstatus_pdf, status_pdf)
-
+        product = domain.Product(stream=content)
+        store.store(product, status_pdf)
         returned = store.retrieve('12345', 'abc123checksum',
                                   domain.Format.PDF)
         self.assertEqual(returned.stream.read(), b'somepdfcontent')
@@ -139,8 +62,8 @@ class TestStore(TestCase):
             size_bytes=0,
             status=domain.Status.COMPLETED
         )
-        product = domain.Product(stream=content, task=status_pdf)
-        store.store_log(product)
+        product = domain.Product(stream=content)
+        store.store_log(product, status_pdf)
 
         returned = store.retrieve_log('12345', 'abc123checksum',
                                       domain.Format.PDF)

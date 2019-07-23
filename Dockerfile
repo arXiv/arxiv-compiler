@@ -22,7 +22,7 @@ ENV ARXIV_HOME "https://arxiv.org"
 
 # Add the code in this repo.
 ADD compiler /opt/arxiv/compiler/
-ADD wsgi.py uwsgi.ini app.py bin/start_worker.sh /opt/arxiv/
+ADD wsgi.py uwsgi.ini app.py /opt/arxiv/
 
 ENV APPLICATION_ROOT "/"
 

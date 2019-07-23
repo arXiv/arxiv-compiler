@@ -78,7 +78,7 @@ services:
   compiler-test-worker:
     << : *base-service
     build: .
-    command: /opt/arxiv/start_worker.sh -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
+    command: celery worker -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
     depends_on:
      - "compiler-test-localstack"
      - "compiler-test-redis"

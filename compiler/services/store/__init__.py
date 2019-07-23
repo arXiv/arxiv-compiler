@@ -2,18 +2,8 @@
 Content store for compiled representation of paper.
 
 Uses S3 as the underlying storage facility.
-
-The intended use pattern is that a client (e.g. API controller) can check for
-a compilation using the source ID (e.g. file manager source_id), the format,
-and the checksum of the source package (as reported by the FM service) before
-taking any IO-intensive actions. See :meth:`Store.get_status`.
-
-Similarly, if a client needs to verify that a compilation product is available
-for a specific source checksum, they would use :meth:`Store.get_status`
-before calling :meth:`Store.retrieve`. For that reason,
-:meth:`Store.retrieve` is agnostic about checksums. This cuts down on
-an extra GET request to S3 every time we want to get a compiled resource.
 """
+
 import json
 from typing import Tuple, Optional, Dict, Union, List, Any, Mapping
 from functools import wraps
@@ -29,8 +19,7 @@ from flask import Flask
 from arxiv.base import logging
 from arxiv.base.globals import get_application_global, get_application_config
 
-from ...domain import Task, Product, Format, Status, \
-    Reason
+from ...domain import Task, Product, Format
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +43,6 @@ class Store:
 
     LOG_KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}.log'
     KEY = '{src_id}/{chk}/{out_fmt}/{src_id}.{ext}'
-    STATUS_KEY = '{src_id}/{chk}/{out_fmt}/status.json'
 
     def __init__(self, bucket: str, verify: bool = False,
                  region_name: Optional[str] = None,
@@ -68,11 +56,6 @@ class Store:
         self._verify = verify
         self._aws_access_key_id = aws_access_key_id
         self._aws_secret_access_key = aws_secret_access_key
-
-        # Compilation status is cached here, in case we're taking several
-        # status-related actions in one request/execution context. Saves us
-        # GET requests, which saves $$$.
-        self._status: Dict[str, Dict[str, Dict[str, Dict[str, str]]]] = {}
         self.client = self._new_client()
 
     def _new_client(self, config: Optional[Config] = None) -> boto3.client:
@@ -165,52 +148,7 @@ class Store:
             return
         raise RuntimeError('Failed to initialize storage service')
 
-    def get_status(self, src_id: str, chk: str, out_fmt: Format) -> Task:
-        """
-        Get the status of a compilation.
-
-        Parameters
-        ----------
-        src_id : str
-            The unique identifier of the source package.
-        out_fmt: str
-            Compilation format. See :attr:`Format`.
-        chk : str
-            Base64-encoded MD5 hash of the source package.
-
-        Returns
-        -------
-        :class:`Task`
-
-        Raises
-        ------
-        :class:`DoesNotExist`
-            Raised if no status exists for the provided parameters.
-
-        """
-        key = self.STATUS_KEY.format(src_id=src_id, chk=chk,
-                                     out_fmt=out_fmt.value)
-        resp = self._get(key)
-        data = json.loads(resp['Body'].read().decode('utf-8'))
-        return Task.from_dict(data)
-
-    def set_status(self, task: Task) -> None:
-        """
-        Update the status of a compilation.
-
-        Parameters
-        ----------
-        task : :class:`Task`
-        bucket : str
-
-        """
-        body = json.dumps(task.to_dict()).encode('utf-8')
-        fmt = task.output_format.value if task.output_format else 'pdf'
-        key = self.STATUS_KEY.format(src_id=task.source_id, chk=task.checksum,
-                                     out_fmt=fmt)
-        self._put(key, body, 'application/json')
-
-    def store(self, product: Product) -> None:
+    def store(self, product: Product, task: Task) -> None:
         """
         Store a compilation product.
 
@@ -219,17 +157,14 @@ class Store:
         product : :class:`Product`
 
         """
-        if product.task is None or product.task.source_id is None:
-            raise ValueError('source_id must be set')
-        elif product.task.output_format is None:
+        if task.output_format is None:
             raise TypeError('Output format must not be None')
 
-        k = self.KEY.format(src_id=product.task.source_id,
-                            chk=product.task.checksum,
-                            out_fmt=product.task.output_format.value,
-                            ext=product.task.output_format.ext)
-        self._put(k, product.stream.read(), product.task.content_type)
-        self.set_status(product.task)
+        k = self.KEY.format(src_id=task.source_id,
+                            chk=task.checksum,
+                            out_fmt=task.output_format.value,
+                            ext=task.output_format.ext)
+        self._put(k, product.stream.read(), task.content_type)
 
     def retrieve(self, src_id: str, chk: str, out_fmt: Format) -> Product:
         """
@@ -252,7 +187,7 @@ class Store:
         resp = self._get(key)
         return Product(stream=resp['Body'], checksum=resp['ETag'][1:-1])
 
-    def store_log(self, product: Product) -> None:
+    def store_log(self, product: Product, task: Task) -> None:
         """
         Store a compilation log.
 
@@ -262,18 +197,15 @@ class Store:
             Stream should be log content.
 
         """
-        if product.task is None or product.task.source_id is None:
-            raise ValueError('source_id must be set')
-        elif product.task.output_format is None:
+        if task.output_format is None:
             raise TypeError('Output format must not be None')
-        key = self.LOG_KEY.format(src_id=product.task.source_id,
-                                  chk=product.task.checksum,
-                                  out_fmt=product.task.output_format.value,
-                                  ext=product.task.output_format.ext)
+        key = self.LOG_KEY.format(src_id=task.source_id,
+                                  chk=task.checksum,
+                                  out_fmt=task.output_format.value,
+                                  ext=task.output_format.ext)
         log_bytes = product.stream.read()
         logger.debug('Storing %s bytes of log', len(log_bytes))
         self._put(key, log_bytes, 'text/plain')
-        self.set_status(product.task)
 
     def retrieve_log(self, src_id: str, chk: str, out_fmt: Format) -> Product:
         """

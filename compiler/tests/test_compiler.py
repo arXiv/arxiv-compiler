@@ -69,7 +69,10 @@ class TestGetTask(TestCase):
     def test_get_unstarted_task(self, mock_do):
         """Task exists, but has not started."""
         # We set the status to SENT when we create the task.
-        mock_do.AsyncResult.return_value = mock.MagicMock(status='SENT')
+        mock_do.AsyncResult.return_value = mock.MagicMock(
+            status='SENT',
+            info={'owner': '1'}
+        )
         task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
         self.assertEqual(task.status, domain.Status.IN_PROGRESS)
 
@@ -77,7 +80,10 @@ class TestGetTask(TestCase):
     def test_get_started_task(self, mock_do):
         """Task exists and has started."""
         # We set the status to SENT when we create the task.
-        mock_do.AsyncResult.return_value = mock.MagicMock(status='STARTED')
+        mock_do.AsyncResult.return_value = mock.MagicMock(
+            status='STARTED',
+            info={'owner': '1'}
+        )
         task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
         self.assertEqual(task.status, domain.Status.IN_PROGRESS)
 
@@ -85,7 +91,10 @@ class TestGetTask(TestCase):
     def test_get_retry_task(self, mock_do):
         """Task exists and is being retried."""
         # We set the status to SENT when we create the task.
-        mock_do.AsyncResult.return_value = mock.MagicMock(status='RETRY')
+        mock_do.AsyncResult.return_value = mock.MagicMock(
+            status='RETRY',
+            info={'owner': '1'}
+        )
         task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
         self.assertEqual(task.status, domain.Status.IN_PROGRESS)
 
@@ -93,7 +102,10 @@ class TestGetTask(TestCase):
     def test_get_failed(self, mock_do):
         """Task exists and failed."""
         # We set the status to SENT when we create the task.
-        mock_do.AsyncResult.return_value = mock.MagicMock(status='FAILURE')
+        mock_do.AsyncResult.return_value = mock.MagicMock(
+            status='FAILURE',
+            info={'owner': '1'}
+        )
         task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
         self.assertEqual(task.status, domain.Status.FAILED)
 
@@ -103,7 +115,8 @@ class TestGetTask(TestCase):
         # We set the status to SENT when we create the task.
         mock_do.AsyncResult.return_value = mock.MagicMock(
             status='SUCCESS',
-            result={}
+            result={'owner': '1'},
+            info={'owner': '1'}
         )
         task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
         self.assertEqual(task.status, domain.Status.COMPLETED)
@@ -115,7 +128,10 @@ class TestGetTask(TestCase):
         for reason in domain.Reason:
             mock_do.AsyncResult.return_value = mock.MagicMock(
                 status='SUCCESS',
-                result={'status': 'failed', 'reason': reason.value}
+                result={'status': 'failed',
+                        'reason': reason.value,
+                        'owner': '1'},
+                info={'owner': '1'}
             )
             task = compiler.get_task('1234', 'asdf1234=', domain.Format.PDF)
             self.assertEqual(task.status, domain.Status.FAILED)
@@ -748,37 +764,3 @@ class TestCompiler(TestCase):
         self.assertIsNone(out_path)
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
 
-#
-# class TestCompile(TestCase):
-#     """Tests for :func:`compiler.start_compilation`."""
-#
-#     @mock.patch(f'{compiler.__name__}.Store')
-#     @mock.patch(f'{compiler.__name__}.FileManager.get_source_content')
-#     def test_real_compiler(self, mock_get_source_content, mock_store):
-#         """The compilation succeeds, and storage works without a hitch."""
-#         source_id = '1902.00123'
-#         checksum = 'asdf12345checksum'
-#         source_dir = mkdtemp()
-#         fpath = os.path.join(source_dir, 'real-test.tar.gz')
-#         shutil.copy(os.path.join(data_dir, 'real-test.tar.gz'), fpath)
-#
-#         mock_get_source_content.return_value = domain.SourcePackage(
-#             path=fpath,
-#             source_id=source_id,
-#             etag=checksum
-#         )
-#
-#         app = create_app()
-#         with app.app_context():
-#             data = compiler.start_compilation(source_id, checksum)
-#         self.assertEqual(data['source_id'], source_id)
-#         self.assertEqual(data['checksum'], checksum)
-#         self.assertEqual(data['output_format'], 'pdf')
-#
-#         stored_product = mock_store.store.call_args[0][0]
-#         self.assertEqual(stored_product.task.status,
-#                          domain.Status.COMPLETED)
-#         self.assertEqual(stored_product.task.format,
-#                          domain.Format.PDF)
-#         self.assertEqual(stored_product.task.checksum,
-#                          checksum)

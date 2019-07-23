@@ -63,8 +63,11 @@ from flask import current_app
 
 from celery.result import AsyncResult
 from celery.signals import after_task_publish
+from celery import states
+from celery.exceptions import Ignore
 
 import boto3
+from botocore.exceptions import ClientError
 import docker
 from docker import DockerClient
 from docker.errors import ContainerError, APIError
@@ -163,12 +166,6 @@ def start_compilation(src_id: str, chk: str,
     except Exception as e:
         logger.error('Failed to create task: %s', e)
         raise TaskCreationFailed('Failed to create task: %s', e) from e
-
-    store = Store.current_session()
-    store.set_status(Task(source_id=src_id, checksum=chk,
-                          output_format=output_format,
-                          status=Status.IN_PROGRESS, task_id=task_id,
-                          owner=owner))
     return task_id
 
 
@@ -194,23 +191,24 @@ def get_task(src_id: str, chk: str, fmt: Format = Format.PDF) -> Task:
     task_id = _get_task_id(src_id, chk, fmt)
     result = do_compile.AsyncResult(task_id)
     stat = Status.IN_PROGRESS
-    owner: Optional[str] = None
     reason = Reason.NONE
+    _info: Dict[str, str]
     if result.status == 'PENDING':
         raise NoSuchTask(f'No such task: {task_id}')
-    elif result.status in ['SENT', 'STARTED', 'RETRY']:
+    if result.status in ['SENT', 'STARTED', 'RETRY']:
         stat = Status.IN_PROGRESS
+        _info = result.info
     elif result.status == 'FAILURE':
         stat = Status.FAILED
+        _info = result.info
     elif result.status == 'SUCCESS':
-        _result: Dict[str, str] = result.result
-        if 'status' in _result:
-            stat = Status(_result['status'])
+        _info = result.result
+        if 'status' in _info:
+            stat = Status(_info['status'])
         else:
             stat = Status.COMPLETED
-        reason = Reason(_result.get('reason'))
-        if 'owner' in _result:
-            owner = _result['owner']
+    reason = Reason(_info.get('reason'))
+    owner = _info['owner']
     return Task(source_id=src_id, checksum=chk, output_format=fmt,
                 task_id=task_id, status=stat, reason=reason, owner=owner)
 
@@ -232,8 +230,8 @@ def do_nothing() -> None:
     return
 
 
-@celery_app.task
-def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
+@celery_app.task(bind=True)
+def do_compile(self, src_id: str, chk: str, stamp_label: Optional[str],
                stamp_link: Optional[str], output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None,
                token: Optional[str] = None,
@@ -275,7 +273,6 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
     fmt = Format(output_format)
     task_id = _get_task_id(src_id, chk, fmt)
     size_bytes = 0
-
     try:
         # Retrieve source package.
         fm = FileManager.current_session()
@@ -301,10 +298,14 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
 
         # Compile source package to output format.
         convert = Converter()
-        if not convert.is_available():
-            description = 'Converter is not available'
+        try:
+            if not convert.is_available():
+                description = 'Converter is not available'
+                disposition = (Status.FAILED, Reason.DOCKER, description)
+                raise RuntimeError('Compiler is not available')
+        except ClientError:
+            description = 'Failed to obtain compiler image'
             disposition = (Status.FAILED, Reason.DOCKER, description)
-            raise RuntimeError('Compiler is not available')
         try:
             out, log = convert(source, stamp_label=stamp_label,
                                stamp_link=stamp_link, output_format=fmt,
@@ -324,8 +325,7 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
 
         size_bytes = _file_size(out)
         disposition = (Status.COMPLETED, Reason.NONE, 'Success!')
-
-    except Exception:
+    except Exception as e:
         logger.error('Encounted error: %s', traceback.format_exc())
         logger.error(disposition[2])
     finally:
@@ -339,12 +339,10 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
         store = Store.current_session()
         if out is not None:
             with open(out, 'rb') as f:
-                store.store(Product(stream=f, task=task))
+                store.store(Product(stream=f), task)
         if log is not None:
             with open(log, 'rb') as log_f:
-                store.store_log(Product(stream=log_f, task=task))
-        if out is None and log is None:
-            store.set_status(task)
+                store.store_log(Product(stream=log_f), task)
         logger.debug('_store_result: ok')
     except Exception as e:
         logger.error('Failed to store result: %s', e)
@@ -352,7 +350,6 @@ def do_compile(src_id: str, chk: str, stamp_label: Optional[str],
                     description='Failed to store result', source_id=src_id,
                     output_format=fmt, checksum=chk, task_id=task_id,
                     owner=owner, size_bytes=size_bytes)
-        store.set_status(task)  # Try again to at least set the status.
 
     # Clean up.
     try:
