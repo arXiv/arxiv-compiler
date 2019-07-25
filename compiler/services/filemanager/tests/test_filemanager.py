@@ -5,6 +5,7 @@ import json
 import os
 import requests
 
+from flask import Flask
 from arxiv.integration.api import exceptions, status
 
 from .. import FileManager
@@ -14,7 +15,8 @@ CONFIG = {
     'FILEMANAGER_ENDPOINT': 'http://fooendpoint:1234',
     'FILEMANAGER_VERIFY': False
 }
-mock_app = mock.MagicMock(config=CONFIG)
+mock_app = Flask('foo')
+mock_app.config.update(CONFIG)
 
 
 class TestServiceStatus(TestCase):
