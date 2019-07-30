@@ -192,6 +192,8 @@ def get_task(src_id: str, chk: str, fmt: Format = Format.PDF) -> Task:
     result = do_compile.AsyncResult(task_id)
     stat = Status.IN_PROGRESS
     reason = Reason.NONE
+    owner: Optional[str] = None
+    size_bytes = 0
     _info: Dict[str, str]
     if result.status == 'PENDING':
         raise NoSuchTask(f'No such task: {task_id}')
@@ -203,14 +205,19 @@ def get_task(src_id: str, chk: str, fmt: Format = Format.PDF) -> Task:
         _info = result.info
     elif result.status == 'SUCCESS':
         _info = result.result
-        if 'status' in _info:
+        if _info and 'status' in _info:
             stat = Status(_info['status'])
         else:
             stat = Status.COMPLETED
-    reason = Reason(_info.get('reason'))
-    owner = _info['owner']
+
+    if _info is not None:   # If we got here too soon...
+        reason = Reason(_info.get('reason'))
+        owner = _info['owner']
+        size_bytes = int(_info.get('size_bytes', '0'))
+
     return Task(source_id=src_id, checksum=chk, output_format=fmt,
-                task_id=task_id, status=stat, reason=reason, owner=owner)
+                task_id=task_id, status=stat, reason=reason, owner=owner,
+                size_bytes=size_bytes)
 
 
 @after_task_publish.connect
