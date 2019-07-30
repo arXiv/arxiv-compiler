@@ -169,7 +169,7 @@ class SourcePackage(NamedTuple):
     path: str
     """Path to the retrieved source package."""
     etag: str
-    """Etag returned with the source package content; MD5 checksum."""
+    """Etag returned with the source package content."""
 
 
 class SourcePackageInfo(NamedTuple):
