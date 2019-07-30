@@ -101,12 +101,15 @@ def get_status(source_id: str, checksum: str, output_format: str) -> Response:
 @scoped(scopes.READ_COMPILE, resource=resource_id)
 def get_log(source_id: str, checksum: str, output_format: str) -> Response:
     """Get a compilation log."""
-    resp = controllers.get_log(source_id, checksum, output_format,
-                               authorizer(scopes.READ_COMPILE))
-    data, status_code, headers = resp
+    data, code, headers = controllers.get_log(source_id, checksum,
+                                              output_format,
+                                              authorizer(scopes.READ_COMPILE))
+    if 299 < code < 400:
+        return redirect(headers['Location'], code=code)
     response: Response = send_file(data['stream'],
                                    mimetype=data['content_type'],
                                    attachment_filename=data['filename'])
+    response.status_code = code
     return response
 
 
@@ -117,8 +120,11 @@ def get_product(source_id: str, checksum: str, output_format: str) -> Response:
     data, code, head = controllers.get_product(source_id, checksum,
                                                output_format,
                                                authorizer(scopes.READ_COMPILE))
+    if 299 < code < 400:
+        return redirect(head['Location'], code=code)
     response: Response = send_file(data['stream'],
                                    mimetype=data['content_type'],
                                    attachment_filename=data['filename'])
     response.set_etag(head.get('ETag'))
+    response.status_code = code
     return response

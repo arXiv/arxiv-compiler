@@ -501,3 +501,80 @@ class TestCompilerApp(TestCase):
         )
 
         self.assertEqual(response.status_code, status.BAD_REQUEST)
+
+    @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
+    @mock.patch('compiler.controllers.compiler')
+    @mock.patch('compiler.controllers.Store')
+    def test_get_product_while_recompiling(self, mock_store, mock_compiler):
+        """GET ``getCompilationProduct`` while recompilation is in progress."""
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
+
+        source_id = '54'
+        checksum = 'a1b2c3d4='
+        fmt = 'pdf'
+        owner = self.user_id
+
+        comp_status = domain.Task.from_dict({
+            'status': 'in_progress',
+            'reason': None,
+            'source_id': source_id,
+            'output_format': fmt,
+            'checksum': checksum,
+            'size_bytes': 0,
+            'owner': owner,
+            'task_id': f'{source_id}/{checksum}/{fmt}'
+        })
+        comp_product = domain.Product(
+            stream=io.BytesIO(b'fooproductcontents'),
+            checksum='productchxm'
+        )
+        mock_compiler.get_task.return_value = comp_status
+        mock_store.current_session.return_value.retrieve.return_value \
+            = comp_product
+
+        response = self.client.get(
+            f'/{source_id}/{checksum}/{fmt}/product',
+            headers={'Authorization': self.token}
+        )
+
+        self.assertEqual(response.status_code, status.SEE_OTHER,
+                         'Returns a redirect response')
+        self.assertTrue(
+            response.headers['Location'].endswith('/54/a1b2c3d4%3D/pdf'),
+            'Redirects to status endpoint'
+        )
+
+    @mock.patch('arxiv.users.auth.middleware.os.environ', OS_ENVIRON)
+    @mock.patch('compiler.controllers.compiler')
+    @mock.patch('compiler.controllers.Store')
+    def test_get_log_while_recompiling(self, mock_store, mock_compiler):
+        """GET ``getCompilationLog`` while recompilation is in progress."""
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
+
+        source_id = '54'
+        checksum = 'a1b2c3d4='
+        fmt = 'pdf'
+        owner = self.user_id
+
+        comp_status = domain.Task.from_dict({
+            'status': 'in_progress',
+            'reason': None,
+            'source_id': source_id,
+            'output_format': fmt,
+            'checksum': checksum,
+            'size_bytes': 0,
+            'owner': owner,
+            'task_id': f'{source_id}/{checksum}/{fmt}'
+        })
+        mock_compiler.get_task.return_value = comp_status
+        response = self.client.get(
+            f'/{source_id}/{checksum}/{fmt}/log',
+            headers={'Authorization': self.token}
+        )
+
+        self.assertEqual(response.status_code, status.SEE_OTHER,
+                         'Returns a redirect response')
+        self.assertTrue(
+            response.headers['Location'].endswith('/54/a1b2c3d4%3D/pdf'),
+            'Redirects to status endpoint'
+        )
