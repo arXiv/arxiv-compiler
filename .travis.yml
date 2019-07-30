@@ -16,7 +16,9 @@ script:
   - pipenv run nose2 --with-coverage
 after_success:
   - coveralls
-  - "./tests/lintstats.sh"
+  - "./tests/docstyle.sh compiler"
+  - "./tests/lint.sh compiler"
+  - "./tests/static.sh compiler"
 deploy:
 - provider: script
   script:

@@ -99,14 +99,17 @@ class Task(NamedTuple):
 
     @property
     def is_completed(self) -> bool:
+        """Indicate whether or not this task is completed."""
         return bool(self.status is Status.COMPLETED)
 
     @property
     def is_failed(self) -> bool:
+        """Indicate whether or not this task has failed."""
         return bool(self.status is Status.FAILED)
 
     @property
     def is_in_progress(self) -> bool:
+        """Indicate whether or not this task is still in progress."""
         return bool(self.status is Status.IN_PROGRESS)
 
     @property

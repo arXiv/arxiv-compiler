@@ -64,6 +64,7 @@ from flask import current_app
 from celery.result import AsyncResult
 from celery.signals import after_task_publish
 from celery import states
+from celery import Task as CeleryTask
 from celery.exceptions import Ignore
 
 import boto3
@@ -238,8 +239,9 @@ def do_nothing() -> None:
 
 
 @celery_app.task(bind=True)
-def do_compile(self, src_id: str, chk: str, stamp_label: Optional[str],
-               stamp_link: Optional[str], output_format: str = 'pdf',
+def do_compile(self: CeleryTask, src_id: str, chk: str,
+               stamp_label: Optional[str], stamp_link: Optional[str],
+               output_format: str = 'pdf',
                preferred_compiler: Optional[str] = None,
                token: Optional[str] = None,
                owner: Optional[str] = None) -> dict:
