@@ -22,12 +22,12 @@ after_success:
 deploy:
 - provider: script
   script:
-    ./deploy/make_and_push_images.sh compiler
+    ./deploy/make_and_push_images.sh compiler ARXIVNG-2462
   on:
     all_branches: true
 - provider: script
   script:
-    ./deploy/make_and_push_images.sh compiler &&
+    ./deploy/make_and_push_images.sh compiler ARXIVNG-2462 &&
     ./deploy/install_helm.sh development &&
     ./deploy/publish_helm_chart.sh
   on:
