@@ -195,7 +195,8 @@ spec:
           mountPath: /etc/vault-certificate
           readOnly: true
         command:
-          - /opt/arxiv/start_worker.sh
+          - celery
+          - worker
           - -A compiler.worker.celery_app
           - --loglevel=INFO
           - -E

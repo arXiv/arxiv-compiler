@@ -64,7 +64,10 @@ services:
 
   compiler-test-api:
     << : *base-service
-    build: .
+    build:
+      context: .
+      args:
+        BASE_VERSION: ARXIVNG-2462
     # command: pipenv run flask run -h 0.0.0.0 -p 8000
     depends_on:
      - "compiler-test-localstack"
@@ -77,8 +80,11 @@ services:
 
   compiler-test-worker:
     << : *base-service
-    build: .
-    command: /opt/arxiv/start_worker.sh -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
+    build:
+      context: .
+      args:
+        BASE_VERSION: ARXIVNG-2462
+    command: celery worker -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
     depends_on:
      - "compiler-test-localstack"
      - "compiler-test-redis"

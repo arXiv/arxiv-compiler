@@ -7,6 +7,7 @@ set -o nounset
 # Used to deploy
 
 export LABEL=$1
+export BASE_VERSION=$2
 export LOGLEVEL=40
 export IMAGE_NAME=arxiv/${LABEL}
 if [ -z "${TRAVIS_TAG}" ]; then
@@ -17,5 +18,5 @@ fi
 
 git fetch --unshallow || echo "Repository is already complete"
 docker login -u "$DOCKERHUB_USERNAME" -p "$DOCKERHUB_PASSWORD"
-docker build ./ -t ${IMAGE_NAME}:${SOURCE_REF} -f ./Dockerfile
+docker build ./ -t ${IMAGE_NAME}:${SOURCE_REF} -f ./Dockerfile --build-arg=BASE_VERSION=${BASE_VERSION}
 docker push ${IMAGE_NAME}:${SOURCE_REF}

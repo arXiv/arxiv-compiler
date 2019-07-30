@@ -98,6 +98,21 @@ class Task(NamedTuple):
     """The owner of this resource."""
 
     @property
+    def is_completed(self) -> bool:
+        """Indicate whether or not this task is completed."""
+        return bool(self.status is Status.COMPLETED)
+
+    @property
+    def is_failed(self) -> bool:
+        """Indicate whether or not this task has failed."""
+        return bool(self.status is Status.FAILED)
+
+    @property
+    def is_in_progress(self) -> bool:
+        """Indicate whether or not this task is still in progress."""
+        return bool(self.status is Status.IN_PROGRESS)
+
+    @property
     def ext(self) -> str:
         """Filename extension for the compilation product."""
         if self.output_format is None:
@@ -141,9 +156,6 @@ class Product(NamedTuple):
 
     stream: BinaryIO
     """Readable buffer with the product content."""
-
-    task: Optional[Task] = None
-    """Status information about the product."""
 
     checksum: Optional[str] = None
     """The B64-encoded MD5 hash of the compilation product."""

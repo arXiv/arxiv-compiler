@@ -88,8 +88,8 @@ class TestRequestCompilation(TestCase):
     def test_compile_de_novo(self, mock_fm, mock_store, mock_compiler):
         """Request for a new compilation."""
         mock_fm.current_session.return_value.owner.return_value = None
-        mock_store.current_session.return_value.get_status.return_value = None
-        mock_compiler.get_task.return_value = None
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
         task_id = '123::asdf12345zxcv::pdf'
         token = 'footoken'
         mock_compiler.start_compilation.return_value = task_id
@@ -122,7 +122,7 @@ class TestRequestCompilation(TestCase):
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
         token = "footoken"
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = Task(source_id=source_id,
                    output_format=Format.PDF,
                    status=Status.COMPLETED,
@@ -159,14 +159,14 @@ class TestGetTask(TestCase):
             controllers.get_status('1234', 'as12345=', 'fdp')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_info_completed(self, mock_store):
+    @mock.patch(f'{controllers.__name__}.compiler')
+    def test_get_info_completed(self, mock_compiler):
         """Request for a completed compilation."""
         task_id = '123::asdf12345zxcv::pdf'
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = Task(source_id=source_id,
                    output_format=Format.PDF,
                    status=Status.COMPLETED,
@@ -178,14 +178,14 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_info_in_progress(self, mock_store):
+    @mock.patch(f'{controllers.__name__}.compiler')
+    def test_get_info_in_progress(self, mock_compiler):
         """Request for a compilation in progress."""
         task_id = 'task1234'
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = Task(source_id=source_id,
                    output_format=Format.PDF,
                    status=Status.IN_PROGRESS,
@@ -197,27 +197,27 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_info_nonexistant(self, mock_store):
+    @mock.patch(f'{controllers.__name__}.compiler')
+    def test_get_info_nonexistant(self, mock_compiler):
         """Request for a nonexistant compilation."""
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.get_status.side_effect \
-            = raise_store_does_not_exist
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         with self.assertRaises(NotFound):
             controllers.get_status(source_id, checksum, output_format)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_status_completed(self, mock_store):
+    @mock.patch(f'{controllers.__name__}.compiler')
+    def test_get_status_completed(self, mock_compiler):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = Task(source_id=source_id,
                    output_format=Format.PDF,
                    status=Status.COMPLETED,
@@ -229,21 +229,21 @@ class TestGetTask(TestCase):
         self.assertEqual(code, status.OK)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
-    @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_status_in_progress(self, mock_store):
+    @mock.patch(f'{controllers.__name__}.compiler')
+    def test_get_status_in_progress(self, mock_compiler):
         """Request for a completed compilation."""
         task_id = 'task1234'
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = Format.PDF
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = Task(source_id=source_id,
                    output_format=Format.PDF,
                    status=Status.IN_PROGRESS,
                    task_id=task_id,
                    checksum=checksum)
         response_data = controllers.get_status(source_id, checksum,
-                                               output_format)
+                                               output_format.value)
         data, code, headers = response_data
         self.assertEqual(code, status.OK)
 
@@ -267,6 +267,7 @@ class TestGetProduct(TestCase):
             controllers.get_product('1234', 'as12345=', 'fdp')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
+    @mock.patch(f'{controllers.__name__}.compiler', mock.MagicMock())
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_product_completed(self, mock_store):
         """Request for a completed compilation product."""
@@ -277,12 +278,7 @@ class TestGetProduct(TestCase):
         product_checksum = 'thechecksumoftheproduct'
         mock_store.current_session.return_value.retrieve.return_value \
             = Product(stream=io.BytesIO(b'foocontent'),
-                      checksum=product_checksum,
-                      task=Task(source_id=source_id,
-                                output_format=Format.PDF,
-                                status=Status.COMPLETED,
-                                task_id=task_id,
-                                checksum=checksum))
+                      checksum=product_checksum)
         response_data = controllers.get_product(
             source_id,
             checksum,
@@ -293,14 +289,15 @@ class TestGetProduct(TestCase):
         self.assertEqual(headers['ETag'], product_checksum)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
+    @mock.patch(f'{controllers.__name__}.compiler')
     @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_product_nonexistant(self, mock_store):
+    def test_get_product_nonexistant(self, mock_store, mock_compiler):
         """Request for a nonexistant compilation product."""
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.retrieve.side_effect \
-            = raise_store_does_not_exist
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         with self.assertRaises(NotFound):
             controllers.get_product(source_id, checksum, output_format)
@@ -325,6 +322,7 @@ class TestGetCompilationLog(TestCase):
             controllers.get_log('1234', 'as12345=', 'fdp')
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
+    @mock.patch(f'{controllers.__name__}.compiler', mock.MagicMock())
     @mock.patch(f'{controllers.__name__}.Store')
     def test_get_log_completed(self, mock_store):
         """Request log for a completed compilation."""
@@ -335,12 +333,7 @@ class TestGetCompilationLog(TestCase):
         product_checksum = 'thechecksumoftheproduct'
         mock_store.current_session.return_value.retrieve_log.return_value \
             = Product(stream=io.BytesIO(b'foolog'),
-                      checksum=product_checksum,
-                      task=Task(source_id=source_id,
-                                output_format=Format.PDF,
-                                status=Status.COMPLETED,
-                                task_id=task_id,
-                                checksum=checksum))
+                      checksum=product_checksum)
         response_data = controllers.get_log(
             source_id,
             checksum,
@@ -351,14 +344,15 @@ class TestGetCompilationLog(TestCase):
         self.assertEqual(headers['ETag'], product_checksum)
 
     @mock.patch(f'{controllers.__name__}.url_for', mock_url_for)
+    @mock.patch(f'{controllers.__name__}.compiler')
     @mock.patch(f'{controllers.__name__}.Store')
-    def test_get_log_nonexistant(self, mock_store):
+    def test_get_log_nonexistant(self, mock_store, mock_compiler):
         """Request for a nonexistant compilation log."""
+        mock_compiler.NoSuchTask = compiler.NoSuchTask
         source_id = '1234'
         checksum = 'asdf12345zxcv'
         output_format = 'pdf'
-        mock_store.current_session.return_value.retrieve_log.side_effect \
-            = raise_store_does_not_exist
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         with self.assertRaises(NotFound):
             controllers.get_log(source_id, checksum, output_format)

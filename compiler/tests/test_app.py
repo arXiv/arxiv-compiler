@@ -32,16 +32,6 @@ class TestCompilerApp(TestCase):
                                         scope=[scopes.CREATE_COMPILE,
                                                scopes.READ_COMPILE])
 
-    @staticmethod
-    def raise_does_not_exist(*args, **kwargs):
-        """Raise :class:`store.DoesNotExist`."""
-        raise store.DoesNotExist('Nope')
-
-    @staticmethod
-    def raise_no_such_task(*args, **kwargs):
-        """Raise :class:`compiler.NoSuchTask`."""
-        raise compiler.NoSuchTask('Nada')
-
     @mock.patch(f'{compiler.__name__}.do_nothing', mock.MagicMock())
     @mock.patch(f'{service.__name__}.requests.Session')
     @mock.patch(f'{store.__name__}.boto3.client', mock.MagicMock())
@@ -81,9 +71,7 @@ class TestCompilerApp(TestCase):
         """POST the ``requestCompilation`` endpoint with valid data."""
         mock_compiler.NoSuchTask = compiler.NoSuchTask
         mock_fm.current_session.return_value.owner.return_value = None
-        mock_store.current_session.return_value.get_status.side_effect \
-            = self.raise_does_not_exist
-        mock_compiler.get_task.side_effect = self.raise_no_such_task
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         response = self.client.post('/', json={
                 'source_id': '54',
@@ -119,9 +107,7 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.current_session.return_value.get_status.return_value \
-            = comp_status
-        mock_compiler.get_task.side_effect = self.raise_no_such_task
+        mock_compiler.get_task.return_value = comp_status
 
         response = self.client.post('/', json={
                 'source_id': source_id,
@@ -157,9 +143,7 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.current_session.return_value.get_status.return_value \
-            = comp_status
-        mock_compiler.get_task.side_effect = self.raise_no_such_task
+        mock_compiler.get_task.return_value = comp_status
 
         response = self.client.post('/', json={
                 'source_id': source_id,
@@ -180,9 +164,7 @@ class TestCompilerApp(TestCase):
         mock_compiler.NoSuchTask = compiler.NoSuchTask
         mock_compiler.TaskCreationFailed = compiler.TaskCreationFailed
         mock_fm.current_session.return_value.owner.return_value = None
-        mock_store.current_session.return_value.get_status.side_effect \
-            = self.raise_does_not_exist
-        mock_compiler.get_task.side_effect = self.raise_no_such_task
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         def raise_creation_failed(*args, **kwargs):
             raise compiler.TaskCreationFailed('Nope')
@@ -222,7 +204,7 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = comp_status
 
         response = self.client.get(
@@ -255,7 +237,7 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = comp_status
 
         response = self.client.get(
@@ -277,9 +259,7 @@ class TestCompilerApp(TestCase):
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.current_session.return_value.get_status.side_effect \
-            = self.raise_does_not_exist
-        mock_compiler.get_task.side_effect = self.raise_no_such_task
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}',
@@ -326,7 +306,7 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = comp_status
         mock_store.current_session.return_value.retrieve_log.return_value \
             = comp_log
@@ -365,7 +345,7 @@ class TestCompilerApp(TestCase):
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
         comp_log = domain.Product(stream=io.BytesIO(b'foologcontent'))
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = comp_status
         mock_store.current_session.return_value.retrieve_log.return_value \
             = comp_log
@@ -388,8 +368,7 @@ class TestCompilerApp(TestCase):
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.current_session.return_value.get_status.side_effect \
-            = self.raise_does_not_exist
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/log',
@@ -440,7 +419,7 @@ class TestCompilerApp(TestCase):
             stream=io.BytesIO(b'fooproductcontents'),
             checksum='productchxm'
         )
-        mock_store.current_session.return_value.get_status.return_value \
+        mock_compiler.get_task.return_value \
             = comp_status
         mock_store.current_session.return_value.retrieve.return_value \
             = comp_product
@@ -478,8 +457,7 @@ class TestCompilerApp(TestCase):
             'owner': owner,
             'task_id': f'{source_id}/{checksum}/{fmt}'
         })
-        mock_store.current_session.return_value.get_status.return_value \
-            = comp_status
+        mock_compiler.get_task.return_value = comp_status
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',
@@ -499,8 +477,7 @@ class TestCompilerApp(TestCase):
         checksum = 'a1b2c3d4='
         fmt = 'pdf'
 
-        mock_store.current_session.return_value.get_status.side_effect \
-            = self.raise_does_not_exist
+        mock_compiler.get_task.side_effect = compiler.NoSuchTask
 
         response = self.client.get(
             f'/{source_id}/{checksum}/{fmt}/product',

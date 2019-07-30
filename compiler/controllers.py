@@ -48,21 +48,6 @@ def is_urlsafe_base64(val: str) -> bool:
     return bool(len(set((ord(c) for c in val)) - urlsafe_base64_alphabet) == 0)
 
 
-def _status_from_store(source_id: str, checksum: str,
-                       output_format: Format) -> Optional[Task]:
-    """Get a :class:`.Task` from storage."""
-    store = Store.current_session()
-    try:
-        stat = store.get_status(source_id, checksum, output_format)
-        logger.debug('Got status from store: %s', stat)
-        return stat
-    except DoesNotExist as e:
-        logger.debug('No such compilation: %s', e)
-    # except Exception as e:
-    #     logger.debug('No such compilation: %s', e)
-    return None
-
-
 def _redirect_to_status(source_id: str, checksum: str, output_format: Format,
                         code: int = status.SEE_OTHER) -> Response:
     """Redirect to the status endpoint."""
@@ -128,12 +113,15 @@ def compile(request_data: MultiDict, token: str, session: Session,
     # source twice. So we check our storage for a compilation (successful or
     # not) corresponding to the requested source package.
     if not force:
-        info = _status_from_store(source_id, checksum, product_format)
-        if info is not None:
-            if not is_authorized(info):
+        try:
+            task_state = compiler.get_task(source_id, checksum, product_format)
+            if not is_authorized(task_state):
                 raise Forbidden('Not authorized to compile this resource')
             logger.debug('compilation exists, redirecting')
             return _redirect_to_status(source_id, checksum, product_format)
+        except compiler.NoSuchTask as e:
+            # raise NotFound('No such task') from e
+            pass
 
     owner = _get_owner(source_id, checksum, token)
     try:
@@ -179,13 +167,15 @@ def get_status(source_id: str, checksum: str, output_format: str,
 
     logger.debug('get_status for %s, %s, %s', source_id, checksum,
                  output_format)
-    info = _status_from_store(source_id, checksum, product_format)
+    try:
+        task_state = compiler.get_task(source_id, checksum, product_format)
+    except compiler.NoSuchTask as e:
+        raise NotFound('No such compilation task') from e
+
     # Verify that the requester is authorized to view this resource.
-    if info is None:
-        raise NotFound('No such resource')
-    if not is_authorized(info):
+    if not is_authorized(task_state):
         raise Forbidden('Access denied')
-    return info.to_dict(), status.OK, {'ARXIV-OWNER': info.owner}
+    return task_state.to_dict(), status.OK, {'ARXIV-OWNER': task_state.owner}
 
 
 def get_product(source_id: str, checksum: str, output_format: str,
@@ -217,10 +207,11 @@ def get_product(source_id: str, checksum: str, output_format: str,
     product_format = _validate_output_format(output_format)
 
     # Verify that the requester is authorized to view this resource.
-    info = _status_from_store(source_id, checksum, product_format)
-    if info is None:
-        raise NotFound('No such resource')
-    if not is_authorized(info):
+    try:
+        task_state = compiler.get_task(source_id, checksum, product_format)
+    except compiler.NoSuchTask as e:
+        raise NotFound('No such task') from e
+    if not is_authorized(task_state):
         raise Forbidden('Access denied')
 
     store = Store.current_session()
@@ -233,7 +224,7 @@ def get_product(source_id: str, checksum: str, output_format: str,
         'content_type': product_format.content_type,
         'filename': f'{source_id}.{product_format.ext}',
     }
-    headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
+    headers = {'ARXIV-OWNER': task_state.owner, 'ETag': product.checksum}
     return data, status.OK, headers
 
 
@@ -266,10 +257,11 @@ def get_log(source_id: str, checksum: str, output_format: str,
     product_format = _validate_output_format(output_format)
 
     # Verify that the requester is authorized to view this resource.
-    info = _status_from_store(source_id, checksum, product_format)
-    if info is None:
-        raise NotFound('No such resource')
-    if not is_authorized(info):
+    try:
+        task_state = compiler.get_task(source_id, checksum, product_format)
+    except compiler.NoSuchTask as e:
+        raise NotFound('No such task') from e
+    if not is_authorized(task_state):
         raise Forbidden('Access denied')
 
     store = Store.current_session()
@@ -282,7 +274,7 @@ def get_log(source_id: str, checksum: str, output_format: str,
         'content_type': 'text/plain',
         'filename': f'{source_id}.{product_format.ext}'
     }
-    headers = {'ARXIV-OWNER': info.owner, 'ETag': product.checksum}
+    headers = {'ARXIV-OWNER': task_state.owner, 'ETag': product.checksum}
     return data, status.OK, headers
 
 
