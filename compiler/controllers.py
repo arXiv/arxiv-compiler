@@ -214,6 +214,9 @@ def get_product(source_id: str, checksum: str, output_format: str,
     if not is_authorized(task_state):
         raise Forbidden('Access denied')
 
+    if not task_state.is_completed:
+        return _redirect_to_status(source_id, checksum, product_format)
+
     store = Store.current_session()
     try:
         product = store.retrieve(source_id, checksum, product_format)
@@ -263,6 +266,8 @@ def get_log(source_id: str, checksum: str, output_format: str,
         raise NotFound('No such task') from e
     if not is_authorized(task_state):
         raise Forbidden('Access denied')
+    if not task_state.is_completed:
+        return _redirect_to_status(source_id, checksum, product_format)
 
     store = Store.current_session()
     try:
