@@ -47,6 +47,7 @@ Always do this:
 """
 
 import os
+import binascii
 import traceback
 from typing import List, Dict, Optional, Tuple, Callable, Any, Mapping, \
     Hashable
@@ -194,6 +195,7 @@ def get_task(src_id: str, chk: str, fmt: Format = Format.PDF) -> Task:
     stat = Status.IN_PROGRESS
     reason = Reason.NONE
     owner: Optional[str] = None
+    description = ""
     size_bytes = 0
     _info: Dict[str, str]
     if result.status == 'PENDING':
@@ -215,10 +217,11 @@ def get_task(src_id: str, chk: str, fmt: Format = Format.PDF) -> Task:
         reason = Reason(_info.get('reason'))
         owner = _info['owner']
         size_bytes = int(_info.get('size_bytes', '0'))
+        description = _info.get('description', '')
 
     return Task(source_id=src_id, checksum=chk, output_format=fmt,
                 task_id=task_id, status=stat, reason=reason, owner=owner,
-                size_bytes=size_bytes)
+                size_bytes=size_bytes, description=description)
 
 
 @after_task_publish.connect
@@ -236,6 +239,37 @@ def _mark_sent(sender: Optional[Hashable] = None,
 def do_nothing() -> None:
     """Dummy task used to check the connection to the queue."""
     return
+
+
+def does_checksum_match(source: SourcePackage, expected: str) -> bool:
+    """
+    Compare an expected checksum to the retrieved source package.
+
+    If the source etag does not match the expected value directly, also
+    compares the etag to the base64-decoded value of ``expected``.
+
+    Parameters
+    ----------
+    source : :class:`SourcePackage`
+    expected : str
+        The expected checksum/etag value for ``source``.
+
+    Returns
+    -------
+    bool
+        True if the etag of ``source`` matches ``expected``.
+
+    """
+    if source.etag == expected:
+        return True
+    try:
+        if source.etag == b64decode(expected).decode('utf-8'):
+            return True
+    except binascii.Error:      # Not a valid b64-encoded string.
+        return False
+    except UnicodeDecodeError:  # Wonky; probably not b64-encoded.
+        return False
+    return False
 
 
 @celery_app.task(bind=True)
@@ -300,8 +334,10 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
             disposition = (Status.FAILED, Reason.MISSING, description)
             raise
 
-        if source is None:
+        if source is None or not does_checksum_match(source, chk):
             description = 'Could not retrieve a matching source package'
+            if source is not None:
+                description += f': expected {chk}, got {source.etag}'
             disposition = (Status.FAILED, Reason.MISSING, description)
             raise RuntimeError(description)
 

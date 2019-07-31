@@ -155,6 +155,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.return_value = (out_path, log_path)
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -193,6 +197,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.return_value = (out_path, log_path)
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         mock_store.current_session.return_value.store_log.side_effect = \
             RuntimeError
@@ -233,6 +241,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.side_effect = RuntimeError
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -421,6 +433,49 @@ class TestDoCompile(TestCase):
     @mock.patch(f'{compiler.__name__}.FileManager')
     @mock.patch(f'{compiler.__name__}.Converter')
     @mock.patch(f'{compiler.__name__}.Store')
+    def test_bad_checksum(self, mock_store, mock_Compiler, mock_filemanager):
+        """There is a problem storing the results."""
+        container_source_root = mkdtemp()
+        _, out_path = mkstemp()
+        _, log_path = mkstemp()
+
+        mock_Compiler.return_value.return_value = (out_path, log_path)
+        mock_Compiler.return_value.is_available.return_value = True
+
+        mock_source = mock.MagicMock(etag='fooooo')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
+
+        app = Flask('test')
+        app.config.update({
+            'WORKER_SOURCE_ROOT': container_source_root,
+            'VERBOSE_COMPILE': True,
+            'AWS_ACCESS_KEY_ID': 'fookeyid',
+            'AWS_SECRET_ACCESS_KEY': 'foosecretkey'
+        })
+        with app.app_context():
+            self.assertDictEqual(
+                compiler.do_compile("1234", "asdf", "arXiv:1234",
+                                    "http://arxiv.org/abs/1234", "pdf",
+                                    token="footoken"),
+                {
+                    'source_id': '1234',
+                    'output_format': 'pdf',
+                    'owner': None,
+                    'checksum': 'asdf',
+                    'task_id': '1234/asdf/pdf',
+                    'status': 'failed',
+                    'reason': 'missing_source',
+                    'description': 'Could not retrieve a matching source'
+                                   ' package: expected asdf, got fooooo',
+                    'size_bytes': 0
+                }
+            )
+
+    @mock.patch(f'{compiler.__name__}.FileManager')
+    @mock.patch(f'{compiler.__name__}.Converter')
+    @mock.patch(f'{compiler.__name__}.Store')
     def test_source_corrupted(self, mock_store, mock_Compiler,
                               mock_filemanager):
         """There is a problem with the content of the source package."""
@@ -433,6 +488,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.side_effect = raise_corrupted
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -469,6 +528,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.return_value = (None, log_path)
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         app = Flask('test')
         app.config.update({
@@ -506,6 +569,10 @@ class TestDoCompile(TestCase):
 
         mock_Compiler.return_value.return_value = (out_path, log_path)
         mock_Compiler.return_value.is_available.return_value = True
+        mock_source = mock.MagicMock(etag='asdf')
+        mock_filemanager.current_session.return_value = mock.MagicMock(
+            get_source_content=mock.MagicMock(return_value=mock_source)
+        )
 
         def raise_runtimeerror(*args, **kwargs):
             raise RuntimeError('yuck', mock.MagicMock())
