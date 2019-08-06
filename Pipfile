@@ -10,7 +10,7 @@ boto3 = "==1.9.194"
 celery = "==4.1.0"
 kombu = "==4.1.0"
 mysqlclient = "==1.4.2"
-arxiv-base = "==0.15.9"
+arxiv-base = "==0.16.1"
 arxiv-auth = "==0.3.2rc6"
 redis = "==2.10.6"
 jsonschema = "*"
@@ -19,7 +19,6 @@ dataclasses = "==0.6"
 docker = ">=4.0.1"
 urllib3 = ">=1.24.2"
 Jinja2 = ">=2.10.1"
-
 
 [dev-packages]
 pytest = "*"
