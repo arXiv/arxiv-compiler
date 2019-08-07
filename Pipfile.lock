@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "4f38fe61939f39f919c6b9496bb4b452e25ced8b068b34d3fbf85e261cea582e"
+            "sha256": "356246c8208d53eeea490b974b8b5d1834e6b3719fb92e4d2e631918dc21e433"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -32,10 +32,10 @@
         },
         "arxiv-base": {
             "hashes": [
-                "sha256:c4c0140417210d9894b28465df55f0860efc1a59f97f3d3532021b5604817bc3"
+                "sha256:ecb4e1f25519e132a743814dc35c6791be52c7efcf11d2d9fe3bda8b381a58db"
             ],
             "index": "pypi",
-            "version": "==0.16.1"
+            "version": "==0.16.1.post2"
         },
         "arxiv-vault": {
             "hashes": [
@@ -80,10 +80,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:91d1deb7d09a27122820a3a99d22f45dbadc039c1d5cf6270eb245b95071e7ba",
-                "sha256:e4678f5072bd8a429ea27243004964986db5dfda911084d47a9f18de5c8d75d7"
+                "sha256:71ca578701e746fe947c098e5dee06128d0f6ba98217ba7e29aff0dab8caf82f",
+                "sha256:e55003c46e71396a551d4b70f39286f8fc4094ac6cf90f5db8d7a68bb4af1f9d"
             ],
-            "version": "==1.12.201"
+            "version": "==1.12.202"
         },
         "celery": {
             "hashes": [
@@ -424,9 +424,9 @@
         },
         "aws-sam-translator": {
             "hashes": [
-                "sha256:6966b45dc444de3ced673164889e8cf0ac001c947cfac6030527cd38e2e40071"
+                "sha256:9b7b40ba50a2befe255e48549d8a4bb6c63490cf4c0b1f3f2e6a6f25b5723483"
             ],
-            "version": "==1.13.0"
+            "version": "==1.13.1"
         },
         "aws-xray-sdk": {
             "hashes": [
@@ -459,10 +459,10 @@
         },
         "botocore": {
             "hashes": [
-                "sha256:91d1deb7d09a27122820a3a99d22f45dbadc039c1d5cf6270eb245b95071e7ba",
-                "sha256:e4678f5072bd8a429ea27243004964986db5dfda911084d47a9f18de5c8d75d7"
+                "sha256:71ca578701e746fe947c098e5dee06128d0f6ba98217ba7e29aff0dab8caf82f",
+                "sha256:e55003c46e71396a551d4b70f39286f8fc4094ac6cf90f5db8d7a68bb4af1f9d"
             ],
-            "version": "==1.12.201"
+            "version": "==1.12.202"
         },
         "certifi": {
             "hashes": [

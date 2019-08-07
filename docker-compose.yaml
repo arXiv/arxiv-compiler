@@ -13,7 +13,7 @@ x-base-service:
     AWS_S3_REGION_NAME: "us-east-1"
     S3_ENDPOINT: "https://compiler-test-localstack:4572"
     S3_VERIFY: 0
-    CONVERTER_DOCKER_IMAGE: "${CONVERTER_DOCKER_IMAGE}"
+    CONVERTER_DOCKER_IMAGE: "626657773168.dkr.ecr.us-east-1.amazonaws.com/arxiv/converter:0.9"
     FILEMANAGER_SERVICE_HOST: "arxiv.org"
     FILEMANAGER_SERVICE_PORT: "443"
     FILEMANAGER_SERVICE_PORT_443_PROTO: "https"
@@ -29,11 +29,6 @@ x-base-service:
     VAULT_ENABLED: "0"
     NAMESPACE: "production"
     KUBE_TOKEN: "fookubetoken"
-    VAULT_HOST: "mock-compiler-vault"
-    VAULT_PORT: "8200"
-    VAULT_ROLE: "compiler"
-    VAULT_CREDENTIAL: "foocredential"
-    VAULT_SCHEME: "http"
     WAIT_FOR_SERVICES: 1
     WAIT_ON_STARTUP: 5
 
@@ -67,7 +62,7 @@ services:
     build:
       context: .
       args:
-        BASE_VERSION: ARXIVNG-2462
+        BASE_VERSION: "0.16.1"
     # command: pipenv run flask run -h 0.0.0.0 -p 8000
     depends_on:
      - "compiler-test-localstack"
@@ -83,7 +78,7 @@ services:
     build:
       context: .
       args:
-        BASE_VERSION: ARXIVNG-2462
+        BASE_VERSION: "0.16.1"
     command: celery worker -A compiler.worker.celery_app --loglevel=INFO -E --concurrency=2
     depends_on:
      - "compiler-test-localstack"
@@ -94,17 +89,6 @@ services:
     volumes:
       - "${DIND_SOURCE_ROOT}:/tmp"
       - /var/run/docker.sock:/var/run/docker.sock
-
-  mock-compiler-vault:
-    image: arxiv/mock-vault
-    build:
-      context: .
-      dockerfile: Dockerfile-mock-vault
-    container_name: mock-compiler-vault
-    environment:
-      JWT_SECRET: foosecret
-    networks:
-      - compiler-test
 
 networks:
   compiler-test:
