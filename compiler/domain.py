@@ -100,7 +100,7 @@ class Task(NamedTuple):
     @property
     def is_completed(self) -> bool:
         """Indicate whether or not this task is completed."""
-        return bool(self.status is Status.COMPLETED)
+        return bool(self.status in [Status.COMPLETED, Status.FAILED])
 
     @property
     def is_failed(self) -> bool:

@@ -330,7 +330,8 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
             disposition = (Status.FAILED, Reason.NETWORK, description)
             raise
         except exceptions.NotFound:
-            description = 'Could not retrieve a matching source package'
+            description = ('Could not retrieve a matching source package (not'
+                           ' found)')
             disposition = (Status.FAILED, Reason.MISSING, description)
             raise
 
@@ -402,6 +403,8 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
         logger.debug('Cleaned up %s', src_dir)
     except Exception as e:
         logger.error('Could not clean up %s: %s', src_dir, e)
+    if task.is_failed:
+        logger.error('Compilation failed: %s', task)
     return task.to_dict()
 
 
@@ -547,6 +550,7 @@ class Converter:
             log: bytes = client.containers.run(image, ' '.join(args),
                                                volumes=volumes, stderr=True)
         except APIError as e:
+            logger.error('API error while calling converter: %s', e)
             raise RuntimeError(f'Compilation failed for {source.path}') from e
         except ContainerError as e:
             logger.error(f'Encountered ContainerError for {source.path}')
@@ -562,18 +566,23 @@ class Converter:
         # file in the format that we requested, so that's as specific as we
         # should need to be.
         oname: Optional[str] = None
+        logger.debug('Listing output directory: %s', cache)
         for fname in os.listdir(cache):
+            logger.debug(':: %s', fname)
             if fname.endswith(f'.{ext}'):
                 oname = fname
                 break
         if oname is None:       # The expected output isn't here.
+            logger.error('No matching output file found')
             out = None     # But we still have work to do.
         else:
             out = os.path.join(cache, oname)
+            logger.error('Found output file at %s', out)
 
         # There are all kinds of ways in which compilation can fail. In many
         # cases, we'll have log output even if the compilation failed, and we
         # don't want to ignore that output.
+        logger.debug('source directory contents: %s', os.listdir(src_dir))
         tex_log = os.path.join(src_dir, 'tex_logs', 'autotex.log')
 
         # Sometimes the log file does not get written, in which case we can

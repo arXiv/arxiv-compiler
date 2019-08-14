@@ -66,6 +66,7 @@ def create_app() -> Flask:
             store_service = store.Store.current_session()
             store_service.initialize()
             wait_for(filemanager_service)
+
             if app.config['WAIT_FOR_WORKER']:
                 wait_for(compiler, await_result=True)    # type: ignore
 
