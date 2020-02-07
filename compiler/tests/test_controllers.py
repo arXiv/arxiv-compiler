@@ -5,7 +5,7 @@ import io
 from http import HTTPStatus as status
 
 from flask import Flask
-from werkzeug import MultiDict
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound, BadRequest
 
 from ..domain import Task, Product, Format, Status

@@ -5,7 +5,7 @@ from typing import Tuple, Optional, Callable, Any
 from http import HTTPStatus as status
 from base64 import urlsafe_b64encode
 
-from werkzeug import MultiDict
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound, InternalServerError, \
     Forbidden
 

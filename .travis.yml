@@ -11,7 +11,7 @@ python:
   - "3.6"
 script:
   - pip install pipenv
-  - pipenv install --dev
+  - pipenv sync --dev
   - pipenv run openapi-spec-validator schema/openapi.yaml
   - pipenv run nose2 --with-coverage
 after_success:
