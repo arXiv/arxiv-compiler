@@ -425,7 +425,7 @@ class TestDoCompile(TestCase):
                     'status': 'failed',
                     'reason': 'missing_source',
                     'description': 'Could not retrieve a matching source'
-                                   ' package',
+                                   ' package (not found)',
                     'size_bytes': 0
                 }
             )
@@ -830,4 +830,3 @@ class TestCompiler(TestCase):
                                      "http://arxiv.org/abs/1234")
         self.assertIsNone(out_path)
         self.assertTrue(log_path.endswith('/tex_logs/autotex.log'))
-

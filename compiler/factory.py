@@ -7,7 +7,7 @@ from typing_extensions import Protocol
 
 from werkzeug.exceptions import Forbidden, Unauthorized, NotFound, \
     InternalServerError, BadRequest, HTTPException, MethodNotAllowed
-from werkzeug.contrib.profiler import ProfilerMiddleware
+# from werkzeug.middleware.profiler import ProfilerMiddleware
 
 from flask import Flask, jsonify, Response
 
