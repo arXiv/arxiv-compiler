@@ -183,8 +183,6 @@ spec:
             cpu: 100m
             memory: 128Mi
         volumeMounts:
-        - name: vault-token
-          mountPath: /etc/vault
         - name: run
           mountPath: /var/run/celery
         - name: sources
@@ -194,13 +192,7 @@ spec:
         - name: vault-certificate
           mountPath: /etc/vault-certificate
           readOnly: true
-        command:
-          - celery
-          - worker
-          - -A compiler.worker.celery_app
-          - --loglevel=INFO
-          - -E
-          - --concurrency=2
+        command: ['pipenv', 'run', 'celery', 'worker', '-A', 'compiler.worker.celery_app', '-l', 'INFO', '-E', '--concurrency=2']
         env:
         - name: REDIS_ENDPOINT
           value: "{{ .Values.redis.host }}"

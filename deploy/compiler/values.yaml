@@ -19,7 +19,7 @@ service:
   name: compiler
 
 redis:
-  url: changeme
+  host: changeme
 
 vault:
   host: changeme
@@ -35,7 +35,8 @@ s3:
   region: us-east-1
 
 
-converter.image: arxiv/converter:0.9
+converter:
+  image: "arxiv/converter:0.10.1"
 
 loglevel: 10
 
