@@ -260,6 +260,12 @@ def does_checksum_match(source: SourcePackage, expected: str) -> bool:
         True if the etag of ``source`` matches ``expected``.
 
     """
+    verify_checksum = bool(current_app.config['FILEMANAGER_VERIFY_CHECKSUM'])
+
+    if not verify_checksum:
+        logger.debug('WARNING: Checksum verification disabled.')
+        return True
+
     if source.etag == expected:
         return True
     try:
@@ -308,6 +314,8 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
     verbose = current_app.config['VERBOSE_COMPILE']
     src_dir = tempfile.mkdtemp(dir=worker_source_root)
 
+    logger.debug('WORKER_SOURCE_ROOT: %s  src_dir: %s', worker_source_root, src_dir)
+
     out: Optional[str] = None
     log: Optional[str] = None
     disposition: Tuple[Status, Reason, str] \
@@ -341,6 +349,12 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
                 description += f': expected {chk}, got {source.etag}'
             disposition = (Status.FAILED, Reason.MISSING, description)
             raise RuntimeError(description)
+
+        # Debugging
+        if source is not None:
+            logger.debug('Listing source directory: %s', os.listdir(src_dir))
+            for fname in os.listdir(src_dir):
+                logger.debug(':: %s', fname)
 
         # Compile source package to output format.
         convert = Converter()
@@ -399,6 +413,7 @@ def do_compile(self: CeleryTask, src_id: str, chk: str,
 
     # Clean up.
     try:
+        # We need way to skip cleanup for development
         shutil.rmtree(src_dir)
         logger.debug('Cleaned up %s', src_dir)
     except Exception as e:
@@ -457,7 +472,7 @@ class Converter:
 
     def _pull_image(self, client: Optional[DockerClient] = None) -> None:
         """Tell the Docker API to pull our converter image."""
-        logger.info('Pulling converter image...')
+        logger.info('Pulling converter image..."%s"', self.image)
         if client is None:
             client = self._new_client()
         _, name, tag = self.image
@@ -546,14 +561,21 @@ class Converter:
         try:
             if should_pull_image:
                 self._pull_image(client)
+            logger.debug('Binding: %s to %s', dind_src_dir, '/autotex')
             volumes = {dind_src_dir: {'bind': '/autotex', 'mode': 'rw'}}
             log: bytes = client.containers.run(image, ' '.join(args),
                                                volumes=volumes, stderr=True)
+            logger.debug('Container run log: %s', log)
+
         except APIError as e:
             logger.error('API error while calling converter: %s', e)
             raise RuntimeError(f'Compilation failed for {source.path}') from e
         except ContainerError as e:
-            logger.error(f'Encountered ContainerError for {source.path}')
+            logger.error(f'Encountered Container Error for {source.path}')
+            log = e.stderr
+            logger.error(f'  Container Error:  {log}')
+        except ImageNotFound as e:
+            logger.error(f'Converter image not found for {source.path}')
             log = e.stderr
 
         # Now we have to figure out what went right or wrong.
@@ -566,12 +588,17 @@ class Converter:
         # file in the format that we requested, so that's as specific as we
         # should need to be.
         oname: Optional[str] = None
-        logger.debug('Listing output directory: %s', cache)
-        for fname in os.listdir(cache):
-            logger.debug(':: %s', fname)
-            if fname.endswith(f'.{ext}'):
-                oname = fname
-                break
+
+        if os.path.exists(cache):
+            logger.debug('Listing output directory: %s', os.listdir(cache))
+            for fname in os.listdir(cache):
+                logger.debug(':: %s', fname)
+                if fname.endswith(f'.{ext}'):
+                    oname = fname
+                    break
+        else:
+            logger.debug('Output directory DOES NOT EXIST: %s', cache)
+
         if oname is None:       # The expected output isn't here.
             logger.error('No matching output file found')
             out = None     # But we still have work to do.
