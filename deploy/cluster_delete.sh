@@ -5,7 +5,8 @@
 # Relies on the following environment variables:
 #
 # CLUSTER
-# CONFIG
+
+CONFIG="config.sh"
 
 if [ -f "$CONFIG" ]; then
     source $CONFIG
@@ -13,15 +14,18 @@ else
     echo "Config file '$CONFIG' not found"
 fi
 
-exists=$(gcloud container clusters list --filter=$CLUSTER)
+CLUSTER_TYPE=zone
+CLUSTER_VALUE=$CLUSTER_ZONE
 
-if [ $exists ]; then
+exists=$(gcloud container clusters list --$CLUSTER_TYPE=$CLUSTER_VALUE --filter=$CLUSTER)
+
+if [ "$exists" ]; then
     echo "Delete cluster '$CLUSTER' and all it's resources!"
     read -r -p "Are You Sure? [Y/n] " response
     if [[ "$response" =~ ^([yY][eE][sS]|[yY])$ ]]
     then
-        gcloud container clusters delete $CLUSTER
-        gcloud container clusters list --filter=$CLUSTER
+        gcloud container clusters delete $CLUSTER --$CLUSTER_TYPE=$CLUSTER_VALUE
+        gcloud container clusters list --$CLUSTER_TYPE=$CLUSTER_VALUE --filter=$CLUSTER
     else
         echo "Aborting delete cluster request"
     fi
