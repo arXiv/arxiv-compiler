@@ -18,13 +18,27 @@ echo "Displaying existing deployments and services"
 kubectl get pods
 
 echo
+echo "Install configmap"
+./configmap_update.sh
+
+echo
+echo "Persistent Volumes"
+kubectl apply -f yaml/compiler-persistent-volume-claim.yaml
+kubectl apply -f yaml/nfs-persistent-volume-claim.yaml
+kubectl apply -f yaml/nfs-server.yaml
+
+echo
 echo "Deploy Storage Container (temporary)"
 kubectl apply -f yaml/storage-app-svc.yaml
+
+echo "Deploy secrets"
+kubectl apply -f yaml/compiler-secrets.yaml
 
 echo
 echo "Deploy compiler worker"
 kubectl apply -f yaml/compiler-worker.yaml
 
+# Give some time for worker to start
 sleep 3
 
 echo
