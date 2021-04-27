@@ -1,0 +1,243 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: compiler-worker
+  name: compiler-worker
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: compiler-worker
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: compiler-worker
+    spec:
+      imagePullSecrets:
+      - name: gcr-json-key
+      containers:
+      - name: compiler-dind-daemon
+        image: docker:18.09.2-dind
+        volumeMounts:
+        - name: docker-graph-storage
+          mountPath: /var/lib/docker
+        - name: mypvc
+          mountPath: /sources
+        resources:
+          requests:
+            memory: "512Mi"
+          #  cpu: "500m"
+          limits:
+            memory: "1Gi"
+          #  cpu: "1"
+        securityContext:
+          privileged: true
+
+      - name: arxiv-compiler
+        image: gcr.io/arxiv-compiler-dev/arxiv-compiler:v7.13
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: run
+          mountPath: /var/run/celery
+        - name: mypvc
+          mountPath: /sources
+        - name: nfs-volume-1 
+          mountPath: /nfs-data
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        command: ['pipenv', 'run', 'celery', 'worker', '-A', 'compiler.worker.celery_app', '-l', 'INFO', '-E', '--concurrency=2']
+        # Environment settings.
+        env:
+          # Support AWS Containers
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: compiler-secret
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: compiler-secret
+                key: AWS_SECRET_ACCESS_KEY
+          - name: AWS_S3_REGION_NAME
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: AWS_S3_REGION_NAME
+
+          # File manager settings
+          - name: FILEMANAGER_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_ENDPOINT
+          - name: FILEMANAGER_VERIFY_CHECKSUM
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_VERIFY_CHECKSUM
+          - name: FILEMANAGER_CONTENT_PATH
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_CONTENT_PATH
+
+          # Docker settings
+          - name: DOCKER_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: DOCKER_HOST
+          - name: CONVERTER_IMAGE_PULL
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: CONVERTER_IMAGE_PULL
+          - name: DIND_SOURCE_ROOT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: DIND_SOURCE_ROOT
+          - name: WORKER_SOURCE_ROOT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: WORKER_SOURCE_ROOT
+          - name: CONVERTER_DOCKER_IMAGE
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: CONVERTER_DOCKER_IMAGE
+
+          # Redis settings
+          - name: REDIS_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: REDIS_ENDPOINT
+
+          # These Filemanager settings may be defunct - need to check
+          - name: FILEMANAGER_PROTO
+            value: "https"
+          - name: FILEMANAGER_SERVICE_HOST_XXX
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_SERVICE_HOST
+          - name: ANOTE
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: ANOTE
+          - name: FILEMANAGER_SERVICE_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_SERVICE_PORT
+          - name: FILEMANAGER_SERVICE_PORT_443_PROTO
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FILEMANAGER_SERVICE_PORT_443_PROTO
+          - name: FILEMANAGER_STATUS_ENDPOINT
+            value: ""
+
+          # Flask settings
+          - name: FLASK_APP
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FLASK_APP
+          - name: FLASK_DEBUG
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: FLASK_DEBUG
+          - name: JWT_SECRET
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: JWT_SECRET
+          - name: LOGLEVEL
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: LOGLEVEL
+
+          # S3 Settings
+          - name: S3_ENDPOINT
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: S3_ENDPOINT
+          - name: S3_VERIFY
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: S3_VERIFY
+          - name: USE_SSL
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: S3_USE_SSL
+          - name: DEBUG
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: S3_DEBUG
+
+          # General application settings
+          - name: VERBOSE_COMPILE
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: VERBOSE_COMPILE
+          - name: WAIT_FOR_SERVICES
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: WAIT_FOR_SERVICES
+          - name: WAIT_ON_STARTUP
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: WAIT_ON_STARTUP
+
+          # Vault is going away
+          - name: VAULT_ENABLED
+            valueFrom:
+              configMapKeyRef:
+                name: compiler-dev-configmap
+                key: VAULT_ENABLED
+      volumes:
+      - name: mypvc
+        persistentVolumeClaim:
+          claimName: fileserver-claim
+          readOnly: false
+      - name: nfs-volume-1
+        persistentVolumeClaim:
+          claimName: nfs-pvc
+          readOnly: false
+      - name: docker-graph-storage
+        emptyDir: {}
+      - name: run
+        emptyDir: {}
+      - name: sources
+        emptyDir: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+
