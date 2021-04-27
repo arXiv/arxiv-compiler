@@ -11,11 +11,13 @@ data:
   DOCKER_HOST: "tcp://localhost:2375"
   REDIS_ENDPOINT: "10.190.78.203"
   AWS_S3_REGION_NAME: "us-east-1"
-  S3_ENDPOINT: "http://10.92.5.117:4572"
+  S3_ENDPOINT: "http://10.92.7.193:4572"
+  S3_ENDPOINT_new: "http://10.92.5.117:4566"
   S3_VERIFY: "0"
   S3_USE_SSL: ''
   S3_DEBUG: 'true'
-  CONVERTER_DOCKER_IMAGE: "gcr.io/arxiv-compiler-dev/autotex/2020.05"
+  CONVERTER_DOCKER_IMAGE: "626657773168.dkr.ecr.us-east-1.amazonaws.com/arxiv/converter-2020:0.1.0"
+  CONVERTER_DOCKER_IMAGE_WANT: "gcr.io/arxiv-compiler-dev/autotex/2020.05"
   CONVERTER_IMAGE_PULL: "1"
   FILEMANAGER_ENDPOINT: "https://arxiv.org"
   FILEMANAGER_SERVICE_HOST: "arxiv.org"
@@ -37,3 +39,4 @@ data:
   KUBE_TOKEN: "fookubetoken"
   WAIT_FOR_SERVICES: "1"
   WAIT_ON_STARTUP: "5"
+
