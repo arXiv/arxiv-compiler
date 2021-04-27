@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#set -ev
+# Create disks for compilation service
 
 CONFIG="config.sh"
 
