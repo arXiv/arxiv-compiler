@@ -260,8 +260,9 @@ def does_checksum_match(source: SourcePackage, expected: str) -> bool:
         True if the etag of ``source`` matches ``expected``.
 
     """
-    verify_checksum = bool(current_app.config['FILEMANAGER_VERIFY_CHECKSUM'])
-
+    #verify_checksum = bool(current_app.config['FILEMANAGER_VERIFY_CHECKSUM'])
+    verify_checksum = 0
+    
     if not verify_checksum:
         logger.debug('WARNING: Checksum verification disabled.')
         return True
