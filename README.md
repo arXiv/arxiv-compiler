@@ -1,5 +1,10 @@
 # arXiv compiler service
 
+*NOTE:* This service is not under active development, and should not be used for attempting to build a "local arXiv-like" 
+compiler. For such a service, please see the [arXiv/submission-tools](https://github.com/arXiv/submission-tools) project. 
+
+__This project has been archived, as of 2025-01-28__
+
 The build service compiles LaTeX source packages into PDF, PostScript,
 and other formats. This service encompasses the arXiv TeX tree. Compilation
 logs are also made available, for example to provide submitters feedback about
