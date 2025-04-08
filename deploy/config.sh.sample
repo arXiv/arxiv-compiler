@@ -1,0 +1,20 @@
+# Default settings for development operations in Google Cloud
+
+# Configuration
+export CONFIGMAP="compiler-configmap"
+
+# Top level settings
+export PROJECT="arxiv-compiler-dev"
+export REGION="us-east1"
+export ZONE="us-east1-d"
+
+# Kubernetes Cluster
+export CLUSTER="compiler-cluster"
+export CLUSTER_NODES=2
+export CLUSTER_REGION=$REGION
+
+# Redis
+export REDIS_NAME="compiler-broker"
+export REDIS_ZONE=$ZONE
+export REDIS_REGION=$REGION
+

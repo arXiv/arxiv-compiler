@@ -108,3 +108,12 @@ venv.bak/
 settings.json
 
 .DS_Store
+
+# Version only useful until docker container is built.
+compiler/version.py
+
+deploy/compiler-secrets.yaml
+deploy/config.sh
+deploy/config/compiler-configmap.yaml
+deploy/yaml/compiler-secrets.yaml
+

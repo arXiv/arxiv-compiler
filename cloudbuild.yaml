@@ -1,0 +1,10 @@
+#cloudbuild.yaml
+steps:
+- name: ‘docker/compose:1.27.4’
+  args: [‘build’]
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag', 'compiler-test-api:latest', 'gcr.io/$PROJECT_ID/api/$REPO_NAME:$COMMIT_SHA']
+images: ['gcr.io/$PROJECT_ID/api/$REPO_NAME:$COMMIT_SHA']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['tag', 'compiler-test-worker:latest', 'gcr.io/$PROJECT_ID/worker/$REPO_NAME:$COMMIT_SHA']
+images: ['gcr.io/$PROJECT_ID/worker/$REPO_NAME:$COMMIT_SHA']
